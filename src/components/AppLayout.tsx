@@ -2,7 +2,7 @@ import { Link, useLocation } from "react-router-dom";
 import { 
   LayoutDashboard, KanbanSquare, Building2, Briefcase, 
   Shield, Settings, Flame, ChevronLeft, ChevronRight,
-  User, LogOut, Menu, X, ClipboardCheck, FileText, Users, UsersRound
+  User, LogOut, Menu, X, ClipboardCheck, FileText, Users, UsersRound, Search, Command, BarChart2, CalendarDays
 } from "lucide-react";
 import { useState, useEffect } from "react";
 import { cn } from "@/lib/utils";
@@ -20,6 +20,8 @@ const adminNavItems = [
   { icon: Shield, label: "Certyfikaty", path: "/certificates" },
   { icon: Users, label: "Spotkania", path: "/meetings" },
   { icon: UsersRound, label: "Zespół", path: "/employees" },
+  { icon: BarChart2, label: "Analityka", path: "/analytics" },
+  { icon: CalendarDays, label: "Kalendarz", path: "/calendar" },
   { icon: Settings, label: "Ustawienia", path: "/settings" },
 ];
 
@@ -139,7 +141,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       <div className="flex flex-1 flex-col overflow-hidden">
         {/* Top Bar */}
         <header className="flex h-14 items-center justify-between border-b border-border bg-card px-4 sm:px-6">
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-4">
             {isMobile && (
               <button
                 onClick={() => setMobileOpen(true)}
@@ -148,6 +150,18 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                 <Menu className="h-5 w-5" />
               </button>
             )}
+            <div className="hidden md:flex items-center gap-2 rounded-md border border-border bg-secondary/30 px-3 py-1.5 focus-within:border-primary/50 transition-colors w-72">
+              <Search className="h-3.5 w-3.5 text-muted-foreground" />
+              <input 
+                type="text" 
+                placeholder="Szukaj..." 
+                className="bg-transparent text-xs outline-none w-full text-foreground placeholder:text-muted-foreground"
+              />
+              <div className="flex items-center gap-1 rounded bg-secondary px-1 py-0.5 border border-border">
+                <Command className="h-2 w-2 text-muted-foreground" />
+                <span className="text-[9px] text-muted-foreground font-medium">K</span>
+              </div>
+            </div>
           </div>
           <div className="flex items-center gap-2 sm:gap-3">
             <NotificationBell />

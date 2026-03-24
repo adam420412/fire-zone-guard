@@ -22,27 +22,58 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const fetchRole = async (userId: string) => {
     try {
-      const { data } = await supabase
+      // 1. Fetch Role
+      const { data: roleData, error: roleError } = await supabase
         .from("user_roles")
         .select("role")
         .eq("user_id", userId)
         .maybeSingle();
-      setRole(data?.role ?? null);
+      
+      if (roleError) console.error("Error fetching role:", roleError);
+      setRole(roleData?.role ?? null);
 
-      const { data: profile } = await supabase
+      // 2. Fetch Profile ID
+      // Typical Supabase schema uses 'id' as the primary key of profiles table (linked to auth.users.id)
+      const { data: profile, error: profError } = await supabase
         .from("profiles")
         .select("id")
-        .eq("user_id", userId)
+        .eq("id", userId)
         .maybeSingle();
-      setProfileId(profile?.id ?? null);
+        
+      if (profError) {
+        // Fallback: try user_id if id is not the link
+        const { data: profile2 } = await supabase
+          .from("profiles")
+          .select("id")
+          .eq("user_id", userId)
+          .maybeSingle();
+        setProfileId(profile2?.id ?? null);
+      } else {
+        setProfileId(profile?.id ?? null);
+      }
     } catch (e) {
-      console.error("fetchRole error:", e);
-      setRole(null);
-      setProfileId(null);
+      console.error("fetchRole unexpected error:", e);
     }
   };
 
   useEffect(() => {
+    const initAuth = async () => {
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        const u = session?.user ?? null;
+        setUser(u);
+        if (u) {
+          await fetchRole(u.id);
+        }
+      } catch (e) {
+        console.error("Auth init error:", e);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    initAuth();
+
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
       const u = session?.user ?? null;
       setUser(u);
@@ -52,18 +83,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setRole(null);
         setProfileId(null);
       }
-      setLoading(false);
-    });
-
-    supabase.auth.getSession().then(async ({ data: { session } }) => {
-      const u = session?.user ?? null;
-      setUser(u);
-      if (u) {
-        await fetchRole(u.id);
-      }
-      setLoading(false);
-    }).catch((e) => {
-      console.error("Auth session error:", e);
       setLoading(false);
     });
 

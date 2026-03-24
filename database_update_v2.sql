@@ -133,10 +133,71 @@ ALTER TABLE public.service_protocols ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.hydrant_measurements ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.tank_measurements ENABLE ROW LEVEL SECURITY;
 
--- Note: In a production scenario, you would add specific policies mapping user_id and company_id
--- similar to existing tables. For simplicity and super_admin access, basic rules:
-CREATE POLICY "Super admin has full access to all new tables"
-ON public.meetings FOR ALL USING (
-    (SELECT role FROM public.user_roles WHERE user_id = auth.uid()) = 'super_admin'
+-- Policies for employee_development_plans
+CREATE POLICY "Users can see their own dev plans" ON public.employee_development_plans 
+FOR SELECT USING (auth.uid() = user_id);
+
+CREATE POLICY "Super admins and managers can see all dev plans" ON public.employee_development_plans 
+FOR ALL USING (
+    EXISTS (SELECT 1 FROM public.user_roles WHERE user_id = auth.uid() AND role IN ('super_admin', 'inspektor'))
 );
--- We should mirror the existing "access by company id" pattern later.
+
+-- Policies for employee_trainings
+CREATE POLICY "Users can see their own trainings" ON public.employee_trainings 
+FOR SELECT USING (auth.uid() = user_id);
+
+CREATE POLICY "Super admins and managers manage trainings" ON public.employee_trainings 
+FOR ALL USING (
+    EXISTS (SELECT 1 FROM public.user_roles WHERE user_id = auth.uid() AND role IN ('super_admin', 'inspektor'))
+);
+
+-- Policies for meetings
+CREATE POLICY "Authenticated users can view meetings" ON public.meetings 
+FOR SELECT USING (auth.role() = 'authenticated');
+
+CREATE POLICY "Super admins full access to meetings" ON public.meetings 
+FOR ALL USING (
+    EXISTS (SELECT 1 FROM public.user_roles WHERE user_id = auth.uid() AND role = 'super_admin')
+);
+
+-- Policies for audits and checklists
+CREATE POLICY "Authenticated users can view audits" ON public.audits 
+FOR SELECT USING (auth.role() = 'authenticated');
+
+CREATE POLICY "Super admins and inspectors manage audits" ON public.audits 
+FOR ALL USING (
+    EXISTS (SELECT 1 FROM public.user_roles WHERE user_id = auth.uid() AND role IN ('super_admin', 'inspektor'))
+);
+
+CREATE POLICY "Authenticated users can view audit checklists" ON public.audit_checklists 
+FOR SELECT USING (auth.role() = 'authenticated');
+
+CREATE POLICY "Super admins and inspectors manage audit checklists" ON public.audit_checklists 
+FOR ALL USING (
+    EXISTS (SELECT 1 FROM public.user_roles WHERE user_id = auth.uid() AND role IN ('super_admin', 'inspektor'))
+);
+
+-- Policies for service protocols and measurements
+CREATE POLICY "Authenticated users can view protocols" ON public.service_protocols 
+FOR SELECT USING (auth.role() = 'authenticated');
+
+CREATE POLICY "Super admins and inspectors manage protocols" ON public.service_protocols 
+FOR ALL USING (
+    EXISTS (SELECT 1 FROM public.user_roles WHERE user_id = auth.uid() AND role IN ('super_admin', 'inspektor'))
+);
+
+CREATE POLICY "Authenticated users can view hydrant measurements" ON public.hydrant_measurements 
+FOR SELECT USING (auth.role() = 'authenticated');
+
+CREATE POLICY "Super admins and inspectors manage hydrant measurements" ON public.hydrant_measurements 
+FOR ALL USING (
+    EXISTS (SELECT 1 FROM public.user_roles WHERE user_id = auth.uid() AND role IN ('super_admin', 'inspektor'))
+);
+
+CREATE POLICY "Authenticated users can view tank measurements" ON public.tank_measurements 
+FOR SELECT USING (auth.role() = 'authenticated');
+
+CREATE POLICY "Super admins and inspectors manage tank measurements" ON public.tank_measurements 
+FOR ALL USING (
+    EXISTS (SELECT 1 FROM public.user_roles WHERE user_id = auth.uid() AND role IN ('super_admin', 'inspektor'))
+);

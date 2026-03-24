@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
+import { useAuth } from "@/hooks/useAuth";
 import {
   useBuildingDetail,
   useBuildingDevices,
@@ -9,22 +10,119 @@ import {
   useAddDevice,
   useCreateTaskFromTemplate,
 } from "@/hooks/useBuildingData";
+import { useUpdateBuilding, useCompanies } from "@/hooks/useSupabaseData";
 import { safetyStatusConfig, priorityColors, statusColors, taskTypeLabels } from "@/lib/constants";
 import type { SafetyStatus, TaskPriority, TaskStatus, TaskType } from "@/lib/constants";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 import TaskDetailDialog from "@/components/TaskDetailDialog";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Label } from "@/components/ui/label";
+import { Input } from "@/components/ui/input";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import {
   ArrowLeft, Building2, MapPin, Shield, Loader2, Plus,
   CheckCircle2, AlertTriangle, Clock, Wrench, ClipboardList,
-  ChevronDown, ChevronRight, Package,
+  ChevronDown, ChevronRight, Package, Edit, QrCode, Save, Printer
 } from "lucide-react";
+
+function EditBuildingDialog({ building, open, onOpenChange }: { building: any, open: boolean, onOpenChange: (o: boolean) => void }) {
+  const { data: companies } = useCompanies();
+  const updateBuilding = useUpdateBuilding();
+  const { toast } = useToast();
+  
+  const [name, setName] = useState(building.name);
+  const [address, setAddress] = useState(building.address);
+  const [companyId, setCompanyId] = useState(building.company_id);
+  const [ibpDate, setIbpDate] = useState(building.ibp_valid_until || "");
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    updateBuilding.mutate({
+      id: building.id,
+      updates: { name, address, company_id: companyId, ibp_valid_until: ibpDate || null }
+    }, {
+      onSuccess: () => {
+        toast({ title: "Zaktualizowano dane obiektu" });
+        onOpenChange(false);
+      }
+    });
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-md">
+        <form onSubmit={handleSubmit}>
+          <DialogHeader>
+            <DialogTitle>Edytuj obiekt</DialogTitle>
+            <DialogDescription>Zmień podstawowe informacje o budynku.</DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            <div className="space-y-2">
+              <Label>Nazwa</Label>
+              <Input value={name} onChange={e => setName(e.target.value)} required />
+            </div>
+            <div className="space-y-2">
+              <Label>Firma / Właściciel</Label>
+              <Select value={companyId} onValueChange={setCompanyId}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  {companies?.map(c => (
+                    <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label>Adres</Label>
+              <Input value={address} onChange={e => setAddress(e.target.value)} required />
+            </div>
+            <div className="space-y-2">
+              <Label>Ważność IBP</Label>
+              <Input type="date" value={ibpDate} onChange={e => setIbpDate(e.target.value)} />
+            </div>
+          </div>
+          <DialogFooter>
+            <button type="submit" disabled={updateBuilding.isPending} className="fire-gradient rounded-md px-4 py-2 text-sm font-semibold text-white flex items-center gap-2">
+              {updateBuilding.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+              Zapisz zmiany
+            </button>
+          </DialogFooter>
+        </form>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function QRCodeDialog({ device, open, onOpenChange }: { device: any, open: boolean, onOpenChange: (o: boolean) => void }) {
+  if (!device) return null;
+  const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(JSON.stringify({ id: device.id, n: device.name, s: device.serial_number }))}`;
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-xs text-center border-none bg-white p-8">
+        <DialogHeader>
+          <DialogTitle className="text-black mb-2">{device.name}</DialogTitle>
+          <DialogDescription className="text-gray-500">Zeskanuj kod, aby zidentyfikować urządzenie w systemie.</DialogDescription>
+        </DialogHeader>
+        <div className="my-6 flex justify-center bg-white p-4 rounded-xl border-2 border-dashed border-gray-100">
+          <img src={qrUrl} alt="QR Code" className="w-48 h-48" />
+        </div>
+        <p className="text-[10px] text-gray-400 font-mono mb-4 uppercase">Serial: {device.serial_number || "BRAK"}</p>
+        <button onClick={() => window.print()} className="w-full flex items-center justify-center gap-2 rounded-lg bg-gray-900 px-4 py-2.5 text-sm font-bold text-white hover:bg-black transition-colors">
+          <Printer className="h-4 w-4" /> Drukuj Etykietę
+        </button>
+      </DialogContent>
+    </Dialog>
+  );
+}
 
 export default function BuildingDetailPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { role } = useAuth();
+  const isSuperAdmin = role === 'super_admin';
 
   const { data: building, isLoading: loadingBuilding } = useBuildingDetail(id ?? "");
   const { data: devices, isLoading: loadingDevices } = useBuildingDevices(id ?? "");
@@ -36,6 +134,9 @@ export default function BuildingDetailPage() {
 
   const [selectedTask, setSelectedTask] = useState<any>(null);
   const [showAddDevice, setShowAddDevice] = useState(false);
+  const [showEditBuilding, setShowEditBuilding] = useState(false);
+  const [qrDevice, setQrDevice] = useState<any>(null);
+  
   const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({
     tasks: true, devices: true, templates: true,
   });
@@ -124,13 +225,27 @@ export default function BuildingDetailPage() {
             </div>
             <StatusIcon className={cn("h-6 w-6 ml-2", statusConf.color)} />
             <span className={cn("text-sm font-semibold", statusConf.color)}>{statusConf.label}</span>
+            
+            {isSuperAdmin && (
+              <button onClick={() => setShowEditBuilding(true)} className="ml-auto rounded-full bg-secondary p-2 hover:bg-primary/10 transition-colors">
+                <Edit className="h-4 w-4 text-muted-foreground" />
+              </button>
+            )}
           </div>
           <div className="mt-2 flex items-center gap-1.5 text-xs text-muted-foreground">
             <MapPin className="h-3 w-3" />
             <span>{building.address}</span>
+            {building.ibp_valid_until && (
+              <span className="ml-3 flex items-center gap-1">
+                <Shield className="h-3 w-3 text-success" /> IBP ważne do: {new Date(building.ibp_valid_until).toLocaleDateString("pl-PL")}
+              </span>
+            )}
           </div>
         </div>
       </div>
+
+      <EditBuildingDialog building={building} open={showEditBuilding} onOpenChange={setShowEditBuilding} />
+      <QRCodeDialog device={qrDevice} open={!!qrDevice} onOpenChange={(o) => !o && setQrDevice(null)} />
 
       {/* Summary stats */}
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
@@ -192,9 +307,6 @@ export default function BuildingDetailPage() {
             ))}
           </div>
         )}
-        {closedTasks.length > 0 && (
-          <p className="mt-2 text-xs text-muted-foreground">+ {closedTasks.length} zamkniętych zadań</p>
-        )}
       </Section>
 
       {/* === DEVICES SECTION === */}
@@ -205,12 +317,14 @@ export default function BuildingDetailPage() {
         expanded={expandedSections.devices}
         onToggle={() => toggleSection("devices")}
         action={
-          <button
-            onClick={() => setShowAddDevice(true)}
-            className="flex items-center gap-1 rounded-md bg-primary px-2.5 py-1 text-xs font-semibold text-primary-foreground hover:opacity-90 transition-opacity"
-          >
-            <Plus className="h-3 w-3" /> Dodaj
-          </button>
+          isSuperAdmin ? (
+            <button
+              onClick={() => setShowAddDevice(true)}
+              className="flex items-center gap-1 rounded-md bg-primary px-2.5 py-1 text-xs font-semibold text-primary-foreground hover:opacity-90 transition-opacity"
+            >
+              <Plus className="h-3 w-3" /> Dodaj
+            </button>
+          ) : undefined
         }
       >
         {loadingDevices ? (
@@ -222,7 +336,7 @@ export default function BuildingDetailPage() {
             {(devices ?? []).map((device: any) => {
               const needsService = device.next_service_date && new Date(device.next_service_date) <= new Date();
               return (
-                <div key={device.id} className="flex items-center justify-between rounded-md border border-border bg-secondary/50 p-3">
+                <div key={device.id} className="flex items-center justify-between rounded-md border border-border bg-secondary/50 p-3 group/item">
                   <div className="flex items-center gap-3">
                     {needsService ? (
                       <Wrench className="h-4 w-4 text-warning" />
@@ -237,15 +351,22 @@ export default function BuildingDetailPage() {
                       </p>
                     </div>
                   </div>
-                  <div className="text-right">
-                    <p className={cn("text-xs font-semibold", needsService ? "text-warning" : "text-muted-foreground")}>
-                      {needsService ? "Wymaga serwisu" : "Sprawny"}
-                    </p>
-                    <p className="text-[10px] text-muted-foreground">
-                      {device.next_service_date
-                        ? `Serwis: ${device.next_service_date}`
-                        : "Brak daty serwisu"}
-                    </p>
+                  <div className="flex items-center gap-4">
+                    <button 
+                      onClick={() => setQrDevice(device)}
+                      className="opacity-0 group-hover/item:opacity-100 transition-opacity p-2 hover:bg-white rounded-full bg-secondary shadow-sm"
+                      title="Generuj kod QR"
+                    >
+                      <QrCode className="h-4 w-4 text-primary" />
+                    </button>
+                    <div className="text-right min-w-[80px]">
+                      <p className={cn("text-xs font-semibold", needsService ? "text-warning" : "text-muted-foreground")}>
+                        {needsService ? "Serwis" : "Ok"}
+                      </p>
+                      <p className="text-[10px] text-muted-foreground">
+                        {device.next_service_date ? device.next_service_date : "—"}
+                      </p>
+                    </div>
                   </div>
                 </div>
               );
@@ -270,20 +391,19 @@ export default function BuildingDetailPage() {
               <div key={tpl.id} className="flex items-center justify-between rounded-md border border-border bg-secondary/50 p-3">
                 <div>
                   <p className="text-sm font-medium text-card-foreground">{tpl.name}</p>
-                  <p className="text-xs text-muted-foreground">
-                    {taskTypeLabels[tpl.type as TaskType] ?? tpl.type}
-                    {(tpl as any).device_types?.name ? ` • ${(tpl as any).device_types.name}` : ""}
-                    {" • "}Co {tpl.recurrence_days} dni
-                    {tpl.is_global ? " • Globalny" : " • Lokalny"}
+                  <p className="text-xs text-muted-foreground truncate">
+                    {taskTypeLabels[tpl.type as TaskType] ?? tpl.type} • Co {tpl.recurrence_days} dni
                   </p>
                 </div>
-                <button
-                  onClick={() => handleCreateFromTemplate(tpl)}
-                  disabled={createFromTemplate.isPending}
-                  className="flex items-center gap-1 rounded-md border border-primary/30 px-2.5 py-1 text-xs font-semibold text-primary hover:bg-primary/10 transition-colors disabled:opacity-50"
-                >
-                  <Plus className="h-3 w-3" /> Utwórz
-                </button>
+                {isSuperAdmin && (
+                  <button
+                    onClick={() => handleCreateFromTemplate(tpl)}
+                    disabled={createFromTemplate.isPending}
+                    className="flex items-center gap-1 rounded-md border border-primary/30 px-2.5 py-1 text-xs font-semibold text-primary hover:bg-primary/10 transition-colors disabled:opacity-50"
+                  >
+                    <Plus className="h-3 w-3" /> Utwórz
+                  </button>
+                )}
               </div>
             ))}
           </div>
@@ -350,7 +470,6 @@ export default function BuildingDetailPage() {
         </DialogContent>
       </Dialog>
 
-      {/* Task Detail */}
       <TaskDetailDialog
         task={selectedTask}
         open={!!selectedTask}
@@ -360,7 +479,6 @@ export default function BuildingDetailPage() {
   );
 }
 
-// Collapsible section component
 function Section({
   title, icon: Icon, count, expanded, onToggle, action, children,
 }: {
@@ -373,10 +491,10 @@ function Section({
   children: React.ReactNode;
 }) {
   return (
-    <div className="rounded-lg border border-border bg-card">
+    <div className="rounded-lg border border-border bg-card overflow-hidden">
       <button
         onClick={onToggle}
-        className="flex w-full items-center justify-between p-4 text-left"
+        className="flex w-full items-center justify-between p-4 text-left hover:bg-secondary/20 transition-colors"
       >
         <div className="flex items-center gap-2">
           {expanded ? <ChevronDown className="h-4 w-4 text-muted-foreground" /> : <ChevronRight className="h-4 w-4 text-muted-foreground" />}
@@ -386,7 +504,7 @@ function Section({
         </div>
         {action && <div onClick={(e) => e.stopPropagation()}>{action}</div>}
       </button>
-      {expanded && <div className="border-t border-border p-4">{children}</div>}
+      {expanded && <div className="border-t border-border p-4 bg-card/50">{children}</div>}
     </div>
   );
 }

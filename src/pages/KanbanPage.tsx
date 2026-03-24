@@ -1,22 +1,22 @@
 import { useState } from "react";
 import { useTasks } from "@/hooks/useSupabaseData";
-import { TaskWithDetails } from "@/hooks/useSupabaseData";
 import { kanbanStatuses, statusColors } from "@/lib/constants";
 import type { TaskStatus } from "@/lib/constants";
 import TaskCard from "@/components/TaskCard";
 import TaskDetailDialog from "@/components/TaskDetailDialog";
 import CreateTaskDialog from "@/components/CreateTaskDialog";
 import { cn } from "@/lib/utils";
-import { Filter, Search, Plus, Loader2 } from "lucide-react";
+import { Filter, Search, Plus, Loader2, Download } from "lucide-react";
+import { KanbanSkeleton } from "@/components/PageSkeleton";
 
 export default function KanbanPage() {
   const { data: tasks, isLoading } = useTasks();
   const [search, setSearch] = useState("");
   const [filterPriority, setFilterPriority] = useState("all");
   const [showCreate, setShowCreate] = useState(false);
-  const [selectedTask, setSelectedTask] = useState<TaskWithDetails | null>(null);
+  const [selectedTask, setSelectedTask] = useState<any>(null);
 
-  const filteredTasks = (tasks ?? []).filter((t) => {
+  const filteredTasks = (tasks ?? []).filter((t: any) => {
     const matchesSearch =
       search === "" ||
       t.title.toLowerCase().includes(search.toLowerCase()) ||
@@ -26,15 +26,33 @@ export default function KanbanPage() {
     return matchesSearch && matchesPriority;
   });
 
-  const getTasksForStatus = (status: TaskStatus) => filteredTasks.filter((t) => t.status === status);
+  const handleExportCSV = () => {
+    const headers = ["ID", "Tytul", "Obiekt", "Przypisany", "Priorytet", "Status", "Deadline", "Typ"];
+    const rows = filteredTasks.map((t: any) => [
+      t.id.slice(0, 8),
+      `"${t.title.replace(/"/g, '""')}"`,
+      `"${(t.buildingName || "").replace(/"/g, '""')}"`,
+      `"${(t.assigneeName || "").replace(/"/g, '""')}"`,
+      t.priority,
+      t.status,
+      t.deadline || "",
+      t.type
+    ]);
+    
+    const csvContent = [headers, ...rows].map(e => e.join(";")).join("\n");
+    const blob = new Blob(["\ufeff" + csvContent], { type: 'text/csv;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.setAttribute("href", url);
+    link.setAttribute("download", `firezone_zadania_${new Date().toISOString().split('T')[0]}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
 
-  if (isLoading) {
-    return (
-      <div className="flex h-full items-center justify-center">
-        <Loader2 className="h-6 w-6 animate-spin text-primary" />
-      </div>
-    );
-  }
+  const getTasksForStatus = (status: TaskStatus) => filteredTasks.filter((t: any) => t.status === status);
+
+  if (isLoading) return <KanbanSkeleton />;
 
   return (
     <div className="flex h-full flex-col">
@@ -44,7 +62,7 @@ export default function KanbanPage() {
           <p className="text-sm text-muted-foreground">Globalny widok wszystkich zadań operacyjnych</p>
         </div>
         <div className="flex items-center gap-3">
-          <div className="flex items-center gap-2 rounded-md border border-border bg-card px-3 py-1.5">
+          <div className="flex items-center gap-2 rounded-md border border-border bg-card px-3 py-1.5 focus-within:border-primary transition-colors">
             <Search className="h-4 w-4 text-muted-foreground" />
             <input
               value={search}
@@ -56,14 +74,21 @@ export default function KanbanPage() {
           <select
             value={filterPriority}
             onChange={(e) => setFilterPriority(e.target.value)}
-            className="rounded-md border border-border bg-card px-3 py-1.5 text-sm outline-none"
+            className="rounded-md border border-border bg-card px-3 py-1.5 text-sm outline-none cursor-pointer"
           >
-            <option value="all">Wszystkie priorytety</option>
+            <option value="all">Priorytety: Wszystkie</option>
             <option value="krytyczny">Krytyczny</option>
             <option value="wysoki">Wysoki</option>
             <option value="średni">Średni</option>
             <option value="niski">Niski</option>
           </select>
+          <button
+            onClick={handleExportCSV}
+            className="flex items-center gap-2 rounded-md border border-border bg-card px-3 py-1.5 text-sm font-medium hover:bg-secondary transition-colors"
+          >
+            <Download className="h-4 w-4" />
+            Eksportuj
+          </button>
           <button
             onClick={() => setShowCreate(true)}
             className="flex items-center gap-2 rounded-md fire-gradient px-3 py-1.5 text-sm font-medium text-primary-foreground hover:opacity-90 transition-opacity"
@@ -74,24 +99,27 @@ export default function KanbanPage() {
         </div>
       </div>
 
-      <div className="flex-1 overflow-x-auto">
-        <div className="flex gap-4" style={{ minWidth: `${kanbanStatuses.length * 280}px` }}>
+      <div className="flex-1 overflow-x-auto pb-4">
+        <div className="flex gap-4 min-w-max">
           {kanbanStatuses.map((status) => {
             const columnTasks = getTasksForStatus(status);
             return (
-              <div key={status} className="flex w-[270px] shrink-0 flex-col rounded-lg border border-border bg-muted/30">
-                <div className="flex items-center justify-between border-b border-border px-4 py-3">
-                  <span className={cn("rounded-full px-2 py-0.5 text-[10px] font-semibold", statusColors[status])}>
+              <div key={status} className="flex w-72 shrink-0 flex-col rounded-xl border border-border bg-muted/20">
+                <div className="flex items-center justify-between border-b border-border px-4 py-3 bg-card/40">
+                  <span className={cn("rounded-full px-2 py-0.5 text-[10px] font-bold uppercase", statusColors[status])}>
                     {status}
                   </span>
-                  <span className="text-xs font-medium text-muted-foreground">{columnTasks.length}</span>
+                  <span className="text-xs font-bold text-muted-foreground/60">{columnTasks.length}</span>
                 </div>
-                <div className="flex-1 space-y-3 overflow-y-auto p-3 scrollbar-thin">
-                  {columnTasks.map((task) => (
+                <div className="flex-1 space-y-3 overflow-y-auto p-3 scrollbar-thin max-h-[calc(100vh-250px)]">
+                  {columnTasks.map((task: any) => (
                     <TaskCard key={task.id} task={task} onClick={() => setSelectedTask(task)} />
                   ))}
                   {columnTasks.length === 0 && (
-                    <p className="py-8 text-center text-xs text-muted-foreground">Brak zadań</p>
+                    <div className="flex flex-col items-center justify-center py-10 opacity-30 text-center">
+                      <Filter className="h-8 w-8 mb-2" />
+                      <p className="text-[11px] font-medium">Brak zadań</p>
+                    </div>
                   )}
                 </div>
               </div>

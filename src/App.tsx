@@ -15,9 +15,13 @@ import SettingsPage from "@/pages/SettingsPage";
 import ClientPanel from "@/pages/ClientPanel";
 import AuthPage from "@/pages/AuthPage";
 import AuditsPage from "@/pages/AuditsPage";
+import AuditDetailPage from "@/pages/AuditDetailPage";
 import ProtocolsPage from "@/pages/ProtocolsPage";
+import ProtocolDetailPage from "@/pages/ProtocolDetailPage";
 import MeetingsPage from "@/pages/MeetingsPage";
 import EmployeesPage from "@/pages/EmployeesPage";
+import AnalyticsPage from "@/pages/AnalyticsPage";
+import CalendarPage from "@/pages/CalendarPage";
 import NotFound from "./pages/NotFound";
 import { Loader2 } from "lucide-react";
 
@@ -54,10 +58,14 @@ function ProtectedRoutes() {
             <Route path="/buildings/:id" element={<BuildingDetailPage />} />
             <Route path="/companies" element={<CompaniesPage />} />
             <Route path="/audits" element={<AuditsPage />} />
+            <Route path="/audits/:id" element={<AuditDetailPage />} />
             <Route path="/protocols" element={<ProtocolsPage />} />
+            <Route path="/protocols/:id" element={<ProtocolDetailPage />} />
             <Route path="/certificates" element={<CertificatesPage />} />
             <Route path="/meetings" element={<MeetingsPage />} />
             <Route path="/employees" element={<EmployeesPage />} />
+            <Route path="/analytics" element={<AnalyticsPage />} />
+            <Route path="/calendar" element={<CalendarPage />} />
             <Route path="/settings" element={<SettingsPage />} />
             <Route path="*" element={<NotFound />} />
           </>
