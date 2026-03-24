@@ -1,0 +1,107 @@
+import { useState } from "react";
+import { useTasks } from "@/hooks/useSupabaseData";
+import { TaskWithDetails } from "@/hooks/useSupabaseData";
+import { kanbanStatuses, statusColors } from "@/lib/constants";
+import type { TaskStatus } from "@/lib/constants";
+import TaskCard from "@/components/TaskCard";
+import TaskDetailDialog from "@/components/TaskDetailDialog";
+import CreateTaskDialog from "@/components/CreateTaskDialog";
+import { cn } from "@/lib/utils";
+import { Filter, Search, Plus, Loader2 } from "lucide-react";
+
+export default function KanbanPage() {
+  const { data: tasks, isLoading } = useTasks();
+  const [search, setSearch] = useState("");
+  const [filterPriority, setFilterPriority] = useState("all");
+  const [showCreate, setShowCreate] = useState(false);
+  const [selectedTask, setSelectedTask] = useState<TaskWithDetails | null>(null);
+
+  const filteredTasks = (tasks ?? []).filter((t) => {
+    const matchesSearch =
+      search === "" ||
+      t.title.toLowerCase().includes(search.toLowerCase()) ||
+      (t.assigneeName ?? "").toLowerCase().includes(search.toLowerCase()) ||
+      (t.buildingName ?? "").toLowerCase().includes(search.toLowerCase());
+    const matchesPriority = filterPriority === "all" || t.priority === filterPriority;
+    return matchesSearch && matchesPriority;
+  });
+
+  const getTasksForStatus = (status: TaskStatus) => filteredTasks.filter((t) => t.status === status);
+
+  if (isLoading) {
+    return (
+      <div className="flex h-full items-center justify-center">
+        <Loader2 className="h-6 w-6 animate-spin text-primary" />
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex h-full flex-col">
+      <div className="mb-6 flex flex-wrap items-center justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-bold tracking-tight">Kanban zadań</h1>
+          <p className="text-sm text-muted-foreground">Globalny widok wszystkich zadań operacyjnych</p>
+        </div>
+        <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2 rounded-md border border-border bg-card px-3 py-1.5">
+            <Search className="h-4 w-4 text-muted-foreground" />
+            <input
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Szukaj..."
+              className="w-40 bg-transparent text-sm outline-none placeholder:text-muted-foreground"
+            />
+          </div>
+          <select
+            value={filterPriority}
+            onChange={(e) => setFilterPriority(e.target.value)}
+            className="rounded-md border border-border bg-card px-3 py-1.5 text-sm outline-none"
+          >
+            <option value="all">Wszystkie priorytety</option>
+            <option value="krytyczny">Krytyczny</option>
+            <option value="wysoki">Wysoki</option>
+            <option value="średni">Średni</option>
+            <option value="niski">Niski</option>
+          </select>
+          <button
+            onClick={() => setShowCreate(true)}
+            className="flex items-center gap-2 rounded-md fire-gradient px-3 py-1.5 text-sm font-medium text-primary-foreground hover:opacity-90 transition-opacity"
+          >
+            <Plus className="h-4 w-4" />
+            Nowe zadanie
+          </button>
+        </div>
+      </div>
+
+      <div className="flex-1 overflow-x-auto">
+        <div className="flex gap-4" style={{ minWidth: `${kanbanStatuses.length * 280}px` }}>
+          {kanbanStatuses.map((status) => {
+            const columnTasks = getTasksForStatus(status);
+            return (
+              <div key={status} className="flex w-[270px] shrink-0 flex-col rounded-lg border border-border bg-muted/30">
+                <div className="flex items-center justify-between border-b border-border px-4 py-3">
+                  <span className={cn("rounded-full px-2 py-0.5 text-[10px] font-semibold", statusColors[status])}>
+                    {status}
+                  </span>
+                  <span className="text-xs font-medium text-muted-foreground">{columnTasks.length}</span>
+                </div>
+                <div className="flex-1 space-y-3 overflow-y-auto p-3 scrollbar-thin">
+                  {columnTasks.map((task) => (
+                    <TaskCard key={task.id} task={task} onClick={() => setSelectedTask(task)} />
+                  ))}
+                  {columnTasks.length === 0 && (
+                    <p className="py-8 text-center text-xs text-muted-foreground">Brak zadań</p>
+                  )}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
+      <CreateTaskDialog open={showCreate} onOpenChange={setShowCreate} />
+      <TaskDetailDialog task={selectedTask} open={!!selectedTask} onOpenChange={(o) => !o && setSelectedTask(null)} />
+    </div>
+  );
+}
