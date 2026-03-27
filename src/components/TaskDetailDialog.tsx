@@ -36,6 +36,7 @@ export default function TaskDetailDialog({ task, open, onOpenChange }: Props) {
 
   const { toast } = useToast();
   const [closingComment, setClosingComment] = useState("");
+  const [repairPrice, setRepairPrice] = useState((task as any).repair_price?.toString() || "");
 
   const [newSubtask, setNewSubtask] = useState({ title: "", description: "", deadline: "", assignee_id: "" });
   const [newReminder, setNewReminder] = useState({ remind_at: "", recipient_email: "", message: "", subtask_id: "" });
@@ -53,8 +54,9 @@ export default function TaskDetailDialog({ task, open, onOpenChange }: Props) {
   const handleStatusChange = async (newStatus: string) => {
     try {
       const updates: any = { id: task.id, status: newStatus };
-      if (newStatus === "Zamknięte" && closingComment.trim()) {
-        updates.closing_comment = closingComment.trim();
+      if (newStatus === "Zamknięte") {
+        if (closingComment.trim()) updates.closing_comment = closingComment.trim();
+        if (repairPrice) updates.repair_price = parseFloat(repairPrice) || 0;
       }
       await updateTask.mutateAsync(updates);
       toast({ title: `Status zmieniony na: ${newStatus}` });
@@ -220,22 +222,45 @@ export default function TaskDetailDialog({ task, open, onOpenChange }: Props) {
               </div>
 
               {status !== "Zamknięte" && (
-                <div>
-                  <label className="text-xs font-medium text-muted-foreground">Komentarz zamknięcia</label>
-                  <textarea
-                    value={closingComment}
-                    onChange={(e) => setClosingComment(e.target.value)}
-                    placeholder="Opcjonalny komentarz przy zamknięciu..."
-                    className={inputCls + " mt-1 min-h-[60px]"}
-                    maxLength={2000}
-                  />
+                <div className="space-y-3">
+                  <div>
+                    <label className="text-xs font-medium text-muted-foreground">Koszty naprawy netto (PLN) - wpisz przed zamknięciem</label>
+                    <input 
+                      type="number" 
+                      min="0" step="0.01" 
+                      value={repairPrice} 
+                      onChange={(e) => setRepairPrice(e.target.value)} 
+                      placeholder="0.00"
+                      className={inputCls + " mt-1"} 
+                    />
+                  </div>
+                  <div>
+                    <label className="text-xs font-medium text-muted-foreground">Komentarz zamknięcia</label>
+                    <textarea
+                      value={closingComment}
+                      onChange={(e) => setClosingComment(e.target.value)}
+                      placeholder="Opcjonalny komentarz przy zamknięciu..."
+                      className={inputCls + " mt-1 min-h-[60px]"}
+                      maxLength={2000}
+                    />
+                  </div>
                 </div>
               )}
 
-              {task.closing_comment && (
-                <div className="rounded-md bg-success/10 border border-success/20 p-3">
-                  <p className="text-xs font-medium text-success mb-1">Komentarz zamknięcia</p>
-                  <p className="text-sm text-card-foreground">{task.closing_comment}</p>
+              {status === "Zamknięte" && (
+                <div className="space-y-3">
+                  {(task as any).repair_price > 0 && (
+                    <div className="rounded-md bg-primary/10 border border-primary/20 p-3">
+                      <p className="text-xs font-medium text-primary mb-1">Rozliczony koszt netto</p>
+                      <p className="text-lg font-bold text-card-foreground">{(task as any).repair_price} PLN</p>
+                    </div>
+                  )}
+                  {task.closing_comment && (
+                    <div className="rounded-md bg-success/10 border border-success/20 p-3">
+                      <p className="text-xs font-medium text-success mb-1">Komentarz zamknięcia</p>
+                      <p className="text-sm text-card-foreground">{task.closing_comment}</p>
+                    </div>
+                  )}
                 </div>
               )}
             </div>

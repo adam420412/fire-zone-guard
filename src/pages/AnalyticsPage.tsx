@@ -1,5 +1,7 @@
 import { useMemo, useState } from "react";
-import { useCompaniesWithStats, useTasks, useBuildings } from "@/hooks/useSupabaseData";
+import { useCompaniesWithStats, useTasks, useBuildings, useProtocols } from "@/hooks/useSupabaseData";
+import { toast } from "sonner";
+import { Button } from "@/components/ui/button";
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip,
   PieChart, Pie, Cell, ResponsiveContainer, AreaChart, Area,
@@ -10,7 +12,7 @@ import { pl } from "date-fns/locale";
 import { cn } from "@/lib/utils";
 import {
   TrendingUp, Shield, Building2, AlertTriangle,
-  Award, Activity, ChevronDown
+  Award, Activity, ChevronDown, Download, Wrench
 } from "lucide-react";
 import { StatCardsSkeleton } from "@/components/PageSkeleton";
 
@@ -38,6 +40,7 @@ export default function AnalyticsPage() {
   const { data: companies, isLoading: companiesLoading } = useCompaniesWithStats();
   const { data: tasks } = useTasks();
   const { data: buildings } = useBuildings();
+  const { data: protocols } = useProtocols();
   const [selectedMonths, setSelectedMonths] = useState(6);
 
   const allTasks = (tasks ?? []) as any[];
@@ -120,6 +123,45 @@ export default function AnalyticsPage() {
     ].filter(d => d.value > 0);
   }, [buildings]);
 
+  // --- Failure Rates ---
+  const failureRates = useMemo(() => {
+    if (!protocols) return [];
+    
+    const categories: Record<string, { total: number, failed: number }> = {};
+    
+    protocols.forEach((p: any) => {
+      const type = p.type || "Inne";
+      if (!categories[type]) categories[type] = { total: 0, failed: 0 };
+      
+      const measurements = p.measurements || [];
+      const failedMeasures = measurements.filter((m: any) => m.result === "Negatywny" || m.result === "Błąd").length;
+      
+      categories[type].total += measurements.length || 1; 
+      if (p.overall_result?.toLowerCase().includes("negatywn") || failedMeasures > 0) {
+        categories[type].failed += 1;
+      }
+    });
+
+    return Object.entries(categories).map(([name, stats]) => ({
+      name: name.replace("Przegląd ", ""),
+      Usterkowość: Math.round((stats.failed / stats.total) * 100),
+      label: `${stats.failed}/${stats.total}`
+    })).filter(d => d.total > 0).slice(0, 6);
+  }, [protocols]);
+
+  // --- Cost Trend ---
+  const costTrendData = useMemo(() => {
+    const now = new Date();
+    return Array.from({ length: selectedMonths }, (_, i) => {
+      const month = subMonths(now, selectedMonths - 1 - i);
+      const start = startOfMonth(month);
+      const end = endOfMonth(month);
+      const tasksInMonth = allTasks.filter(t => t.closed_at && isWithinInterval(new Date(t.closed_at), { start, end }));
+      const expectedRevenue = tasksInMonth.reduce((sum, t) => sum + (Number(t.repair_price) || 0), 0);
+      return { name: format(month, "LLL", { locale: pl }), Przychód: expectedRevenue };
+    });
+  }, [allTasks, selectedMonths]);
+
   // Global stats
   const totalTasks = allTasks.length;
   const closedTasks = allTasks.filter(t => t.status === "Zamknięte").length;
@@ -128,6 +170,33 @@ export default function AnalyticsPage() {
     if (!companies || companies.length === 0) return 0;
     return Math.round((companies as any[]).reduce((s, c) => s + (c.sla ?? 0), 0) / companies.length);
   }, [companies]);
+
+  const handleExportCSV = () => {
+    const headers = ["Wskaznik", "Wartosc"];
+    const rows = [
+      ["Wszystkie zadania", totalTasks],
+      ["Zalegle zadania", overdueTasks],
+      ["Srednie SLA (%)", avgSLA],
+      ["Zgloszone koszty (PLN)", costTrendData.reduce((sum, d) => sum + d.Przychód, 0)],
+      ["", ""],
+      ["Miesiac", "Przychody z uslug (PLN)"],
+      ...costTrendData.map(d => [d.name, d.Przychód]),
+      ["", ""],
+      ["Usterkowosc Systemow PPOZ", "% Awarii"],
+      ...failureRates.map(d => [d.name, d.Usterkowość])
+    ];
+
+    const csvContent = rows.map(e => e.join(";")).join("\n");
+    const blob = new Blob(["\ufeff" + csvContent], { type: 'text/csv;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.setAttribute("href", url);
+    link.setAttribute("download", `Globalny_Raport_PPOZ_${new Date().toISOString().split('T')[0]}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    toast.success("Raport Globalny wyeksportowany do CSV!");
+  };
 
   if (companiesLoading) return <StatCardsSkeleton count={4} />;
 
@@ -144,7 +213,11 @@ export default function AnalyticsPage() {
             <p className="text-sm text-muted-foreground">Zaawansowane raporty i wskaźniki KPI</p>
           </div>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-col sm:flex-row sm:items-center gap-4">
+          <Button variant="outline" className="gap-2" onClick={handleExportCSV}>
+            <Download className="h-4 w-4" /> Raport Globalny (Excel)
+          </Button>
+          <div className="flex items-center gap-2">
           <span className="text-xs text-muted-foreground">Zakres:</span>
           <div className="relative">
             <select
@@ -159,6 +232,7 @@ export default function AnalyticsPage() {
             <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 h-3 w-3 text-muted-foreground pointer-events-none" />
           </div>
         </div>
+      </div>
       </div>
 
       {/* KPI Cards */}
@@ -280,6 +354,51 @@ export default function AnalyticsPage() {
               ))}
             </div>
           </div>
+        </div>
+      </div>
+
+      {/* Charts row 3: New Analytics */}
+      <div className="grid gap-6 lg:grid-cols-2">
+        {/* Failure Rates */}
+        <div className="rounded-xl border border-border bg-card p-5">
+          <h3 className="mb-4 text-sm font-semibold flex items-center gap-2">
+            <Wrench className="h-4 w-4 text-primary" /> Awaryjność systemów wg. protokołów PPOŻ
+          </h3>
+          <ResponsiveContainer width="100%" height={260}>
+            <BarChart data={failureRates} layout="vertical" margin={{ left: 20, right: 20 }}>
+              <CartesianGrid strokeDasharray="3 3" horizontal={true} vertical={false} stroke={CHART_BORDER} />
+              <XAxis type="number" domain={[0, 100]} tick={{ fill: CHART_MUTED, fontSize: 11 }} axisLine={false} tickLine={false} />
+              <YAxis dataKey="name" type="category" width={100} tick={{ fill: CHART_MUTED, fontSize: 11 }} axisLine={false} tickLine={false} />
+              <Tooltip {...tooltipStyle} formatter={(v: number) => [`${v}%`, "Awaryjność"]} />
+              <Bar dataKey="Usterkowość" fill="hsl(0 84% 60%)" radius={[0, 4, 4, 0]} maxBarSize={20}>
+                {failureRates.map((entry, index) => (
+                  <Cell key={`cell-${index}`} fill={entry.Usterkowość > 15 ? "hsl(0 84% 60%)" : "hsl(38 92% 50%)"} />
+                ))}
+              </Bar>
+            </BarChart>
+          </ResponsiveContainer>
+        </div>
+
+        {/* Cost Trend */}
+        <div className="rounded-xl border border-border bg-card p-5">
+          <h3 className="mb-4 text-sm font-semibold flex items-center gap-2">
+            <TrendingUp className="h-4 w-4 text-primary" /> Trend zaewidencjonowanych kosztów (PLN)
+          </h3>
+          <ResponsiveContainer width="100%" height={260}>
+            <AreaChart data={costTrendData}>
+              <defs>
+                <linearGradient id="costGrad" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="5%" stopColor="hsl(28 100% 50%)" stopOpacity={0.4} />
+                  <stop offset="95%" stopColor="hsl(28 100% 50%)" stopOpacity={0} />
+                </linearGradient>
+              </defs>
+              <CartesianGrid strokeDasharray="3 3" vertical={false} stroke={CHART_BORDER} />
+              <XAxis dataKey="name" tick={{ fill: CHART_MUTED, fontSize: 11 }} axisLine={false} tickLine={false} />
+              <YAxis tick={{ fill: CHART_MUTED, fontSize: 11 }} axisLine={false} tickLine={false} tickFormatter={v => `${v} zł`} />
+              <Tooltip {...tooltipStyle} formatter={(v: number) => [`${v} PLN`, "Zaksięgowano"]} />
+              <Area type="monotone" dataKey="Przychód" stroke="hsl(28 100% 50%)" fill="url(#costGrad)" strokeWidth={3} />
+            </AreaChart>
+          </ResponsiveContainer>
         </div>
       </div>
 

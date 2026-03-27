@@ -25,7 +25,14 @@ import CalendarPage from "@/pages/CalendarPage";
 import NotFound from "./pages/NotFound";
 import { Loader2 } from "lucide-react";
 
-const queryClient = new QueryClient();
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      retry: false, // Fail fast on DB/network errors
+      refetchOnWindowFocus: false,
+    },
+  },
+});
 
 function ProtectedRoutes() {
   const { user, loading, role } = useAuth();

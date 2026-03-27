@@ -18,13 +18,18 @@ export default function TaskCard({ task, onClick }: TaskCardProps) {
     ? task.assigneeName.split(" ").map(n => n[0]).join("").toUpperCase().substring(0, 2)
     : "?";
 
+  const now = new Date();
+  const deadlineDate = task.deadline ? new Date(task.deadline) : null;
+  const isSlaWarning = deadlineDate && !task.isOverdue && (deadlineDate.getTime() - now.getTime()) < 48 * 60 * 60 * 1000;
+
   return (
     <div
       onClick={onClick}
       className={cn(
         "rounded-lg border bg-card p-3.5 card-hover cursor-pointer",
-        task.isOverdue && "border-critical/40",
-        priority === "krytyczny" && !task.isOverdue && "border-warning/30"
+        task.isOverdue && "border-critical/40 bg-critical/5",
+        isSlaWarning && "border-warning/50 bg-warning/5",
+        priority === "krytyczny" && !task.isOverdue && !isSlaWarning && "border-warning/30"
       )}
     >
       <div className="flex items-center justify-between gap-2">
@@ -51,14 +56,15 @@ export default function TaskCard({ task, onClick }: TaskCardProps) {
           <User className="h-3 w-3" />
           <span>{task.assigneeName}</span>
         </div>
-        {task.deadline && (
+        {task.deadline && deadlineDate && (
           <div className={cn(
             "flex items-center gap-1.5 text-[11px]",
-            task.isOverdue ? "text-critical font-medium" : "text-muted-foreground"
+            task.isOverdue ? "text-critical font-medium" : isSlaWarning ? "text-warning font-medium" : "text-muted-foreground"
           )}>
             {task.isOverdue ? <AlertTriangle className="h-3 w-3" /> : <Clock className="h-3 w-3" />}
-            <span>{new Date(task.deadline).toLocaleDateString("pl-PL")}</span>
+            <span>{deadlineDate.toLocaleDateString("pl-PL")}</span>
             {task.isOverdue && <span className="text-[9px] uppercase tracking-wider">przeterminowane</span>}
+            {isSlaWarning && <span className="text-[9px] uppercase tracking-wider text-warning">blisko SLA</span>}
           </div>
         )}
       </div>

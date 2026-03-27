@@ -602,6 +602,35 @@ export function useCreateChecklist() {
   });
 }
 
+export function useUpdateChecklist() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ id, audit_id, updates }: { id: string; audit_id: string; updates: any }) => {
+      const { data, error } = await supabase.from("audit_checklists").update(updates).eq("id", id).select().single();
+      if (error) throw error;
+      return { data, audit_id };
+    },
+    onSuccess: (result) => {
+      qc.invalidateQueries({ queryKey: ["audit_checklists", result.audit_id] });
+    },
+  });
+}
+
+export function useBatchCreateChecklist() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ audit_id, items }: { audit_id: string; items: any[] }) => {
+      const inserts = items.map(item => ({ audit_id, ...item }));
+      const { data, error } = await supabase.from("audit_checklists").insert(inserts).select();
+      if (error) throw error;
+      return { data, audit_id };
+    },
+    onSuccess: (result) => {
+      qc.invalidateQueries({ queryKey: ["audit_checklists", result.audit_id] });
+    },
+  });
+}
+
 export function useDeleteChecklist() {
   const qc = useQueryClient();
   return useMutation({
@@ -698,20 +727,25 @@ export function useUpdateEmployee() {
   });
 }
 
-export function useEmployeeTrainings(employeeId: string) {
+export function useEmployeeTrainings(userId: string) {
   return useQuery({
-    queryKey: ["employee_trainings", employeeId],
+    queryKey: ["employee_trainings", userId],
+    retry: 0,
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("employee_trainings")
-        .select("*")
-        .eq("employee_id", employeeId)
-        .order("training_date", { ascending: false });
-        
-      if (error && error.code !== "42P01") throw error;
-      return data as any[];
+      try {
+        const { data, error } = await supabase
+          .from("employee_trainings")
+          .select("*")
+          .eq("user_id", userId)
+          .order("completed_at", { ascending: false });
+          
+        if (error) throw error;
+        return data as any[];
+      } catch {
+        return [];
+      }
     },
-    enabled: !!employeeId,
+    enabled: !!userId,
   });
 }
 
@@ -724,7 +758,41 @@ export function useCreateTraining() {
       return data;
     },
     onSuccess: (_, req) => {
-      qc.invalidateQueries({ queryKey: ["employee_trainings", req.employee_id] });
+      qc.invalidateQueries({ queryKey: ["employee_trainings", req.user_id] });
+    },
+  });
+}
+
+// ==== MEETINGS ====
+export function useMeetings() {
+  return useQuery({
+    queryKey: ["meetings"],
+    retry: 0,
+    queryFn: async () => {
+      try {
+        const { data, error } = await supabase
+          .from("meetings")
+          .select("*, companies(name), buildings(name)")
+          .order("meeting_date", { ascending: true });
+        if (error) return [];
+        return data as any[];
+      } catch {
+        return [];
+      }
+    },
+  });
+}
+
+export function useCreateMeeting() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (meeting: any) => {
+      const { data, error } = await supabase.from("meetings").insert(meeting).select().single();
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["meetings"] });
     },
   });
 }

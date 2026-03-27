@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { UsersRound, Plus, AlertCircle, BriefcaseMedical, Settings, Save, Download, Loader2, User } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { useEmployees, useBuildings, useCreateEmployee, useUpdateEmployee } from "@/hooks/useSupabaseData";
+import { useEmployees, useBuildings, useCreateEmployee, useUpdateEmployee, useEmployeeTrainings, useCreateTraining } from "@/hooks/useSupabaseData";
 import { useAuth } from "@/hooks/useAuth";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -11,6 +11,7 @@ import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 
 function ManageEmployeeDialog({ open, onOpenChange, employee }: { open: boolean, onOpenChange: (o: boolean) => void, employee: any }) {
   const { data: buildings } = useBuildings();
@@ -108,6 +109,95 @@ function ManageEmployeeDialog({ open, onOpenChange, employee }: { open: boolean,
   );
 }
 
+function EmployeeTrainingsDialog({ open, onOpenChange, employee }: { open: boolean, onOpenChange: (o: boolean) => void, employee: any }) {
+  const { data: trainings, isLoading } = useEmployeeTrainings(employee?.user_id);
+  const { mutate: createTraining, isPending } = useCreateTraining();
+  
+  const [trainingName, setTrainingName] = useState("");
+  const [completedAt, setCompletedAt] = useState("");
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!employee || !trainingName || !completedAt) return;
+    
+    createTraining({
+      user_id: employee.user_id,
+      training_name: trainingName,
+      completed_at: new Date(completedAt).toISOString()
+    }, {
+      onSuccess: () => {
+        toast.success("Szkolenie / Certyfikat dodany!");
+        setTrainingName("");
+        setCompletedAt("");
+      },
+      onError: (err: any) => {
+        toast.error("Błąd zapisu: " + err.message);
+      }
+    });
+  };
+
+  if (!employee) return null;
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-2xl bg-card">
+        <DialogHeader>
+          <DialogTitle>Ewidencja Szkoleń (SEP, BHP, Konserwator)</DialogTitle>
+          <DialogDescription>Wykaz uprawnień: {employee?.profiles?.name || employee?.name || "Pracownik"}</DialogDescription>
+        </DialogHeader>
+        
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 py-4">
+          <Card className="border-border">
+            <CardContent className="pt-6">
+              <form onSubmit={handleSubmit} className="space-y-4">
+                <div className="space-y-2">
+                  <Label>Nazwa Uprawnienia (np. SEP 1kV)</Label>
+                  <Input value={trainingName} onChange={e => setTrainingName(e.target.value)} required placeholder="Wpisz nazwę..."/>
+                </div>
+                <div className="space-y-2">
+                  <Label>Data uzyskania ważności</Label>
+                  <Input type="date" value={completedAt} onChange={e => setCompletedAt(e.target.value)} required />
+                </div>
+                <Button type="submit" disabled={isPending} className="w-full">
+                  {isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Plus className="mr-2 h-4 w-4" />}
+                  Dodaj Wpis
+                </Button>
+              </form>
+            </CardContent>
+          </Card>
+          
+          <div className="overflow-y-auto max-h-[300px] border border-border rounded-md bg-secondary/10">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Nazwa</TableHead>
+                  <TableHead>Data</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {isLoading ? (
+                  <TableRow><TableCell colSpan={2} className="text-center py-4"><Loader2 className="animate-spin h-5 w-5 mx-auto text-primary" /></TableCell></TableRow>
+                ) : !trainings || trainings.length === 0 ? (
+                  <TableRow><TableCell colSpan={2} className="text-center text-muted-foreground py-10 text-xs">Brak zarejestrowanych szkoleń</TableCell></TableRow>
+                ) : (
+                  trainings.map((t: any) => (
+                    <TableRow key={t.id}>
+                      <TableCell className="font-medium text-sm">{t.training_name}</TableCell>
+                      <TableCell className="text-xs font-mono text-muted-foreground whitespace-nowrap">
+                        {t.completed_at ? new Date(t.completed_at).toLocaleDateString("pl-PL") : "-"}
+                      </TableCell>
+                    </TableRow>
+                  ))
+                )}
+              </TableBody>
+            </Table>
+          </div>
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 function CreateEmployeeDialog({ open, onOpenChange }: { open: boolean, onOpenChange: (o: boolean) => void }) {
   const { data: buildings } = useBuildings();
   const { mutate: createEmployee, isPending } = useCreateEmployee();
@@ -185,6 +275,7 @@ export default function EmployeesPage() {
   const { role } = useAuth();
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [manageEmp, setManageEmp] = useState<any>(null);
+  const [trainingsEmp, setTrainingsEmp] = useState<any>(null);
 
   const handleExportCSV = () => {
     if (!employees) return;
@@ -257,6 +348,13 @@ export default function EmployeesPage() {
           employee={manageEmp} 
         />
       )}
+      {trainingsEmp && (
+        <EmployeeTrainingsDialog 
+          open={!!trainingsEmp} 
+          onOpenChange={(open) => !open && setTrainingsEmp(null)} 
+          employee={trainingsEmp} 
+        />
+      )}
 
       {isLoading ? (
         <div className="flex justify-center py-20">
@@ -327,8 +425,8 @@ export default function EmployeesPage() {
                 </div>
 
                 <div className="mt-6">
-                  <Button variant="outline" size="sm" className="w-full text-xs font-semibold h-8">
-                    Karta Pracownika
+                  <Button variant="outline" size="sm" className="w-full text-xs font-semibold h-8" onClick={() => setTrainingsEmp(emp)}>
+                    Ewidencja Szkoleń i Uprawnień
                   </Button>
                 </div>
               </CardContent>

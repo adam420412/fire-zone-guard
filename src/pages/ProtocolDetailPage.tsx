@@ -12,6 +12,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { toast } from "sonner";
 import { generateReportPDF } from "@/lib/pdfGenerator";
 import { useAuth } from "@/hooks/useAuth";
+import { SignatureDialog } from "@/components/SignatureDialog";
 
 export default function ProtocolDetailPage() {
   const { id } = useParams();
@@ -24,6 +25,7 @@ export default function ProtocolDetailPage() {
   const isSuperAdmin = role === 'super_admin';
 
   const [isAddOpen, setIsAddOpen] = useState(false);
+  const [isSignatureOpen, setIsSignatureOpen] = useState(false);
   const [newHydrant, setNewHydrant] = useState({
     hydrant_number: "HZ-1",
     type: "nadziemny",
@@ -57,7 +59,13 @@ export default function ProtocolDetailPage() {
     });
   };
 
-  const handleGeneratePDF = () => {
+  const handleStartPDF = () => {
+    if (!protocol) return;
+    setIsSignatureOpen(true);
+  };
+
+  const handleGeneratePDF = (signatureDataUrl: string) => {
+    setIsSignatureOpen(false);
     if (!protocol) return;
 
     const tableData = measurements?.map((m: any, index: number) => [
@@ -83,7 +91,8 @@ export default function ProtocolDetailPage() {
       tableColumns: ["Lp.", "Oznak.", "Rodzaj", "Śr. DN", "Ciśn. statyczne MPa", "Ciśn. dynamiczne MPa", "Wydajność dm3/s"],
       tableData,
       notes: protocol.notes || "Brak uwag szczegółowych z oględzin.",
-      result: protocol.overall_result || "Brak klasyfikacji"
+      result: protocol.overall_result || "Brak klasyfikacji",
+      signatureDataUrl
     });
   };
 
@@ -100,7 +109,7 @@ export default function ProtocolDetailPage() {
           <p className="text-muted-foreground">{protocol.type} - {protocol.building_name}</p>
         </div>
         <div className="ml-auto flex gap-2">
-          <Button variant="outline" onClick={handleGeneratePDF}>
+          <Button variant="outline" onClick={handleStartPDF}>
             <Printer className="mr-2 h-4 w-4" />
             Pobierz PDF
           </Button>
@@ -267,6 +276,13 @@ export default function ProtocolDetailPage() {
           </form>
         </DialogContent>
       </Dialog>
+      
+      <SignatureDialog 
+        open={isSignatureOpen} 
+        onOpenChange={setIsSignatureOpen} 
+        onConfirm={handleGeneratePDF} 
+        title="Podpisz Protokół Serwisowy" 
+      />
     </div>
   );
 }

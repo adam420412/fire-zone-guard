@@ -10,6 +10,7 @@ interface PdfOptions {
   notes?: string;
   result?: string;
   filename: string;
+  signatureDataUrl?: string;
 }
 
 export function generateReportPDF(options: PdfOptions) {
@@ -57,24 +58,47 @@ export function generateReportPDF(options: PdfOptions) {
   });
 
   // Post-table content
-  const finalY = (doc as any).lastAutoTable.finalY || currentY + 30;
+  const finalY = (doc as any).lastAutoTable?.finalY || currentY + 30;
+  let currentElementsY = finalY;
   
   if (options.notes) {
     doc.setFont('', 'bold');
-    doc.text("Wnioski / Uwagi:", 14, finalY + 15);
+    doc.text("Wnioski / Uwagi:", 14, currentElementsY + 15);
     doc.setFont('', 'normal');
     
     // Auto wrap notes text
     const splitNotes = doc.splitTextToSize(options.notes, 180);
-    doc.text(splitNotes, 14, finalY + 22);
+    doc.text(splitNotes, 14, currentElementsY + 22);
+    currentElementsY += 22 + (splitNotes.length * 5);
+  } else {
+    currentElementsY += 15;
   }
 
   if (options.result) {
-    const resultY = finalY + (options.notes ? 40 : 20);
+    currentElementsY += 5;
+    if (currentElementsY > 270) {
+      doc.addPage();
+      currentElementsY = 20;
+    }
     doc.setFont('', 'bold');
-    doc.text(`Wynik końcowy: `, 14, resultY);
+    doc.setTextColor(0,0,0);
+    doc.text(`Wynik końcowy: `, 14, currentElementsY);
     doc.setTextColor(16, 185, 129); // emerald-500
-    doc.text(options.result.toUpperCase(), 50, resultY);
+    doc.text(options.result.toUpperCase(), 50, currentElementsY);
+    currentElementsY += 10;
+  }
+
+  // Signature
+  if (options.signatureDataUrl) {
+    currentElementsY += 10;
+    if (currentElementsY > 230) {
+      doc.addPage();
+      currentElementsY = 20;
+    }
+    doc.setFont('', 'bold');
+    doc.setTextColor(0,0,0);
+    doc.text("Podpis Inspektora/Audytora:", 14, currentElementsY);
+    doc.addImage(options.signatureDataUrl, 'PNG', 14, currentElementsY + 5, 80, 40);
   }
 
   // Footer (Page numbers)

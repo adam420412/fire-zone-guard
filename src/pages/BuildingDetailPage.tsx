@@ -20,10 +20,11 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   ArrowLeft, Building2, MapPin, Shield, Loader2, Plus,
   CheckCircle2, AlertTriangle, Clock, Wrench, ClipboardList,
-  ChevronDown, ChevronRight, Package, Edit, QrCode, Save, Printer
+  ChevronDown, ChevronRight, Package, Edit, QrCode, Save, Printer, FileText, UploadCloud, FolderOpen
 } from "lucide-react";
 
 function EditBuildingDialog({ building, open, onOpenChange }: { building: any, open: boolean, onOpenChange: (o: boolean) => void }) {
@@ -31,10 +32,10 @@ function EditBuildingDialog({ building, open, onOpenChange }: { building: any, o
   const updateBuilding = useUpdateBuilding();
   const { toast } = useToast();
   
-  const [name, setName] = useState(building.name);
-  const [address, setAddress] = useState(building.address);
-  const [companyId, setCompanyId] = useState(building.company_id);
-  const [ibpDate, setIbpDate] = useState(building.ibp_valid_until || "");
+  const [name, setName] = useState(building?.name ?? "");
+  const [address, setAddress] = useState(building?.address ?? "");
+  const [companyId, setCompanyId] = useState(building?.company_id ?? "");
+  const [ibpDate, setIbpDate] = useState(building?.ibp_valid_until || "");
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -67,7 +68,7 @@ function EditBuildingDialog({ building, open, onOpenChange }: { building: any, o
               <Select value={companyId} onValueChange={setCompanyId}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
-                  {companies?.map(c => (
+                  {companies?.map((c: any) => (
                     <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
                   ))}
                 </SelectContent>
@@ -137,16 +138,10 @@ export default function BuildingDetailPage() {
   const [showEditBuilding, setShowEditBuilding] = useState(false);
   const [qrDevice, setQrDevice] = useState<any>(null);
   
-  const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({
-    tasks: true, devices: true, templates: true,
-  });
   const [deviceForm, setDeviceForm] = useState({
     device_type_id: "", name: "", manufacturer: "", model: "",
     serial_number: "", location_in_building: "",
   });
-
-  const toggleSection = (key: string) =>
-    setExpandedSections((s) => ({ ...s, [key]: !s[key] }));
 
   if (loadingBuilding) {
     return (
@@ -166,11 +161,10 @@ export default function BuildingDetailPage() {
   }
 
   const status = (building.safetyStatus ?? "bezpieczny") as SafetyStatus;
-  const statusConf = safetyStatusConfig[status];
+  const statusConf = safetyStatusConfig[status] || safetyStatusConfig["bezpieczny"];
   const StatusIcon = statusConf.icon;
 
   const activeTasks = (tasks ?? []).filter((t: any) => t.status !== "Zamknięte");
-  const closedTasks = (tasks ?? []).filter((t: any) => t.status === "Zamknięte");
   const overdueTasks = activeTasks.filter((t: any) => t.isOverdue);
   const devicesNeedingService = (devices ?? []).filter(
     (d: any) => d.next_service_date && new Date(d.next_service_date) <= new Date()
@@ -215,30 +209,37 @@ export default function BuildingDetailPage() {
           <ArrowLeft className="h-5 w-5 text-muted-foreground" />
         </button>
         <div className="flex-1">
-          <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-secondary">
-              <Building2 className="h-5 w-5 text-secondary-foreground" />
+          <div className="flex flex-col sm:flex-row sm:items-center gap-3">
+            <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-secondary shrink-0">
+              <Building2 className="h-6 w-6 text-secondary-foreground" />
             </div>
-            <div>
-              <h1 className="text-2xl font-bold tracking-tight">{building.name}</h1>
-              <p className="text-sm text-muted-foreground">{building.companyName}</p>
+            <div className="flex-1">
+              <div className="flex items-center gap-3">
+                <h1 className="text-2xl font-bold tracking-tight text-foreground">{building.name}</h1>
+                <StatusIcon className={cn("h-6 w-6 shrink-0", statusConf.color)} />
+              </div>
+              <p className="text-sm font-medium text-muted-foreground">{building.companyName}</p>
             </div>
-            <StatusIcon className={cn("h-6 w-6 ml-2", statusConf.color)} />
-            <span className={cn("text-sm font-semibold", statusConf.color)}>{statusConf.label}</span>
             
             {isSuperAdmin && (
-              <button onClick={() => setShowEditBuilding(true)} className="ml-auto rounded-full bg-secondary p-2 hover:bg-primary/10 transition-colors">
-                <Edit className="h-4 w-4 text-muted-foreground" />
+              <button onClick={() => setShowEditBuilding(true)} className="rounded-full bg-secondary p-2.5 hover:bg-primary/20 hover:text-primary transition-colors">
+                <Edit className="h-4 w-4" />
               </button>
             )}
           </div>
-          <div className="mt-2 flex items-center gap-1.5 text-xs text-muted-foreground">
-            <MapPin className="h-3 w-3" />
-            <span>{building.address}</span>
+          <div className="mt-4 flex flex-wrap items-center gap-4 text-xs font-medium text-muted-foreground">
+            <div className="flex items-center gap-1.5">
+              <MapPin className="h-4 w-4 text-primary" />
+              <span>{building.address}</span>
+            </div>
             {building.ibp_valid_until && (
-              <span className="ml-3 flex items-center gap-1">
-                <Shield className="h-3 w-3 text-success" /> IBP ważne do: {new Date(building.ibp_valid_until).toLocaleDateString("pl-PL")}
-              </span>
+              <div className={cn(
+                "flex items-center gap-1.5 rounded-full px-2.5 py-1",
+                new Date(building.ibp_valid_until) < new Date() ? "bg-critical/10 text-critical" : "bg-success/10 text-success"
+              )}>
+                <Shield className="h-3.5 w-3.5" /> 
+                <span>IBP: {new Date(building.ibp_valid_until).toLocaleDateString("pl-PL")}</span>
+              </div>
             )}
           </div>
         </div>
@@ -248,223 +249,288 @@ export default function BuildingDetailPage() {
       <QRCodeDialog device={qrDevice} open={!!qrDevice} onOpenChange={(o) => !o && setQrDevice(null)} />
 
       {/* Summary stats */}
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+      <div className="grid grid-cols-2 gap-3 xl:grid-cols-4">
         {[
-          { label: "Aktywne zadania", value: activeTasks.length, icon: ClipboardList, color: "text-primary" },
-          { label: "Zaległe", value: overdueTasks.length, icon: AlertTriangle, color: overdueTasks.length > 0 ? "text-critical" : "text-success" },
-          { label: "Urządzenia", value: (devices ?? []).length, icon: Package, color: "text-secondary-foreground" },
-          { label: "Do serwisu", value: devicesNeedingService.length, icon: Wrench, color: devicesNeedingService.length > 0 ? "text-warning" : "text-success" },
+          { label: "Aktywne zadania operacyjne", value: activeTasks.length, icon: ClipboardList, color: "text-primary" },
+          { label: "Zadania spóźnione", value: overdueTasks.length, icon: AlertTriangle, color: overdueTasks.length > 0 ? "text-critical" : "text-success" },
+          { label: "Zainstalowane urządzenia", value: (devices ?? []).length, icon: Package, color: "text-secondary-foreground" },
+          { label: "Urządzenia do serwisu", value: devicesNeedingService.length, icon: Wrench, color: devicesNeedingService.length > 0 ? "text-warning" : "text-success" },
         ].map((s) => (
-          <div key={s.label} className="rounded-lg border border-border bg-card p-4">
-            <div className="flex items-center gap-2">
-              <s.icon className={cn("h-4 w-4", s.color)} />
-              <span className="text-xs text-muted-foreground">{s.label}</span>
+          <div key={s.label} className="flex flex-col justify-between rounded-xl border border-border bg-card p-5 shadow-sm transition-all hover:shadow-md">
+            <div className="flex items-center justify-between mb-4">
+              <div className={cn("flex h-10 w-10 items-center justify-center rounded-lg bg-secondary", s.color)}>
+                <s.icon className="h-5 w-5" />
+              </div>
+              <p className={cn("text-3xl font-extrabold tracking-tight", s.color)}>{s.value}</p>
             </div>
-            <p className={cn("mt-1 text-2xl font-bold", s.color)}>{s.value}</p>
+            <p className="text-xs font-semibold text-muted-foreground leading-tight">{s.label}</p>
           </div>
         ))}
       </div>
 
-      {/* === TASKS SECTION === */}
-      <Section
-        title="Zadania"
-        icon={ClipboardList}
-        count={activeTasks.length}
-        expanded={expandedSections.tasks}
-        onToggle={() => toggleSection("tasks")}
-      >
-        {activeTasks.length === 0 ? (
-          <p className="py-4 text-center text-sm text-muted-foreground">Brak aktywnych zadań</p>
-        ) : (
-          <div className="space-y-2">
-            {activeTasks.map((task: any) => (
-              <button
-                key={task.id}
-                onClick={() => setSelectedTask(task)}
-                className="w-full rounded-md border border-border bg-secondary/50 p-3 text-left transition-colors hover:bg-secondary"
-              >
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <span className={cn("inline-block rounded px-1.5 py-0.5 text-[10px] font-semibold", priorityColors[task.priority as TaskPriority])}>
-                      {task.priority}
-                    </span>
-                    <span className="text-sm font-medium text-card-foreground">{task.title}</span>
-                  </div>
-                  <span className={cn("rounded px-1.5 py-0.5 text-[10px] font-semibold", statusColors[task.status as TaskStatus])}>
-                    {task.status}
-                  </span>
-                </div>
-                <div className="mt-1 flex items-center gap-3 text-xs text-muted-foreground">
-                  <span>{taskTypeLabels[task.type as TaskType] ?? task.type}</span>
-                  <span>• {task.assigneeName}</span>
-                  {task.isOverdue && (
-                    <span className="flex items-center gap-1 text-critical">
-                      <AlertTriangle className="h-3 w-3" /> Przeterminowane
-                    </span>
-                  )}
-                </div>
-              </button>
-            ))}
-          </div>
-        )}
-      </Section>
+      <Tabs defaultValue="tasks" className="w-full">
+        <TabsList className="grid w-full sm:w-[500px] grid-cols-3 mb-6 bg-secondary p-1 rounded-xl">
+          <TabsTrigger value="tasks" className="rounded-lg data-[state=active]:bg-card data-[state=active]:shadow-sm text-xs font-semibold py-2">
+            Zadania operacyjne
+          </TabsTrigger>
+          <TabsTrigger value="devices" className="rounded-lg data-[state=active]:bg-card data-[state=active]:shadow-sm text-xs font-semibold py-2">
+            Urządzenia PPOŻ
+          </TabsTrigger>
+          <TabsTrigger value="documents" className="rounded-lg data-[state=active]:bg-card data-[state=active]:shadow-sm text-xs font-semibold py-2">
+            Dokumentacja
+          </TabsTrigger>
+        </TabsList>
 
-      {/* === DEVICES SECTION === */}
-      <Section
-        title="Urządzenia PPOŻ"
-        icon={Package}
-        count={(devices ?? []).length}
-        expanded={expandedSections.devices}
-        onToggle={() => toggleSection("devices")}
-        action={
-          isSuperAdmin ? (
-            <button
-              onClick={() => setShowAddDevice(true)}
-              className="flex items-center gap-1 rounded-md bg-primary px-2.5 py-1 text-xs font-semibold text-primary-foreground hover:opacity-90 transition-opacity"
-            >
-              <Plus className="h-3 w-3" /> Dodaj
-            </button>
-          ) : undefined
-        }
-      >
-        {loadingDevices ? (
-          <Loader2 className="mx-auto h-5 w-5 animate-spin text-primary" />
-        ) : (devices ?? []).length === 0 ? (
-          <p className="py-4 text-center text-sm text-muted-foreground">Brak urządzeń – dodaj pierwsze urządzenie</p>
-        ) : (
-          <div className="space-y-2">
-            {(devices ?? []).map((device: any) => {
-              const needsService = device.next_service_date && new Date(device.next_service_date) <= new Date();
-              return (
-                <div key={device.id} className="flex items-center justify-between rounded-md border border-border bg-secondary/50 p-3 group/item">
-                  <div className="flex items-center gap-3">
-                    {needsService ? (
-                      <Wrench className="h-4 w-4 text-warning" />
-                    ) : (
-                      <CheckCircle2 className="h-4 w-4 text-success" />
-                    )}
-                    <div>
-                      <p className="text-sm font-medium text-card-foreground">{device.name}</p>
-                      <p className="text-xs text-muted-foreground">
-                        {(device as any).device_types?.name ?? "—"}
-                        {device.location_in_building ? ` • ${device.location_in_building}` : ""}
-                      </p>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-4">
-                    <button 
-                      onClick={() => setQrDevice(device)}
-                      className="opacity-0 group-hover/item:opacity-100 transition-opacity p-2 hover:bg-white rounded-full bg-secondary shadow-sm"
-                      title="Generuj kod QR"
-                    >
-                      <QrCode className="h-4 w-4 text-primary" />
-                    </button>
-                    <div className="text-right min-w-[80px]">
-                      <p className={cn("text-xs font-semibold", needsService ? "text-warning" : "text-muted-foreground")}>
-                        {needsService ? "Serwis" : "Ok"}
-                      </p>
-                      <p className="text-[10px] text-muted-foreground">
-                        {device.next_service_date ? device.next_service_date : "—"}
-                      </p>
-                    </div>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        )}
-      </Section>
-
-      {/* === TEMPLATES SECTION === */}
-      <Section
-        title="Szablony zadań"
-        icon={ClipboardList}
-        count={(templates ?? []).length}
-        expanded={expandedSections.templates}
-        onToggle={() => toggleSection("templates")}
-      >
-        {(templates ?? []).length === 0 ? (
-          <p className="py-4 text-center text-sm text-muted-foreground">Brak szablonów</p>
-        ) : (
-          <div className="space-y-2">
-            {(templates ?? []).map((tpl: any) => (
-              <div key={tpl.id} className="flex items-center justify-between rounded-md border border-border bg-secondary/50 p-3">
-                <div>
-                  <p className="text-sm font-medium text-card-foreground">{tpl.name}</p>
-                  <p className="text-xs text-muted-foreground truncate">
-                    {taskTypeLabels[tpl.type as TaskType] ?? tpl.type} • Co {tpl.recurrence_days} dni
-                  </p>
-                </div>
-                {isSuperAdmin && (
-                  <button
-                    onClick={() => handleCreateFromTemplate(tpl)}
-                    disabled={createFromTemplate.isPending}
-                    className="flex items-center gap-1 rounded-md border border-primary/30 px-2.5 py-1 text-xs font-semibold text-primary hover:bg-primary/10 transition-colors disabled:opacity-50"
-                  >
-                    <Plus className="h-3 w-3" /> Utwórz
-                  </button>
-                )}
+        <TabsContent value="tasks" className="space-y-6 mt-0">
+          <div className="rounded-xl border border-border bg-card overflow-hidden">
+            <div className="border-b border-border bg-secondary/30 px-5 py-4 flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <ClipboardList className="h-5 w-5 text-primary" />
+                <h3 className="text-sm font-bold uppercase tracking-tight">Aktywne Zlecenia</h3>
               </div>
-            ))}
+            </div>
+            <div className="p-4">
+              {activeTasks.length === 0 ? (
+                <div className="py-8 flex flex-col items-center justify-center text-muted-foreground opacity-60">
+                  <CheckCircle2 className="h-10 w-10 mb-2" />
+                  <p className="text-sm font-semibold">Brak aktywnych zadań</p>
+                </div>
+              ) : (
+                <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                  {activeTasks.map((task: any) => (
+                    <button
+                      key={task.id}
+                      onClick={() => setSelectedTask(task)}
+                      className="flex flex-col rounded-lg border border-border bg-muted/20 p-4 text-left hover:border-primary/50 hover:bg-secondary/50 transition-all text-card-foreground group"
+                    >
+                      <div className="flex justify-between items-start mb-3">
+                        <span className={cn("inline-block rounded-md px-2 py-1 text-[10px] font-bold uppercase tracking-wider", priorityColors[task.priority as TaskPriority])}>
+                          {task.priority}
+                        </span>
+                        <span className={cn("rounded-md px-2 py-1 text-[10px] font-bold uppercase tracking-wider", statusColors[task.status as TaskStatus])}>
+                          {task.status}
+                        </span>
+                      </div>
+                      <span className="text-sm font-bold leading-tight group-hover:text-primary transition-colors">{task.title}</span>
+                      <div className="mt-auto pt-4 flex flex-wrap items-center gap-y-2 gap-x-4 text-[11px] font-medium text-muted-foreground">
+                        <div className="flex items-center gap-1.5">
+                          <Clock className="h-3.5 w-3.5" /> 
+                          <span className={cn(task.isOverdue && "text-critical font-bold")}>
+                            {task.deadline ? new Date(task.deadline).toLocaleDateString("pl-PL") : "Brak daty"}
+                          </span>
+                        </div>
+                        <span className="truncate max-w-[120px]">• {task.assigneeName}</span>
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
           </div>
-        )}
-      </Section>
+
+          <div className="rounded-xl border border-border bg-card overflow-hidden">
+            <div className="border-b border-border bg-secondary/30 px-5 py-4 flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Package className="h-5 w-5 text-primary" />
+                <h3 className="text-sm font-bold uppercase tracking-tight">Szablony Cykliczne</h3>
+              </div>
+            </div>
+            <div className="p-4">
+              {(templates ?? []).length === 0 ? (
+                 <p className="py-6 text-center text-sm font-medium text-muted-foreground opacity-60">Brak zdefiniowanych szablonów cyklicznych prac (Maintenance)</p>
+              ) : (
+                <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                  {(templates ?? []).map((tpl: any) => (
+                    <div key={tpl.id} className="flex flex-col justify-between rounded-lg border border-border bg-muted/10 p-4">
+                      <div>
+                        <p className="text-sm font-bold text-card-foreground">{tpl.name}</p>
+                        <p className="text-xs font-medium text-muted-foreground mt-1">
+                          {taskTypeLabels[tpl.type as TaskType] ?? tpl.type} • Powtarza się co {tpl.recurrence_days} dni
+                        </p>
+                      </div>
+                      {isSuperAdmin && (
+                        <button
+                          onClick={() => handleCreateFromTemplate(tpl)}
+                          disabled={createFromTemplate.isPending}
+                          className="mt-4 flex items-center justify-center gap-2 rounded-md bg-secondary px-3 py-2 text-xs font-bold hover:bg-primary hover:text-primary-foreground transition-colors disabled:opacity-50"
+                        >
+                          <Plus className="h-3.5 w-3.5" /> Utwórz natychmiast
+                        </button>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        </TabsContent>
+
+        <TabsContent value="devices" className="mt-0">
+          <div className="rounded-xl border border-border bg-card overflow-hidden">
+            <div className="border-b border-border bg-secondary/30 px-5 py-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+              <div className="flex items-center gap-2">
+                <Package className="h-5 w-5 text-primary" />
+                <h3 className="text-sm font-bold uppercase tracking-tight">Ewidencja Urządzeń PPOŻ</h3>
+              </div>
+              {isSuperAdmin && (
+                <button
+                  onClick={() => setShowAddDevice(true)}
+                  className="flex items-center gap-2 rounded-md fire-gradient px-4 py-2 text-xs font-bold text-white hover:opacity-90 transition-opacity whitespace-nowrap"
+                >
+                  <Plus className="h-4 w-4" /> Wynotuj nowe urządzenie
+                </button>
+              )}
+            </div>
+            
+            <div className="p-0">
+              {loadingDevices ? (
+                <div className="py-12"><Loader2 className="mx-auto h-6 w-6 animate-spin text-primary" /></div>
+              ) : (devices ?? []).length === 0 ? (
+                <div className="py-12 flex flex-col items-center justify-center text-muted-foreground opacity-60">
+                  <Package className="h-10 w-10 mb-3" />
+                  <p className="text-sm font-semibold">Brak wprowadzonych urządzeń. Kliknij "Wynotuj nowe" powyżej.</p>
+                </div>
+              ) : (
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left text-sm">
+                    <thead className="border-b border-border bg-muted/40 text-xs uppercase text-muted-foreground">
+                      <tr>
+                        <th className="px-5 py-3 font-semibold">Urządzenie</th>
+                        <th className="px-5 py-3 font-semibold">Lokalizacja</th>
+                        <th className="px-5 py-3 font-semibold">Numer Seryjny</th>
+                        <th className="px-5 py-3 font-semibold">Następny Serwis</th>
+                        <th className="px-5 py-3 font-semibold text-right">Akcje</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-border">
+                      {(devices ?? []).map((device: any) => {
+                        const needsService = device.next_service_date && new Date(device.next_service_date) <= new Date();
+                        return (
+                          <tr key={device.id} className="hover:bg-muted/10 transition-colors group">
+                            <td className="px-5 py-4">
+                              <div className="flex items-center gap-3">
+                                {needsService ? <AlertTriangle className="h-4 w-4 text-warning shrink-0" /> : <CheckCircle2 className="h-4 w-4 text-success shrink-0" />}
+                                <div>
+                                  <p className="font-bold text-card-foreground">{device.name}</p>
+                                  <p className="text-[11px] text-muted-foreground uppercase tracking-widest font-mono mt-0.5">{(device as any).device_types?.name ?? "Nieznany Typ"}</p>
+                                </div>
+                              </div>
+                            </td>
+                            <td className="px-5 py-4 font-medium text-muted-foreground">{device.location_in_building || "—"}</td>
+                            <td className="px-5 py-4 font-mono text-[11px] text-muted-foreground">{device.serial_number || "—"}</td>
+                            <td className="px-5 py-4">
+                              <span className={cn(
+                                "inline-flex items-center px-2.5 py-1 rounded-full text-xs font-bold", 
+                                needsService ? "bg-warning/10 text-warning" : "bg-success/10 text-success"
+                              )}>
+                                {device.next_service_date || "Brak danych"}
+                              </span>
+                            </td>
+                            <td className="px-5 py-4 text-right">
+                              <button 
+                                onClick={() => setQrDevice(device)}
+                                className="inline-flex items-center justify-center p-2 hover:bg-secondary rounded-lg text-muted-foreground hover:text-primary transition-colors focus:outline-none focus:ring-2 focus:ring-primary/50"
+                                title="Karta i Kod QR"
+                              >
+                                <QrCode className="h-5 w-5" />
+                              </button>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
+          </div>
+        </TabsContent>
+
+        <TabsContent value="documents" className="mt-0">
+          <div className="rounded-xl border border-border bg-card overflow-hidden">
+            <div className="border-b border-border bg-secondary/30 px-5 py-4 flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <FolderOpen className="h-5 w-5 text-primary" />
+                <h3 className="text-sm font-bold uppercase tracking-tight">Dokumentacja Techniczna</h3>
+              </div>
+              {isSuperAdmin && (
+                <button className="flex items-center gap-2 rounded-md bg-secondary px-4 py-2 text-xs font-bold hover:bg-primary/20 hover:text-primary transition-colors">
+                  <UploadCloud className="h-4 w-4" /> Wgraj plik
+                </button>
+              )}
+            </div>
+            <div className="p-12 flex flex-col items-center justify-center text-center">
+              <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-secondary mb-4">
+                <FileText className="h-8 w-8 text-muted-foreground" />
+              </div>
+              <h4 className="text-base font-bold text-card-foreground mb-1">Brak wgranych dokumentów</h4>
+              <p className="text-sm text-muted-foreground max-w-sm mb-6">W tej sekcji docelowo znajdować będą się cyfrowe instrukcje IBP, rzuty pięter oraz plany systemów PPOŻ dla budynku.</p>
+              {isSuperAdmin && (
+                <button className="rounded-md border-2 border-dashed border-primary/50 bg-primary/5 px-6 py-3 text-sm font-bold text-primary hover:bg-primary/10 transition-colors flex items-center gap-2">
+                  <UploadCloud className="h-4 w-4" /> Wybierz plik z dysku (Wkrótce)
+                </button>
+              )}
+            </div>
+          </div>
+        </TabsContent>
+      </Tabs>
 
       {/* Add Device Dialog */}
       <Dialog open={showAddDevice} onOpenChange={setShowAddDevice}>
         <DialogContent className="max-w-lg bg-card border-border">
           <DialogHeader>
-            <DialogTitle className="text-card-foreground">Dodaj urządzenie</DialogTitle>
+            <DialogTitle className="text-card-foreground">Wprowadź wpis sprzętowy</DialogTitle>
+            <DialogDescription>Zarejestruj gaśnicę, klapę, węzeł hydrantowy lub czujkę w tym obiekcie, by monitorować jej terminy serwisów.</DialogDescription>
           </DialogHeader>
           <form onSubmit={handleAddDevice} className="space-y-4">
             <div>
-              <label className="text-xs font-medium text-muted-foreground">Typ urządzenia *</label>
+              <label className="text-xs font-bold uppercase text-muted-foreground tracking-wider block mb-1.5">Klasa / Typ *</label>
               <select
                 value={deviceForm.device_type_id}
                 onChange={(e) => setDeviceForm((f) => ({ ...f, device_type_id: e.target.value }))}
                 className={inputCls}
               >
-                <option value="">Wybierz typ...</option>
+                <option value="">Wybierz...</option>
                 {(deviceTypes ?? []).map((dt: any) => (
                   <option key={dt.id} value={dt.id}>{dt.name}</option>
                 ))}
               </select>
             </div>
             <div>
-              <label className="text-xs font-medium text-muted-foreground">Nazwa / oznaczenie *</label>
+              <label className="text-xs font-bold uppercase text-muted-foreground tracking-wider block mb-1.5">Nazwa własna *</label>
               <input
                 value={deviceForm.name}
                 onChange={(e) => setDeviceForm((f) => ({ ...f, name: e.target.value }))}
                 className={inputCls}
-                placeholder="np. Gaśnica GP-6 – korytarz parter"
+                placeholder="np. Gaśnica proszkowa 6kg (G15)"
               />
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className="text-xs font-medium text-muted-foreground">Producent</label>
+                <label className="text-xs font-bold uppercase text-muted-foreground tracking-wider block mb-1.5">Producent</label>
                 <input value={deviceForm.manufacturer} onChange={(e) => setDeviceForm((f) => ({ ...f, manufacturer: e.target.value }))} className={inputCls} />
               </div>
               <div>
-                <label className="text-xs font-medium text-muted-foreground">Model</label>
+                <label className="text-xs font-bold uppercase text-muted-foreground tracking-wider block mb-1.5">Model</label>
                 <input value={deviceForm.model} onChange={(e) => setDeviceForm((f) => ({ ...f, model: e.target.value }))} className={inputCls} />
               </div>
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className="text-xs font-medium text-muted-foreground">Nr seryjny</label>
+                <label className="text-xs font-bold uppercase text-muted-foreground tracking-wider block mb-1.5">Numer Seryjny / SN</label>
                 <input value={deviceForm.serial_number} onChange={(e) => setDeviceForm((f) => ({ ...f, serial_number: e.target.value }))} className={inputCls} />
               </div>
               <div>
-                <label className="text-xs font-medium text-muted-foreground">Lokalizacja w obiekcie</label>
-                <input value={deviceForm.location_in_building} onChange={(e) => setDeviceForm((f) => ({ ...f, location_in_building: e.target.value }))} className={inputCls} placeholder="np. Piętro 2, korytarz" />
+                <label className="text-xs font-bold uppercase text-muted-foreground tracking-wider block mb-1.5">Lokalizacja</label>
+                <input value={deviceForm.location_in_building} onChange={(e) => setDeviceForm((f) => ({ ...f, location_in_building: e.target.value }))} className={inputCls} placeholder="np. Parter przy recepcji" />
               </div>
             </div>
             <button
               type="submit"
               disabled={addDevice.isPending}
-              className="w-full rounded-md fire-gradient py-2.5 text-sm font-semibold text-primary-foreground hover:opacity-90 disabled:opacity-50 transition-opacity"
+              className="w-full mt-2 rounded-lg fire-gradient py-3 text-sm font-extrabold text-white shadow-lg hover:shadow-primary/25 disabled:opacity-50 transition-all hover:-translate-y-0.5"
             >
-              {addDevice.isPending ? <Loader2 className="mx-auto h-4 w-4 animate-spin" /> : "Dodaj urządzenie"}
+              {addDevice.isPending ? <Loader2 className="mx-auto h-5 w-5 animate-spin" /> : "Zarejestruj Urządzenie w Bazie"}
             </button>
           </form>
         </DialogContent>
@@ -475,36 +541,6 @@ export default function BuildingDetailPage() {
         open={!!selectedTask}
         onOpenChange={(o) => !o && setSelectedTask(null)}
       />
-    </div>
-  );
-}
-
-function Section({
-  title, icon: Icon, count, expanded, onToggle, action, children,
-}: {
-  title: string;
-  icon: any;
-  count: number;
-  expanded: boolean;
-  onToggle: () => void;
-  action?: React.ReactNode;
-  children: React.ReactNode;
-}) {
-  return (
-    <div className="rounded-lg border border-border bg-card overflow-hidden">
-      <button
-        onClick={onToggle}
-        className="flex w-full items-center justify-between p-4 text-left hover:bg-secondary/20 transition-colors"
-      >
-        <div className="flex items-center gap-2">
-          {expanded ? <ChevronDown className="h-4 w-4 text-muted-foreground" /> : <ChevronRight className="h-4 w-4 text-muted-foreground" />}
-          <Icon className="h-4 w-4 text-primary" />
-          <span className="text-sm font-semibold text-card-foreground">{title}</span>
-          <span className="rounded-full bg-secondary px-2 py-0.5 text-[10px] font-semibold text-muted-foreground">{count}</span>
-        </div>
-        {action && <div onClick={(e) => e.stopPropagation()}>{action}</div>}
-      </button>
-      {expanded && <div className="border-t border-border p-4 bg-card/50">{children}</div>}
     </div>
   );
 }

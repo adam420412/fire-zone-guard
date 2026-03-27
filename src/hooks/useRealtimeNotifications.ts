@@ -7,7 +7,7 @@ export interface Notification {
   id: string;
   title: string;
   message: string;
-  type: "critical" | "overdue" | "info";
+  type: "critical" | "overdue" | "info" | "warning";
   timestamp: Date;
   read: boolean;
   taskId?: string;
@@ -178,21 +178,28 @@ export function useRealtimeNotifications() {
       } catch { /* table may not exist yet */ }
 
       try {
-        // 4. Employees (V2 table - may not exist if migration not run)
+        // 4. Employees (V2 table - limit to 30 days ahead)
+        const thirtyDaysFromNow = new Date();
+        thirtyDaysFromNow.setDate(thirtyDaysFromNow.getDate() + 30);
+        const limitDateStr = thirtyDaysFromNow.toISOString().split("T")[0];
+        const todayDateStr = new Date().toISOString().split("T")[0];
+
         const { data: employees, error: eErr } = await supabase
           .from("employee_development_plans")
-          .select("id, user_id, health_exam_valid_until, profiles(name)")
-          .lt("health_exam_valid_until", today)
-          .limit(3);
+          .select("id, user_id, health_exam_valid_until, profiles!employee_development_plans_user_id_fkey(name)")
+          .not("health_exam_valid_until", "is", null)
+          .lte("health_exam_valid_until", limitDateStr)
+          .limit(5);
 
         if (!eErr) {
           employees?.forEach((e: any) => {
             if (!notifiedIds.has(e.id)) {
               const name = e.profiles?.name || 'Pracownik';
+              const isExpired = e.health_exam_valid_until < todayDateStr;
               newNotifications.push({
-                type: "critical",
-                title: "🔴 Wygasłe Badania",
-                message: `${name} – brak ważnych badań lekarskich!`,
+                type: isExpired ? "critical" : "warning",
+                title: isExpired ? "🔴 Wygasłe Badania / SEP" : "⚠️ Wygasające Uprawnienia",
+                message: isExpired ? `${name} – upłynął termin badań/szkoleń!` : `${name} – badania/szkolenia wygasają w ciągu 30 dni (${e.health_exam_valid_until}).`,
                 taskId: e.id,
               });
             }

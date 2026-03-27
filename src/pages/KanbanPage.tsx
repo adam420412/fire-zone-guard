@@ -1,22 +1,35 @@
-import { useState } from "react";
-import { useTasks } from "@/hooks/useSupabaseData";
+import { useState, useCallback, useEffect } from "react";
+import { useTasks, useUpdateTask } from "@/hooks/useSupabaseData";
 import { kanbanStatuses, statusColors } from "@/lib/constants";
 import type { TaskStatus } from "@/lib/constants";
 import TaskCard from "@/components/TaskCard";
 import TaskDetailDialog from "@/components/TaskDetailDialog";
 import CreateTaskDialog from "@/components/CreateTaskDialog";
 import { cn } from "@/lib/utils";
-import { Filter, Search, Plus, Loader2, Download } from "lucide-react";
+import { Filter, Search, Plus, Download } from "lucide-react";
 import { KanbanSkeleton } from "@/components/PageSkeleton";
+import { DragDropContext, Droppable, Draggable, DropResult } from "@hello-pangea/dnd";
+import { toast } from "sonner";
 
 export default function KanbanPage() {
   const { data: tasks, isLoading } = useTasks();
+  const { mutate: updateTask } = useUpdateTask();
+  
   const [search, setSearch] = useState("");
   const [filterPriority, setFilterPriority] = useState("all");
   const [showCreate, setShowCreate] = useState(false);
   const [selectedTask, setSelectedTask] = useState<any>(null);
+  
+  // Local state for optimistic drag & drop
+  const [localTasks, setLocalTasks] = useState<any[]>([]);
 
-  const filteredTasks = (tasks ?? []).filter((t: any) => {
+  useEffect(() => {
+    if (tasks) {
+      setLocalTasks(tasks);
+    }
+  }, [tasks]);
+
+  const filteredTasks = localTasks.filter((t: any) => {
     const matchesSearch =
       search === "" ||
       t.title.toLowerCase().includes(search.toLowerCase()) ||
@@ -50,7 +63,34 @@ export default function KanbanPage() {
     document.body.removeChild(link);
   };
 
-  const getTasksForStatus = (status: TaskStatus) => filteredTasks.filter((t: any) => t.status === status);
+  const getTasksForStatus = useCallback((status: TaskStatus) => {
+    return filteredTasks.filter((t: any) => t.status === status);
+  }, [filteredTasks]);
+
+  const onDragEnd = (result: DropResult) => {
+    const { destination, source, draggableId } = result;
+
+    if (!destination) return;
+    if (destination.droppableId === source.droppableId && destination.index === source.index) return;
+
+    const newStatus = destination.droppableId as TaskStatus;
+
+    // Optimistic UI Update
+    setLocalTasks(prev => 
+      prev.map(t => t.id === draggableId ? { ...t, status: newStatus } : t)
+    );
+
+    updateTask(
+      { id: draggableId, status: newStatus },
+      {
+        onError: () => {
+          toast.error("Nie udało się zaktualizować statusu zadania.");
+          // Revert optimistic update
+          if (tasks) setLocalTasks(tasks);
+        }
+      }
+    );
+  };
 
   if (isLoading) return <KanbanSkeleton />;
 
@@ -99,33 +139,65 @@ export default function KanbanPage() {
         </div>
       </div>
 
-      <div className="flex-1 overflow-x-auto pb-4">
-        <div className="flex gap-4 min-w-max">
-          {kanbanStatuses.map((status) => {
-            const columnTasks = getTasksForStatus(status);
-            return (
-              <div key={status} className="flex w-72 shrink-0 flex-col rounded-xl border border-border bg-muted/20">
-                <div className="flex items-center justify-between border-b border-border px-4 py-3 bg-card/40">
-                  <span className={cn("rounded-full px-2 py-0.5 text-[10px] font-bold uppercase", statusColors[status])}>
-                    {status}
-                  </span>
-                  <span className="text-xs font-bold text-muted-foreground/60">{columnTasks.length}</span>
+      <div className="flex-1 overflow-x-auto pb-4 select-none">
+        <DragDropContext onDragEnd={onDragEnd}>
+          <div className="flex gap-4 min-w-max h-full">
+            {kanbanStatuses.map((status) => {
+              const columnTasks = getTasksForStatus(status);
+              return (
+                <div key={status} className="flex w-72 shrink-0 flex-col rounded-xl border border-border bg-muted/20">
+                  <div className="flex items-center justify-between border-b border-border px-4 py-3 bg-card/40">
+                    <span className={cn("rounded-full px-2 py-0.5 text-[10px] font-bold uppercase", statusColors[status])}>
+                      {status}
+                    </span>
+                    <span className="text-xs font-bold text-muted-foreground/60">{columnTasks.length}</span>
+                  </div>
+                  
+                  <Droppable droppableId={status}>
+                    {(provided, snapshot) => (
+                      <div
+                        ref={provided.innerRef}
+                        {...provided.droppableProps}
+                        className={cn(
+                          "flex-1 space-y-3 overflow-y-auto p-3 scrollbar-thin min-h-[150px] max-h-[calc(100vh-250px)] transition-colors duration-200",
+                          snapshot.isDraggingOver && "bg-secondary/30"
+                        )}
+                      >
+                        {columnTasks.map((task: any, index: number) => (
+                          <Draggable key={task.id} draggableId={task.id} index={index}>
+                            {(provided, snapshot) => (
+                              <div
+                                ref={provided.innerRef}
+                                {...provided.draggableProps}
+                                {...provided.dragHandleProps}
+                                className={cn(
+                                  "transition-transform",
+                                  snapshot.isDragging && "opacity-90 shadow-2xl scale-105 z-50 ring-2 ring-primary/50"
+                                )}
+                                style={{
+                                  ...provided.draggableProps.style,
+                                }}
+                              >
+                                <TaskCard task={task} onClick={() => setSelectedTask(task)} />
+                              </div>
+                            )}
+                          </Draggable>
+                        ))}
+                        {provided.placeholder}
+                        {columnTasks.length === 0 && !snapshot.isDraggingOver && (
+                          <div className="flex flex-col items-center justify-center py-10 opacity-30 text-center">
+                            <Filter className="h-8 w-8 mb-2" />
+                            <p className="text-[11px] font-medium">Brak zadań</p>
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </Droppable>
                 </div>
-                <div className="flex-1 space-y-3 overflow-y-auto p-3 scrollbar-thin max-h-[calc(100vh-250px)]">
-                  {columnTasks.map((task: any) => (
-                    <TaskCard key={task.id} task={task} onClick={() => setSelectedTask(task)} />
-                  ))}
-                  {columnTasks.length === 0 && (
-                    <div className="flex flex-col items-center justify-center py-10 opacity-30 text-center">
-                      <Filter className="h-8 w-8 mb-2" />
-                      <p className="text-[11px] font-medium">Brak zadań</p>
-                    </div>
-                  )}
-                </div>
-              </div>
-            );
-          })}
-        </div>
+              );
+            })}
+          </div>
+        </DragDropContext>
       </div>
 
       <CreateTaskDialog open={showCreate} onOpenChange={setShowCreate} />
