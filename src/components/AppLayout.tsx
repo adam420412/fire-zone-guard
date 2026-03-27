@@ -7,6 +7,7 @@ import {
 import { useState, useEffect } from "react";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/hooks/useAuth";
+import { useRealtimeNotifications } from "@/hooks/useRealtimeNotifications";
 import { NotificationBell } from "@/components/NotificationBell";
 import { useIsMobile } from "@/hooks/use-mobile";
 
@@ -35,6 +36,8 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   const location = useLocation();
   const { signOut, role } = useAuth();
   const isMobile = useIsMobile();
+  
+  const { unreadCount, markAllRead } = useRealtimeNotifications();
 
   // Close mobile menu on route change
   useEffect(() => {

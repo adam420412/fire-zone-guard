@@ -36,7 +36,7 @@ export default function TaskDetailDialog({ task, open, onOpenChange }: Props) {
 
   const { toast } = useToast();
   const [closingComment, setClosingComment] = useState("");
-  const [repairPrice, setRepairPrice] = useState((task as any).repair_price?.toString() || "");
+  const [repairPrice, setRepairPrice] = useState(task ? ((task as any).repair_price?.toString() || "") : "");
 
   const [newSubtask, setNewSubtask] = useState({ title: "", description: "", deadline: "", assignee_id: "" });
   const [newReminder, setNewReminder] = useState({ remind_at: "", recipient_email: "", message: "", subtask_id: "" });

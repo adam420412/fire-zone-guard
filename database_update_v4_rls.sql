@@ -14,13 +14,24 @@ ALTER TABLE public.meetings ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.profiles ENABLE ROW LEVEL SECURITY;
 
 -- FUNKCJA POMOCNICZA: Sprawdzanie czy użytkownik należy do company_id (superadmina też puszczamy)
+-- Używamy SECURITY DEFINER, ale obchodzimy polityki, czytając bezpośrednio, aby uniknąć pętli
 CREATE OR REPLACE FUNCTION auth.user_company_id() RETURNS uuid AS $$
-  SELECT company_id FROM public.profiles WHERE id = auth.uid() LIMIT 1;
-$$ LANGUAGE sql SECURITY DEFINER;
+  DECLARE
+    cid uuid;
+  BEGIN
+    SELECT company_id INTO cid FROM public.profiles WHERE id = auth.uid() LIMIT 1;
+    RETURN cid;
+  END;
+$$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public;
 
 CREATE OR REPLACE FUNCTION auth.user_role() RETURNS text AS $$
-  SELECT role FROM public.profiles WHERE id = auth.uid() LIMIT 1;
-$$ LANGUAGE sql SECURITY DEFINER;
+  DECLARE
+    r text;
+  BEGIN
+    SELECT role INTO r FROM public.profiles WHERE id = auth.uid() LIMIT 1;
+    RETURN r;
+  END;
+$$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public;
 
 
 -- =========================================================================
