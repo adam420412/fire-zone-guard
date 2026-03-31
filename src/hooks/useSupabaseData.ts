@@ -841,7 +841,7 @@ export function useUploadDocument() {
 
       // 2. Save metadata to DB
       const { data: { user } } = await supabase.auth.getUser();
-      const { data, error: dbError } = await (supabase as any)
+      const { data, error: dbError } = await supabase
         .from('building_documents')
         .insert([{
           building_id: buildingId,
