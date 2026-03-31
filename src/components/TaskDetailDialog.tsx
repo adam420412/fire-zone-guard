@@ -307,7 +307,7 @@ export default function TaskDetailDialog({ task, open, onOpenChange }: Props) {
                         <label className="text-[11px] font-black text-success uppercase tracking-widest flex items-center gap-1">
                           <TrendingUp className="h-3 w-3" /> Przychody (Dodatnie +)
                         </label>
-                        <span className="text-[10px] font-bold text-success/60 bg-success/5 px-2 py-0.5 rounded">SUMA: {financialItems?.filter(i => i.type === 'income').reduce((acc, i) => acc + Number(i.amount || 0), 0).toFixed(2)} PLN</span>
+                        <span className="text-[10px] font-bold text-success/60 bg-success/5 px-2 py-0.5 rounded">SUMA: {(financialItems ?? []).filter(i => i.type === 'income').reduce((acc, i) => acc + Number(i.amount || 0), 0).toFixed(2)} PLN</span>
                       </div>
                       <div className="rounded-lg border border-success/20 bg-success/5 overflow-hidden min-h-[50px] flex flex-col">
                         {finLoading ? (
