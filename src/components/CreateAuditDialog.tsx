@@ -28,7 +28,8 @@ export function CreateAuditDialog({ open, onOpenChange }: { open: boolean; onOpe
       building_id: buildingId,
       auditor_id: user?.id,
       status: "zaplanowany",
-      scheduled_for: scheduledFor,
+      type: "PPOŻ",
+      performed_at: scheduledFor,
     }, {
       onSuccess: () => {
         toast.success("Audyt zaplanowany.");

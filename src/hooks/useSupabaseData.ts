@@ -926,7 +926,7 @@ export function useDeleteFinancialItem() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async ({ id, taskId }: { id: string; taskId: string }) => {
-      const { error } = await (supabase as any).from("task_financial_items").delete().eq("id", id);
+      const { error } = await supabase.from("task_financial_items").delete().eq("id", id);
       if (error) {
         console.error("Supabase Delete Error:", error);
         throw error;
