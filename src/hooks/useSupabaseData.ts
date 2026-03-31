@@ -796,6 +796,33 @@ export function useCreateMeeting() {
     },
   });
 }
+
+export function useUpdateMeeting() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ id, updates }: { id: string; updates: any }) => {
+      const { data, error } = await supabase.from("meetings").update(updates).eq("id", id).select().single();
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["meetings"] });
+    },
+  });
+}
+
+export function useDeleteMeeting() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase.from("meetings").delete().eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["meetings"] });
+    },
+  });
+}
 // ==== BUILDING DOCUMENTS (V2.1) ====
 export function useDocuments(buildingId: string) {
   return useQuery({
