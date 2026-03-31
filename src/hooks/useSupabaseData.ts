@@ -892,7 +892,7 @@ export function useTaskFinancialItems(taskId: string) {
   return useQuery({
     queryKey: ["task_financial_items", taskId],
     queryFn: async () => {
-      const { data, error } = await (supabase as any)
+      const { data, error } = await supabase
         .from("task_financial_items")
         .select("*")
         .eq("task_id", taskId)
