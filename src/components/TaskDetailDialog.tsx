@@ -389,7 +389,7 @@ export default function TaskDetailDialog({ task, open, onOpenChange }: Props) {
                                     value={newCostItem.description}
                                     onChange={(e) => setNewCostItem({...newCostItem, description: e.target.value})}
                                     onKeyDown={(e) => e.key === 'Enter' && handleAddFinItem('expense')}
-                                    className="w-full bg-transparent border-none focus:ring-0 text-[11px] p-0 px-1"
+                                    className="w-full bg-background/50 rounded border border-critical/30 text-foreground text-[11px] py-1 px-2 outline-none focus:border-critical"
                                   />
                                 </td>
                                 <td className="px-2 py-1.5">
@@ -398,7 +398,7 @@ export default function TaskDetailDialog({ task, open, onOpenChange }: Props) {
                                     value={newCostItem.amount}
                                     onChange={(e) => setNewCostItem({...newCostItem, amount: e.target.value})}
                                     onKeyDown={(e) => e.key === 'Enter' && handleAddFinItem('expense')}
-                                    className="w-full bg-transparent border-none focus:ring-0 text-[11px] text-right p-0 px-1 font-bold"
+                                    className="w-full bg-background/50 rounded border border-critical/30 text-foreground text-[11px] text-right py-1 px-2 font-bold outline-none focus:border-critical"
                                   />
                                 </td>
                                 <td className="px-2 py-1.5 text-right">
