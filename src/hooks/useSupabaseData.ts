@@ -652,7 +652,7 @@ export function useEmployees(buildingId?: string) {
     queryFn: async () => {
       let query = supabase
         .from("employee_development_plans")
-        .select("*, buildings(name), profiles(name)")
+        .select("*")
         .order("created_at", { ascending: false });
       
       if (buildingId) query = query.eq("building_id", buildingId);
