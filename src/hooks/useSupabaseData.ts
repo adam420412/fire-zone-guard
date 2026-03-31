@@ -650,22 +650,23 @@ export function useEmployees(buildingId?: string) {
   return useQuery({
     queryKey: ["employee_development_plans", buildingId],
     queryFn: async () => {
-      let query = supabase
+      const { data, error } = await supabase
         .from("employee_development_plans")
         .select("*")
         .order("created_at", { ascending: false });
       
-      if (buildingId) query = query.eq("building_id", buildingId);
-      
-      const { data, error } = await query;
+      const { data: error2, error: profilesErr } = await supabase.from("profiles").select("id, name");
+
       if (error && error.code !== "42P01") throw error;
+
+      const profileMap: Record<string, string> = {};
+      (error2 ?? []).forEach((p: any) => { profileMap[p.id] = p.name; });
 
       return (data ?? []).map((e: any) => ({
         ...e,
-        building_name: e.buildings?.name ?? "Wszystkie obiekty",
-        first_name: e.profiles?.name?.split(" ")[0] || "",
-        last_name: e.profiles?.name?.split(" ").slice(1).join(" ") || "",
-        name: e.profiles?.name ?? "Pracownik"
+        name: profileMap[e.user_id] ?? "Pracownik",
+        first_name: (profileMap[e.user_id] ?? "").split(" ")[0] || "",
+        last_name: (profileMap[e.user_id] ?? "").split(" ").slice(1).join(" ") || "",
       }));
     },
   });
