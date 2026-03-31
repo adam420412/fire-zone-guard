@@ -875,7 +875,7 @@ export function useDeleteDocument() {
       if (storageError) throw storageError;
 
       // 2. Delete from DB
-      const { error: dbError } = await (supabase as any)
+      const { error: dbError } = await supabase
         .from('building_documents')
         .delete()
         .eq('id', id);
