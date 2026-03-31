@@ -307,7 +307,7 @@ export default function TaskDetailDialog({ task, open, onOpenChange }: Props) {
                         <label className="text-[11px] font-black text-success uppercase tracking-widest flex items-center gap-1">
                           <TrendingUp className="h-3 w-3" /> Przychody (Dodatnie +)
                         </label>
-                        <span className="text-[10px] font-bold text-success/60 bg-success/5 px-2 py-0.5 rounded">SUMA: {financialItems?.filter(i => i.type === 'income').reduce((acc, i) => acc + Number(i.amount || 0), 0).toFixed(2)} PLN</span>
+                        <span className="text-[10px] font-bold text-success/60 bg-success/5 px-2 py-0.5 rounded">SUMA: {(financialItems ?? []).filter(i => i.type === 'income').reduce((acc, i) => acc + Number(i.amount || 0), 0).toFixed(2)} PLN</span>
                       </div>
                       <div className="rounded-lg border border-success/20 bg-success/5 overflow-hidden min-h-[50px] flex flex-col">
                         {finLoading ? (
@@ -331,7 +331,7 @@ export default function TaskDetailDialog({ task, open, onOpenChange }: Props) {
                                     value={newFinItem.description}
                                     onChange={(e) => setNewFinItem({...newFinItem, description: e.target.value})}
                                     onKeyDown={(e) => e.key === 'Enter' && handleAddFinItem('income')}
-                                    className="w-full bg-transparent border-none focus:ring-0 text-[11px] p-0 px-1"
+                                    className="w-full bg-background/50 rounded border border-success/30 text-foreground text-[11px] py-1 px-2 outline-none focus:border-success"
                                   />
                                 </td>
                                 <td className="px-2 py-1.5">
@@ -340,7 +340,7 @@ export default function TaskDetailDialog({ task, open, onOpenChange }: Props) {
                                     value={newFinItem.amount}
                                     onChange={(e) => setNewFinItem({...newFinItem, amount: e.target.value})}
                                     onKeyDown={(e) => e.key === 'Enter' && handleAddFinItem('income')}
-                                    className="w-full bg-transparent border-none focus:ring-0 text-[11px] text-right p-0 px-1 font-bold"
+                                    className="w-full bg-background/50 rounded border border-success/30 text-foreground text-[11px] text-right py-1 px-2 font-bold outline-none focus:border-success"
                                   />
                                 </td>
                                 <td className="px-2 py-1.5 text-right">
@@ -365,7 +365,7 @@ export default function TaskDetailDialog({ task, open, onOpenChange }: Props) {
                         <label className="text-[11px] font-black text-critical uppercase tracking-widest flex items-center gap-1">
                           <TrendingDown className="h-3 w-3" /> Koszty (Odjemne -)
                         </label>
-                        <span className="text-[10px] font-bold text-critical/60 bg-critical/5 px-2 py-0.5 rounded">SUMA: {financialItems?.filter(i => i.type === 'expense').reduce((acc, i) => acc + Number(Math.abs(i.amount || 0)), 0).toFixed(2)} PLN</span>
+                        <span className="text-[10px] font-bold text-critical/60 bg-critical/5 px-2 py-0.5 rounded">SUMA: {(financialItems ?? []).filter(i => i.type === 'expense').reduce((acc, i) => acc + Number(Math.abs(i.amount || 0)), 0).toFixed(2)} PLN</span>
                       </div>
                       <div className="rounded-lg border border-critical/20 bg-critical/5 overflow-hidden min-h-[50px] flex flex-col">
                         {finLoading ? (
@@ -389,7 +389,7 @@ export default function TaskDetailDialog({ task, open, onOpenChange }: Props) {
                                     value={newCostItem.description}
                                     onChange={(e) => setNewCostItem({...newCostItem, description: e.target.value})}
                                     onKeyDown={(e) => e.key === 'Enter' && handleAddFinItem('expense')}
-                                    className="w-full bg-transparent border-none focus:ring-0 text-[11px] p-0 px-1"
+                                    className="w-full bg-background/50 rounded border border-critical/30 text-foreground text-[11px] py-1 px-2 outline-none focus:border-critical"
                                   />
                                 </td>
                                 <td className="px-2 py-1.5">
@@ -398,7 +398,7 @@ export default function TaskDetailDialog({ task, open, onOpenChange }: Props) {
                                     value={newCostItem.amount}
                                     onChange={(e) => setNewCostItem({...newCostItem, amount: e.target.value})}
                                     onKeyDown={(e) => e.key === 'Enter' && handleAddFinItem('expense')}
-                                    className="w-full bg-transparent border-none focus:ring-0 text-[11px] text-right p-0 px-1 font-bold"
+                                    className="w-full bg-background/50 rounded border border-critical/30 text-foreground text-[11px] text-right py-1 px-2 font-bold outline-none focus:border-critical"
                                   />
                                 </td>
                                 <td className="px-2 py-1.5 text-right">
