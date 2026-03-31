@@ -786,6 +786,41 @@ export type Database = {
           },
         ]
       }
+      task_financial_items: {
+        Row: {
+          amount: number
+          created_at: string
+          description: string
+          id: string
+          task_id: string
+          type: string
+        }
+        Insert: {
+          amount?: number
+          created_at?: string
+          description: string
+          id?: string
+          task_id: string
+          type: string
+        }
+        Update: {
+          amount?: number
+          created_at?: string
+          description?: string
+          id?: string
+          task_id?: string
+          type?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "task_financial_items_task_id_fkey"
+            columns: ["task_id"]
+            isOneToOne: false
+            referencedRelation: "tasks"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       task_history: {
         Row: {
           action: string
