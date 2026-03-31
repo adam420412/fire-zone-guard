@@ -679,12 +679,11 @@ export function useCreateEmployee() {
       // Ponieważ "employees" nie ma struktury autoryzacyjnej w MVP, symulujemy userId
       const randomUserId = crypto.randomUUID();
       
-      const { error: profileErr } = await supabase.from("profiles").insert({
-        id: randomUserId,
-        first_name: employee.first_name,
-        last_name: employee.last_name,
-        // email mock for mvp since auth.users isn't accessible via SQL directly without trigger
-      });
+      const { error: profileErr } = await supabase.from("profiles").insert([{
+        user_id: randomUserId,
+        name: `${employee.first_name ?? ''} ${employee.last_name ?? ''}`.trim() || 'Pracownik',
+        email: `employee-${randomUserId.slice(0,8)}@firezone.local`,
+      }]);
       if (profileErr) throw profileErr;
 
       const { data, error } = await supabase.from("employee_development_plans").insert([{
