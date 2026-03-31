@@ -3,6 +3,8 @@ import App from "./App.tsx";
 import "./index.css";
 
 // Unregister any stale Service Workers from PWA testing
+/*
+// Unregister any stale Service Workers from PWA testing
 if ('serviceWorker' in navigator) {
   navigator.serviceWorker.getRegistrations().then(async (registrations) => {
     let reloaded = false;
@@ -15,5 +17,6 @@ if ('serviceWorker' in navigator) {
     }
   });
 }
+*/
 
 createRoot(document.getElementById("root")!).render(<App />);

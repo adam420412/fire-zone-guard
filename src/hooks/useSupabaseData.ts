@@ -125,6 +125,7 @@ export interface TaskWithDetails extends Tables<"tasks"> {
   isOverdue?: boolean;
   hasReminders?: boolean;
   slaData?: any;
+  costs?: number;
 }
 
 export function useTasks() {
@@ -793,6 +794,147 @@ export function useCreateMeeting() {
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["meetings"] });
+    },
+  });
+}
+// ==== BUILDING DOCUMENTS (V2.1) ====
+export function useDocuments(buildingId: string) {
+  return useQuery({
+    queryKey: ["building_documents", buildingId],
+    queryFn: async () => {
+      const { data, error } = await (supabase as any)
+        .from("building_documents")
+        .select("*, profiles(name)")
+        .eq("building_id", buildingId)
+        .order("created_at", { ascending: false });
+      
+      if (error && error.code !== "42P01") throw error;
+      return (data ?? []).map((d: any) => ({
+        ...d,
+        userName: d.profiles?.name ?? "Nieznany",
+      }));
+    },
+    enabled: !!buildingId,
+  });
+}
+
+export function useUploadDocument() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ 
+      buildingId, 
+      file, 
+      name 
+    }: { 
+      buildingId: string; 
+      file: File; 
+      name: string;
+    }) => {
+      const fileExt = file.name.split('.').pop();
+      const filePath = `${buildingId}/${crypto.randomUUID()}.${fileExt}`;
+
+      // 1. Upload to Storage
+      const { error: uploadError } = await supabase.storage
+        .from('building-documents')
+        .upload(filePath, file);
+      
+      if (uploadError) throw uploadError;
+
+      // 2. Save metadata to DB
+      const { data: { user } } = await supabase.auth.getUser();
+      const { data, error: dbError } = await (supabase as any)
+        .from('building_documents')
+        .insert([{
+          building_id: buildingId,
+          user_id: user?.id,
+          name: name,
+          file_path: filePath,
+          file_type: file.type,
+          file_size: file.size
+        }])
+        .select()
+        .single();
+      
+      if (dbError) throw dbError;
+      return data;
+    },
+    onSuccess: (_, variables) => {
+      qc.invalidateQueries({ queryKey: ["building_documents", variables.buildingId] });
+    },
+  });
+}
+
+export function useDeleteDocument() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ id, filePath, buildingId }: { id: string; filePath: string; buildingId: string }) => {
+      // 1. Delete from Storage
+      const { error: storageError } = await supabase.storage
+        .from('building-documents')
+        .remove([filePath]);
+      
+      if (storageError) throw storageError;
+
+      // 2. Delete from DB
+      const { error: dbError } = await (supabase as any)
+        .from('building_documents')
+        .delete()
+        .eq('id', id);
+      
+      if (dbError) throw dbError;
+    },
+    onSuccess: (_, variables) => {
+      qc.invalidateQueries({ queryKey: ["building_documents", variables.buildingId] });
+    },
+  });
+}
+// ==== TASK FINANCIAL ITEMS (V2.2 - UNIVERSAL EXCEL) ====
+export function useTaskFinancialItems(taskId: string) {
+  return useQuery({
+    queryKey: ["task_financial_items", taskId],
+    queryFn: async () => {
+      const { data, error } = await (supabase as any)
+        .from("task_financial_items")
+        .select("*")
+        .eq("task_id", taskId)
+        .order("created_at", { ascending: true });
+      
+      if (error && error.code !== "42P01") throw error;
+      return data as any[];
+    },
+    enabled: !!taskId,
+  });
+}
+
+export function useCreateFinancialItem() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (item: { task_id: string; type: 'income' | 'expense'; description: string; amount: number }) => {
+      const { data, error } = await (supabase as any).from("task_financial_items").insert([item]).select().single();
+      if (error) {
+        console.error("Supabase Create Error:", error);
+        throw error;
+      }
+      return data;
+    },
+    onSuccess: (_, variables) => {
+      qc.invalidateQueries({ queryKey: ["task_financial_items", variables.task_id] });
+    },
+  });
+}
+
+export function useDeleteFinancialItem() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ id, taskId }: { id: string; taskId: string }) => {
+      const { error } = await (supabase as any).from("task_financial_items").delete().eq("id", id);
+      if (error) {
+        console.error("Supabase Delete Error:", error);
+        throw error;
+      }
+    },
+    onSuccess: (_, variables) => {
+      qc.invalidateQueries({ queryKey: ["task_financial_items", variables.taskId] });
     },
   });
 }

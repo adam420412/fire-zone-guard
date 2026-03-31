@@ -10,7 +10,10 @@ import {
   useAddDevice,
   useCreateTaskFromTemplate,
 } from "@/hooks/useBuildingData";
-import { useUpdateBuilding, useCompanies } from "@/hooks/useSupabaseData";
+import { 
+  useUpdateBuilding, useCompanies,
+  useDocuments, useUploadDocument, useDeleteDocument 
+} from "@/hooks/useSupabaseData";
 import { safetyStatusConfig, priorityColors, statusColors, taskTypeLabels } from "@/lib/constants";
 import type { SafetyStatus, TaskPriority, TaskStatus, TaskType } from "@/lib/constants";
 import { cn } from "@/lib/utils";
@@ -24,7 +27,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   ArrowLeft, Building2, MapPin, Shield, Loader2, Plus,
   CheckCircle2, AlertTriangle, Clock, Wrench, ClipboardList,
-  ChevronDown, ChevronRight, Package, Edit, QrCode, Save, Printer, FileText, UploadCloud, FolderOpen
+  ChevronDown, ChevronRight, Package, Edit, QrCode, Save, Printer, FileText, UploadCloud, FolderOpen, Trash2, Download
 } from "lucide-react";
 
 function EditBuildingDialog({ building, open, onOpenChange }: { building: any, open: boolean, onOpenChange: (o: boolean) => void }) {
@@ -138,6 +141,10 @@ export default function BuildingDetailPage() {
   const [showEditBuilding, setShowEditBuilding] = useState(false);
   const [qrDevice, setQrDevice] = useState<any>(null);
   
+  const { data: documents, isLoading: docsLoading } = useDocuments(id || "");
+  const uploadDoc = useUploadDocument();
+  const deleteDoc = useDeleteDocument();
+
   const [deviceForm, setDeviceForm] = useState({
     device_type_id: "", name: "", manufacturer: "", model: "",
     serial_number: "", location_in_building: "",
@@ -454,21 +461,96 @@ export default function BuildingDetailPage() {
                 <h3 className="text-sm font-bold uppercase tracking-tight">Dokumentacja Techniczna</h3>
               </div>
               {isSuperAdmin && (
-                <button className="flex items-center gap-2 rounded-md bg-secondary px-4 py-2 text-xs font-bold hover:bg-primary/20 hover:text-primary transition-colors">
-                  <UploadCloud className="h-4 w-4" /> Wgraj plik
-                </button>
+                <div className="relative">
+                  <input
+                    type="file"
+                    id="doc-upload"
+                    className="hidden"
+                    onChange={async (e) => {
+                      const file = e.target.files?.[0];
+                      if (file) {
+                        try {
+                          await uploadDoc.mutateAsync({
+                            buildingId: id || "",
+                            file,
+                            name: file.name
+                          });
+                          toast({ title: "Dokument wgrany pomyślnie" });
+                        } catch (err: any) {
+                          toast({ title: "Błąd wgrywania", description: err.message, variant: "destructive" });
+                        }
+                      }
+                    }}
+                  />
+                  <label 
+                    htmlFor="doc-upload"
+                    className="flex items-center gap-2 rounded-md bg-primary px-4 py-2 text-xs font-bold text-primary-foreground hover:opacity-90 transition-opacity cursor-pointer"
+                  >
+                    {uploadDoc.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <UploadCloud className="h-4 w-4" />} 
+                    Wgraj plik
+                  </label>
+                </div>
               )}
             </div>
-            <div className="p-12 flex flex-col items-center justify-center text-center">
-              <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-secondary mb-4">
-                <FileText className="h-8 w-8 text-muted-foreground" />
-              </div>
-              <h4 className="text-base font-bold text-card-foreground mb-1">Brak wgranych dokumentów</h4>
-              <p className="text-sm text-muted-foreground max-w-sm mb-6">W tej sekcji docelowo znajdować będą się cyfrowe instrukcje IBP, rzuty pięter oraz plany systemów PPOŻ dla budynku.</p>
-              {isSuperAdmin && (
-                <button className="rounded-md border-2 border-dashed border-primary/50 bg-primary/5 px-6 py-3 text-sm font-bold text-primary hover:bg-primary/10 transition-colors flex items-center gap-2">
-                  <UploadCloud className="h-4 w-4" /> Wybierz plik z dysku (Wkrótce)
-                </button>
+
+            <div className="p-0">
+              {docsLoading ? (
+                <div className="p-12 flex justify-center"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>
+              ) : documents && documents.length > 0 ? (
+                <div className="divide-y divide-border">
+                  {documents.map((doc: any) => (
+                    <div key={doc.id} className="flex items-center justify-between p-4 hover:bg-secondary/20 transition-colors">
+                      <div className="flex items-center gap-4">
+                        <div className="bg-secondary p-2 rounded-lg text-muted-foreground">
+                          <FileText className="h-5 w-5" />
+                        </div>
+                        <div>
+                          <p className="text-sm font-bold text-card-foreground">{doc.name}</p>
+                          <p className="text-[10px] text-muted-foreground flex items-center gap-2">
+                            <span>{(doc.file_size / 1024 / 1024).toFixed(2)} MB</span>
+                            <span className="h-1 w-1 bg-muted-foreground rounded-full" />
+                            <span>Wgrano: {new Date(doc.created_at).toLocaleDateString("pl-PL")} przez {doc.userName}</span>
+                          </p>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <button 
+                          onClick={() => window.open(`${import.meta.env.VITE_SUPABASE_URL}/storage/v1/object/public/building-documents/${doc.file_path}`)}
+                          className="p-2 hover:text-primary transition-colors hover:bg-secondary rounded-md"
+                          title="Pobierz"
+                        >
+                          <Download className="h-4 w-4" />
+                        </button>
+                        {isSuperAdmin && (
+                          <button 
+                            onClick={async () => {
+                              if (confirm("Czy na pewno chcesz usunąć ten dokument?")) {
+                                try {
+                                  await deleteDoc.mutateAsync({ id: doc.id, filePath: doc.file_path, buildingId: id || "" });
+                                  toast({ title: "Dokument usunięty" });
+                                } catch (err: any) {
+                                  toast({ title: "Błąd usuwania", description: err.message, variant: "destructive" });
+                                }
+                              }
+                            }}
+                            className="p-2 hover:text-critical transition-colors hover:bg-secondary rounded-md"
+                            title="Usuń"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="p-12 flex flex-col items-center justify-center text-center">
+                  <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-secondary mb-4">
+                    <FileText className="h-8 w-8 text-muted-foreground" />
+                  </div>
+                  <h4 className="text-base font-bold text-card-foreground mb-1">Brak wgranych dokumentów</h4>
+                  <p className="text-sm text-muted-foreground max-w-sm mb-6">W tej sekcji znajdować będą się rzuty pięter oraz plany systemów PPOŻ dla budynku.</p>
+                </div>
               )}
             </div>
           </div>

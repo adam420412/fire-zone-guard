@@ -1,18 +1,20 @@
-import { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { 
   TaskWithDetails, useUpdateTask, useTaskHistory, useProfiles,
   useSubtasks, useCreateSubtask, useUpdateSubtask, useDeleteSubtask,
-  useTaskReminders, useCreateReminder, useDeleteReminder
+  useTaskReminders, useCreateReminder, useDeleteReminder,
+  useTaskFinancialItems, useCreateFinancialItem, useDeleteFinancialItem
 } from "@/hooks/useSupabaseData";
+import { useAuth } from "@/hooks/useAuth";
 import { kanbanStatuses, priorityColors, statusColors, taskTypeLabels } from "@/lib/constants";
 import type { TaskStatus, TaskPriority, TaskType } from "@/lib/constants";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 import {
   Building2, User, Clock, Calendar, AlertTriangle, History,
-  ArrowRight, Loader2, Plus, Trash2, Bell, ListTodo
+  ArrowRight, Loader2, Plus, Trash2, Bell, ListTodo, Wallet, TrendingUp, TrendingDown, Lock
 } from "lucide-react";
 
 interface Props {
@@ -35,8 +37,72 @@ export default function TaskDetailDialog({ task, open, onOpenChange }: Props) {
   const deleteReminder = useDeleteReminder();
 
   const { toast } = useToast();
+  const { role: authRole } = useAuth();
+  const isAdmin = authRole === 'admin' || authRole === 'super_admin';
+
+  const { data: financialItems, isLoading: finLoading, error: finError } = useTaskFinancialItems(task?.id || "");
+  
+  const createFinItem = useCreateFinancialItem();
+  const deleteFinItem = useDeleteFinancialItem();
+
   const [closingComment, setClosingComment] = useState("");
-  const [repairPrice, setRepairPrice] = useState(task ? ((task as any).repair_price?.toString() || "") : "");
+  const [newFinItem, setNewFinItem] = useState({ description: "", amount: "", type: 'income' as 'income' | 'expense' });
+  const [newCostItem, setNewCostItem] = useState({ description: "", amount: "", type: 'expense' as 'income' | 'expense' });
+
+  // Poinformuj użytkownika, jeśli brakuje tabeli w bazie
+  useEffect(() => {
+    if (finError && (finError as any).code === "42P01") {
+      toast({
+        title: "Błąd bazy danych",
+        description: "Brakuje tabeli 'task_financial_items'. Uruchom migrację SQL dostarczoną w plikach projektowych.",
+        variant: "destructive"
+      });
+    }
+  }, [finError]);
+
+  const handleAddFinItem = async (type: 'income' | 'expense') => {
+    const item = type === 'income' ? newFinItem : newCostItem;
+    if (!item.description || !item.amount) return;
+
+    try {
+      await createFinItem.mutateAsync({
+        task_id: task.id,
+        type: type,
+        description: item.description,
+        amount: Math.abs(parseFloat(item.amount) || 0)
+      });
+      
+      if (type === 'income') {
+        setNewFinItem({ ...newFinItem, description: "", amount: "" });
+      } else {
+        setNewCostItem({ ...newCostItem, description: "", amount: "" });
+      }
+      toast({ title: "Dodano pozycję" });
+    } catch (e: any) {
+      toast({
+        title: "Błąd dodawania",
+        description: e.message || "Wystąpił nieoczekiwany błąd.",
+        variant: "destructive"
+      });
+    }
+  };
+
+  // Automatyczna synchronizacja wyniku z głównym polem ceny zadania
+  useEffect(() => {
+    if (!financialItems) return;
+    
+    const totalIncome = financialItems.filter(i => i.type === 'income').reduce((acc, i) => acc + Number(i.amount || 0), 0);
+    const totalCosts = financialItems.filter(i => i.type === 'expense').reduce((acc, i) => acc + Number(i.amount || 0), 0);
+    const balance = totalIncome - totalCosts;
+
+    // Aktualizuj tylko jeśli wartość się zmieniła i nie jest to pierwsze ładowanie
+    if (Math.abs((task?.repair_price || 0) - balance) > 0.01) {
+      const timer = setTimeout(() => {
+        updateTask.mutate({ id: task.id, repair_price: balance });
+      }, 1000); // Debounce, żeby nie bić w bazę co sekundę
+      return () => clearTimeout(timer);
+    }
+  }, [financialItems, task?.id]);
 
   const [newSubtask, setNewSubtask] = useState({ title: "", description: "", deadline: "", assignee_id: "" });
   const [newReminder, setNewReminder] = useState({ remind_at: "", recipient_email: "", message: "", subtask_id: "" });
@@ -56,7 +122,7 @@ export default function TaskDetailDialog({ task, open, onOpenChange }: Props) {
       const updates: any = { id: task.id, status: newStatus };
       if (newStatus === "Zamknięte") {
         if (closingComment.trim()) updates.closing_comment = closingComment.trim();
-        if (repairPrice) updates.repair_price = parseFloat(repairPrice) || 0;
+        // updates.repair_price = parseFloat(repairPrice) || 0; // Handled by financial items total now
       }
       await updateTask.mutateAsync(updates);
       toast({ title: `Status zmieniony na: ${newStatus}` });
@@ -221,19 +287,182 @@ export default function TaskDetailDialog({ task, open, onOpenChange }: Props) {
                 </select>
               </div>
 
-              {status !== "Zamknięte" && (
-                <div className="space-y-3">
-                  <div>
-                    <label className="text-xs font-medium text-muted-foreground">Koszty naprawy netto (PLN) - wpisz przed zamknięciem</label>
-                    <input 
-                      type="number" 
-                      min="0" step="0.01" 
-                      value={repairPrice} 
-                      onChange={(e) => setRepairPrice(e.target.value)} 
-                      placeholder="0.00"
-                      className={inputCls + " mt-1"} 
-                    />
+              {/* SEKCJA FINANSOWA - FULL EXCEL - TYLKO ADMIN */}
+              {isAdmin && (
+                <div className="mt-6 rounded-xl border border-primary/20 bg-background p-4 space-y-6 shadow-sm">
+                  <div className="flex items-center justify-between mb-2">
+                    <div className="flex items-center gap-2">
+                      <Wallet className="h-5 w-5 text-primary" />
+                      <h4 className="text-sm font-black uppercase tracking-tight text-primary">Arkusik Finansowy</h4>
+                    </div>
+                    <span className="flex items-center gap-1 text-[10px] bg-primary/20 text-primary px-3 py-1 rounded-full font-black">
+                      <Lock className="h-3 w-3" /> TYLKO ADMINISTRATOR
+                    </span>
                   </div>
+                  
+                  <div className="grid grid-cols-1 gap-6">
+                    {/* LEWA STRONA: PRZYCHODY (+) */}
+                    <div className="space-y-3">
+                      <div className="flex items-center justify-between">
+                        <label className="text-[11px] font-black text-success uppercase tracking-widest flex items-center gap-1">
+                          <TrendingUp className="h-3 w-3" /> Przychody (Dodatnie +)
+                        </label>
+                        <span className="text-[10px] font-bold text-success/60 bg-success/5 px-2 py-0.5 rounded">SUMA: {financialItems?.filter(i => i.type === 'income').reduce((acc, i) => acc + Number(i.amount || 0), 0).toFixed(2)} PLN</span>
+                      </div>
+                      <div className="rounded-lg border border-success/20 bg-success/5 overflow-hidden min-h-[50px] flex flex-col">
+                        {finLoading ? (
+                          <div className="flex-1 flex items-center justify-center p-4"><Loader2 className="h-4 w-4 animate-spin text-success" /></div>
+                        ) : (
+                          <table className="w-full text-xs">
+                            <tbody className="divide-y divide-success/10">
+                              {financialItems?.filter(i => i.type === 'income').map((item) => (
+                                <tr key={item.id} className="hover:bg-success/10 transition-colors">
+                                  <td className="px-3 py-1.5 text-muted-foreground">{item.description}</td>
+                                  <td className="px-3 py-1.5 text-right font-bold text-success">+{Math.abs(item.amount).toFixed(2)}</td>
+                                  <td className="px-1 py-1.5 text-right w-8">
+                                    <button onClick={() => deleteFinItem.mutate({ id: item.id, taskId: task.id })} className="text-critical/50 hover:text-critical"><Trash2 className="h-3 w-3" /></button>
+                                  </td>
+                                </tr>
+                              ))}
+                              <tr className="bg-success/10">
+                                <td className="px-2 py-1.5">
+                                  <input 
+                                    placeholder="Opis przychodu..." 
+                                    value={newFinItem.description}
+                                    onChange={(e) => setNewFinItem({...newFinItem, description: e.target.value})}
+                                    onKeyDown={(e) => e.key === 'Enter' && handleAddFinItem('income')}
+                                    className="w-full bg-transparent border-none focus:ring-0 text-[11px] p-0 px-1"
+                                  />
+                                </td>
+                                <td className="px-2 py-1.5">
+                                  <input 
+                                    type="number" placeholder="0.00" step="any"
+                                    value={newFinItem.amount}
+                                    onChange={(e) => setNewFinItem({...newFinItem, amount: e.target.value})}
+                                    onKeyDown={(e) => e.key === 'Enter' && handleAddFinItem('income')}
+                                    className="w-full bg-transparent border-none focus:ring-0 text-[11px] text-right p-0 px-1 font-bold"
+                                  />
+                                </td>
+                                <td className="px-2 py-1.5 text-right">
+                                  <button 
+                                    disabled={!newFinItem.description || !newFinItem.amount || createFinItem.isPending}
+                                    onClick={() => handleAddFinItem('income')}
+                                    className="bg-success text-white rounded p-0.5 hover:scale-110 transition-transform disabled:opacity-20"
+                                  >
+                                    {createFinItem.isPending ? <Loader2 className="h-3 w-3 animate-spin" /> : <Plus className="h-3 w-3" />}
+                                  </button>
+                                </td>
+                              </tr>
+                            </tbody>
+                          </table>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* PRAWA STRONA: KOSZTY (-) */}
+                    <div className="space-y-3">
+                      <div className="flex items-center justify-between">
+                        <label className="text-[11px] font-black text-critical uppercase tracking-widest flex items-center gap-1">
+                          <TrendingDown className="h-3 w-3" /> Koszty (Odjemne -)
+                        </label>
+                        <span className="text-[10px] font-bold text-critical/60 bg-critical/5 px-2 py-0.5 rounded">SUMA: {financialItems?.filter(i => i.type === 'expense').reduce((acc, i) => acc + Number(Math.abs(i.amount || 0)), 0).toFixed(2)} PLN</span>
+                      </div>
+                      <div className="rounded-lg border border-critical/20 bg-critical/5 overflow-hidden min-h-[50px] flex flex-col">
+                        {finLoading ? (
+                          <div className="flex-1 flex items-center justify-center p-4"><Loader2 className="h-4 w-4 animate-spin text-critical" /></div>
+                        ) : (
+                          <table className="w-full text-xs">
+                            <tbody className="divide-y divide-critical/10">
+                              {financialItems?.filter(i => i.type === 'expense').map((item) => (
+                                <tr key={item.id} className="hover:bg-critical/10 transition-colors">
+                                  <td className="px-3 py-1.5 text-muted-foreground">{item.description}</td>
+                                  <td className="px-3 py-1.5 text-right font-bold text-critical">-{Math.abs(item.amount).toFixed(2)}</td>
+                                  <td className="px-1 py-1.5 text-right w-8">
+                                    <button onClick={() => deleteFinItem.mutate({ id: item.id, taskId: task.id })} className="text-critical/50 hover:text-critical"><Trash2 className="h-3 w-3" /></button>
+                                  </td>
+                                </tr>
+                              ))}
+                              <tr className="bg-critical/10">
+                                <td className="px-2 py-1.5">
+                                  <input 
+                                    placeholder="Opis kosztu..." 
+                                    value={newCostItem.description}
+                                    onChange={(e) => setNewCostItem({...newCostItem, description: e.target.value})}
+                                    onKeyDown={(e) => e.key === 'Enter' && handleAddFinItem('expense')}
+                                    className="w-full bg-transparent border-none focus:ring-0 text-[11px] p-0 px-1"
+                                  />
+                                </td>
+                                <td className="px-2 py-1.5">
+                                  <input 
+                                    type="number" placeholder="0.00" step="any"
+                                    value={newCostItem.amount}
+                                    onChange={(e) => setNewCostItem({...newCostItem, amount: e.target.value})}
+                                    onKeyDown={(e) => e.key === 'Enter' && handleAddFinItem('expense')}
+                                    className="w-full bg-transparent border-none focus:ring-0 text-[11px] text-right p-0 px-1 font-bold"
+                                  />
+                                </td>
+                                <td className="px-2 py-1.5 text-right">
+                                  <button 
+                                    disabled={!newCostItem.description || !newCostItem.amount || createFinItem.isPending}
+                                    onClick={() => handleAddFinItem('expense')}
+                                    className="bg-critical text-white rounded p-0.5 hover:scale-110 transition-transform disabled:opacity-20"
+                                  >
+                                    {createFinItem.isPending ? <Loader2 className="h-3 w-3 animate-spin" /> : <Plus className="h-3 w-3" />}
+                                  </button>
+                                </td>
+                              </tr>
+                            </tbody>
+                          </table>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* PODSUMOWANIE KOŃCOWE */}
+                  <div className="pt-4 border-t-2 border-dashed border-primary/10">
+                    {(() => {
+                      const totalIncome = financialItems?.filter(i => i.type === 'income').reduce((acc, i) => acc + Number(Math.abs(i.amount)), 0) || 0;
+                      const totalCosts = financialItems?.filter(i => i.type === 'expense').reduce((acc, i) => acc + Number(Math.abs(i.amount)), 0) || 0;
+                      const balance = totalIncome - totalCosts;
+                      const margin = totalIncome > 0 ? (balance / totalIncome) * 100 : 0;
+
+                      return (
+                        <div className={cn(
+                          "p-4 rounded-xl flex items-center justify-between transition-colors",
+                          balance >= 0 ? "bg-success/20 border-2 border-success/30" : "bg-critical/20 border-2 border-critical/30"
+                        )}>
+                          <div>
+                            <p className="text-[10px] font-black uppercase text-muted-foreground mb-1">Wynik Finansowy Zadania (Przychód - Koszty)</p>
+                            <p className={cn(
+                              "text-3xl font-black tracking-tighter",
+                              balance >= 0 ? "text-success" : "text-critical"
+                            )}>
+                              {balance.toFixed(2)} PLN
+                            </p>
+                          </div>
+                          <div className="text-right">
+                            <p className="text-[10px] font-bold text-muted-foreground mb-1 uppercase">Rentowność (Marża)</p>
+                            <div className="flex items-center gap-2">
+                              <div className="h-2 w-24 bg-secondary rounded-full overflow-hidden shadow-inner">
+                                <div 
+                                  className={cn("h-full rounded-full transition-all duration-1000", balance >= 0 ? "bg-success" : "bg-critical")}
+                                  style={{ width: `${Math.min(100, Math.max(0, margin))}%` }}
+                                />
+                              </div>
+                              <span className="text-xs font-black">
+                                {Math.round(margin)}%
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })()}
+                  </div>
+                </div>
+              )}
+
+              {status !== "Zamknięte" && (
+                <div className="space-y-3 pt-4">
                   <div>
                     <label className="text-xs font-medium text-muted-foreground">Komentarz zamknięcia</label>
                     <textarea
@@ -247,20 +476,12 @@ export default function TaskDetailDialog({ task, open, onOpenChange }: Props) {
                 </div>
               )}
 
-              {status === "Zamknięte" && (
-                <div className="space-y-3">
-                  {(task as any).repair_price > 0 && (
-                    <div className="rounded-md bg-primary/10 border border-primary/20 p-3">
-                      <p className="text-xs font-medium text-primary mb-1">Rozliczony koszt netto</p>
-                      <p className="text-lg font-bold text-card-foreground">{(task as any).repair_price} PLN</p>
-                    </div>
-                  )}
-                  {task.closing_comment && (
-                    <div className="rounded-md bg-success/10 border border-success/20 p-3">
-                      <p className="text-xs font-medium text-success mb-1">Komentarz zamknięcia</p>
-                      <p className="text-sm text-card-foreground">{task.closing_comment}</p>
-                    </div>
-                  )}
+              {status === "Zamknięte" && task.closing_comment && (
+                <div className="space-y-3 pt-4">
+                  <div className="rounded-md bg-success/10 border border-success/20 p-3">
+                    <p className="text-xs font-medium text-success mb-1">Komentarz zamknięcia</p>
+                    <p className="text-sm text-card-foreground">{task.closing_comment}</p>
+                  </div>
                 </div>
               )}
             </div>
