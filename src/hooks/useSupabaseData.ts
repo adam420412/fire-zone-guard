@@ -909,7 +909,7 @@ export function useCreateFinancialItem() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async (item: { task_id: string; type: 'income' | 'expense'; description: string; amount: number }) => {
-      const { data, error } = await (supabase as any).from("task_financial_items").insert([item]).select().single();
+      const { data, error } = await supabase.from("task_financial_items").insert([item]).select().single();
       if (error) {
         console.error("Supabase Create Error:", error);
         throw error;
