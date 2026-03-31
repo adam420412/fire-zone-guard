@@ -14,6 +14,47 @@ export type Database = {
   }
   public: {
     Tables: {
+      audit_checklists: {
+        Row: {
+          audit_id: string
+          category: string
+          created_at: string
+          id: string
+          is_compliant: boolean | null
+          item_name: string
+          photo_url: string | null
+          remarks: string | null
+        }
+        Insert: {
+          audit_id: string
+          category: string
+          created_at?: string
+          id?: string
+          is_compliant?: boolean | null
+          item_name: string
+          photo_url?: string | null
+          remarks?: string | null
+        }
+        Update: {
+          audit_id?: string
+          category?: string
+          created_at?: string
+          id?: string
+          is_compliant?: boolean | null
+          item_name?: string
+          photo_url?: string | null
+          remarks?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "audit_checklists_audit_id_fkey"
+            columns: ["audit_id"]
+            isOneToOne: false
+            referencedRelation: "audits"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       audit_logs: {
         Row: {
           action: string
@@ -51,6 +92,54 @@ export type Database = {
             columns: ["company_id"]
             isOneToOne: false
             referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      audits: {
+        Row: {
+          auditor_id: string | null
+          building_id: string
+          created_at: string
+          id: string
+          notes: string | null
+          performed_at: string | null
+          status: string | null
+          type: string
+        }
+        Insert: {
+          auditor_id?: string | null
+          building_id: string
+          created_at?: string
+          id?: string
+          notes?: string | null
+          performed_at?: string | null
+          status?: string | null
+          type: string
+        }
+        Update: {
+          auditor_id?: string | null
+          building_id?: string
+          created_at?: string
+          id?: string
+          notes?: string | null
+          performed_at?: string | null
+          status?: string | null
+          type?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "audits_auditor_id_fkey"
+            columns: ["auditor_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "audits_building_id_fkey"
+            columns: ["building_id"]
+            isOneToOne: false
+            referencedRelation: "buildings"
             referencedColumns: ["id"]
           },
         ]
@@ -293,6 +382,98 @@ export type Database = {
           },
         ]
       }
+      employee_development_plans: {
+        Row: {
+          created_at: string
+          health_exam_valid_until: string | null
+          id: string
+          manager_id: string | null
+          onboarding_progress: number | null
+          position: string | null
+          start_date: string | null
+          status: string | null
+          training_status: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          health_exam_valid_until?: string | null
+          id?: string
+          manager_id?: string | null
+          onboarding_progress?: number | null
+          position?: string | null
+          start_date?: string | null
+          status?: string | null
+          training_status?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          health_exam_valid_until?: string | null
+          id?: string
+          manager_id?: string | null
+          onboarding_progress?: number | null
+          position?: string | null
+          start_date?: string | null
+          status?: string | null
+          training_status?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "employee_development_plans_manager_id_fkey"
+            columns: ["manager_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "employee_development_plans_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      employee_trainings: {
+        Row: {
+          completed_at: string | null
+          created_at: string
+          document_url: string | null
+          id: string
+          is_required: boolean | null
+          training_name: string
+          user_id: string
+        }
+        Insert: {
+          completed_at?: string | null
+          created_at?: string
+          document_url?: string | null
+          id?: string
+          is_required?: boolean | null
+          training_name: string
+          user_id: string
+        }
+        Update: {
+          completed_at?: string | null
+          created_at?: string
+          document_url?: string | null
+          id?: string
+          is_required?: boolean | null
+          training_name?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "employee_trainings_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       evacuation_drills: {
         Row: {
           building_id: string
@@ -324,6 +505,53 @@ export type Database = {
             columns: ["building_id"]
             isOneToOne: false
             referencedRelation: "buildings"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      hydrant_measurements: {
+        Row: {
+          created_at: string
+          dn_diameter: number
+          dynamic_pressure_mpa: number | null
+          flow_rate_dm3s: number | null
+          hydrant_number: string
+          id: string
+          is_compliant: boolean | null
+          protocol_id: string
+          static_pressure_mpa: number | null
+          type: string
+        }
+        Insert: {
+          created_at?: string
+          dn_diameter: number
+          dynamic_pressure_mpa?: number | null
+          flow_rate_dm3s?: number | null
+          hydrant_number: string
+          id?: string
+          is_compliant?: boolean | null
+          protocol_id: string
+          static_pressure_mpa?: number | null
+          type: string
+        }
+        Update: {
+          created_at?: string
+          dn_diameter?: number
+          dynamic_pressure_mpa?: number | null
+          flow_rate_dm3s?: number | null
+          hydrant_number?: string
+          id?: string
+          is_compliant?: boolean | null
+          protocol_id?: string
+          static_pressure_mpa?: number | null
+          type?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "hydrant_measurements_protocol_id_fkey"
+            columns: ["protocol_id"]
+            isOneToOne: false
+            referencedRelation: "service_protocols"
             referencedColumns: ["id"]
           },
         ]
@@ -363,6 +591,64 @@ export type Database = {
           },
         ]
       }
+      meetings: {
+        Row: {
+          attendees: string | null
+          building_id: string | null
+          company_id: string
+          created_at: string
+          id: string
+          meeting_date: string
+          notes: string | null
+          organizer_id: string | null
+          title: string
+        }
+        Insert: {
+          attendees?: string | null
+          building_id?: string | null
+          company_id: string
+          created_at?: string
+          id?: string
+          meeting_date: string
+          notes?: string | null
+          organizer_id?: string | null
+          title: string
+        }
+        Update: {
+          attendees?: string | null
+          building_id?: string | null
+          company_id?: string
+          created_at?: string
+          id?: string
+          meeting_date?: string
+          notes?: string | null
+          organizer_id?: string | null
+          title?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "meetings_building_id_fkey"
+            columns: ["building_id"]
+            isOneToOne: false
+            referencedRelation: "buildings"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "meetings_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "meetings_organizer_id_fkey"
+            columns: ["organizer_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profiles: {
         Row: {
           company_id: string | null
@@ -394,6 +680,108 @@ export type Database = {
             columns: ["company_id"]
             isOneToOne: false
             referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      service_protocols: {
+        Row: {
+          building_id: string
+          created_at: string
+          id: string
+          inspector_id: string | null
+          next_inspection_due: string | null
+          notes: string | null
+          overall_result: string | null
+          performed_at: string
+          status: string | null
+          type: string
+        }
+        Insert: {
+          building_id: string
+          created_at?: string
+          id?: string
+          inspector_id?: string | null
+          next_inspection_due?: string | null
+          notes?: string | null
+          overall_result?: string | null
+          performed_at: string
+          status?: string | null
+          type: string
+        }
+        Update: {
+          building_id?: string
+          created_at?: string
+          id?: string
+          inspector_id?: string | null
+          next_inspection_due?: string | null
+          notes?: string | null
+          overall_result?: string | null
+          performed_at?: string
+          status?: string | null
+          type?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "service_protocols_building_id_fkey"
+            columns: ["building_id"]
+            isOneToOne: false
+            referencedRelation: "buildings"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "service_protocols_inspector_id_fkey"
+            columns: ["inspector_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      subtasks: {
+        Row: {
+          assignee_id: string | null
+          created_at: string
+          deadline: string | null
+          description: string | null
+          id: string
+          status: string | null
+          task_id: string
+          title: string
+        }
+        Insert: {
+          assignee_id?: string | null
+          created_at?: string
+          deadline?: string | null
+          description?: string | null
+          id?: string
+          status?: string | null
+          task_id: string
+          title: string
+        }
+        Update: {
+          assignee_id?: string | null
+          created_at?: string
+          deadline?: string | null
+          description?: string | null
+          id?: string
+          status?: string | null
+          task_id?: string
+          title?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "subtasks_assignee_id_fkey"
+            columns: ["assignee_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "subtasks_task_id_fkey"
+            columns: ["task_id"]
+            isOneToOne: false
+            referencedRelation: "tasks"
             referencedColumns: ["id"]
           },
         ]
@@ -432,6 +820,54 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "task_history_task_id_fkey"
+            columns: ["task_id"]
+            isOneToOne: false
+            referencedRelation: "tasks"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      task_reminders: {
+        Row: {
+          created_at: string
+          id: string
+          message: string | null
+          recipient_email: string
+          remind_at: string
+          sent: boolean
+          subtask_id: string | null
+          task_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          message?: string | null
+          recipient_email: string
+          remind_at: string
+          sent?: boolean
+          subtask_id?: string | null
+          task_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          message?: string | null
+          recipient_email?: string
+          remind_at?: string
+          sent?: boolean
+          subtask_id?: string | null
+          task_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "task_reminders_subtask_id_fkey"
+            columns: ["subtask_id"]
+            isOneToOne: false
+            referencedRelation: "subtasks"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "task_reminders_task_id_fkey"
             columns: ["task_id"]
             isOneToOne: false
             referencedRelation: "tasks"
@@ -508,7 +944,9 @@ export type Database = {
           description: string
           first_response_at: string | null
           id: string
+          meeting_id: string | null
           priority: Database["public"]["Enums"]["task_priority"]
+          repair_price: number | null
           sla_hours: number
           status: Database["public"]["Enums"]["task_status"]
           title: string
@@ -525,7 +963,9 @@ export type Database = {
           description?: string
           first_response_at?: string | null
           id?: string
+          meeting_id?: string | null
           priority?: Database["public"]["Enums"]["task_priority"]
+          repair_price?: number | null
           sla_hours?: number
           status?: Database["public"]["Enums"]["task_status"]
           title: string
@@ -542,7 +982,9 @@ export type Database = {
           description?: string
           first_response_at?: string | null
           id?: string
+          meeting_id?: string | null
           priority?: Database["public"]["Enums"]["task_priority"]
+          repair_price?: number | null
           sla_hours?: number
           status?: Database["public"]["Enums"]["task_status"]
           title?: string
@@ -568,6 +1010,13 @@ export type Database = {
             columns: ["company_id"]
             isOneToOne: false
             referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tasks_meeting_id_fkey"
+            columns: ["meeting_id"]
+            isOneToOne: false
+            referencedRelation: "meetings"
             referencedColumns: ["id"]
           },
         ]
