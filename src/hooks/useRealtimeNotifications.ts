@@ -158,9 +158,9 @@ export function useRealtimeNotifications() {
         // 3. Audits (V2 table - may not exist if migration not run)
         const { data: audits, error: aErr } = await supabase
           .from("audits")
-          .select("id, building_id, scheduled_for")
+          .select("id, building_id, performed_at")
           .in("status", ["zaplanowany", "w przygotowaniu"])
-          .lt("scheduled_for", today)
+          .lt("performed_at", today)
           .limit(3);
 
         if (!aErr) {

@@ -146,7 +146,7 @@ export default function AnalyticsPage() {
       name: name.replace("Przegląd ", ""),
       Usterkowość: Math.round((stats.failed / stats.total) * 100),
       label: `${stats.failed}/${stats.total}`
-    })).filter(d => d.total > 0).slice(0, 6);
+    })).filter(d => d.Usterkowość > 0 || true).slice(0, 6);
   }, [protocols]);
 
   // --- Cost Trend ---
