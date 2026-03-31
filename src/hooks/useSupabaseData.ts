@@ -690,7 +690,6 @@ export function useCreateEmployee() {
 
       const { data, error } = await supabase.from("employee_development_plans").insert([{
         user_id: randomUserId,
-        building_id: employee.building_id,
         position: employee.position,
         onboarding_progress: employee.onboarding_progress,
         training_status: employee.training_status,
@@ -802,7 +801,7 @@ export function useDocuments(buildingId: string) {
   return useQuery({
     queryKey: ["building_documents", buildingId],
     queryFn: async () => {
-      const { data, error } = await (supabase as any)
+      const { data, error } = await supabase
         .from("building_documents")
         .select("*, profiles(name)")
         .eq("building_id", buildingId)
@@ -842,7 +841,7 @@ export function useUploadDocument() {
 
       // 2. Save metadata to DB
       const { data: { user } } = await supabase.auth.getUser();
-      const { data, error: dbError } = await (supabase as any)
+      const { data, error: dbError } = await supabase
         .from('building_documents')
         .insert([{
           building_id: buildingId,
@@ -876,7 +875,7 @@ export function useDeleteDocument() {
       if (storageError) throw storageError;
 
       // 2. Delete from DB
-      const { error: dbError } = await (supabase as any)
+      const { error: dbError } = await supabase
         .from('building_documents')
         .delete()
         .eq('id', id);
@@ -893,7 +892,7 @@ export function useTaskFinancialItems(taskId: string) {
   return useQuery({
     queryKey: ["task_financial_items", taskId],
     queryFn: async () => {
-      const { data, error } = await (supabase as any)
+      const { data, error } = await supabase
         .from("task_financial_items")
         .select("*")
         .eq("task_id", taskId)
@@ -910,7 +909,7 @@ export function useCreateFinancialItem() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async (item: { task_id: string; type: 'income' | 'expense'; description: string; amount: number }) => {
-      const { data, error } = await (supabase as any).from("task_financial_items").insert([item]).select().single();
+      const { data, error } = await supabase.from("task_financial_items").insert([item]).select().single();
       if (error) {
         console.error("Supabase Create Error:", error);
         throw error;
@@ -927,7 +926,7 @@ export function useDeleteFinancialItem() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async ({ id, taskId }: { id: string; taskId: string }) => {
-      const { error } = await (supabase as any).from("task_financial_items").delete().eq("id", id);
+      const { error } = await supabase.from("task_financial_items").delete().eq("id", id);
       if (error) {
         console.error("Supabase Delete Error:", error);
         throw error;
