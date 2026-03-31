@@ -690,7 +690,6 @@ export function useCreateEmployee() {
 
       const { data, error } = await supabase.from("employee_development_plans").insert([{
         user_id: randomUserId,
-        building_id: employee.building_id,
         position: employee.position,
         onboarding_progress: employee.onboarding_progress,
         training_status: employee.training_status,
