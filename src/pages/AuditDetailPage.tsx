@@ -630,6 +630,45 @@ export default function AuditDetailPage() {
         onConfirm={handleGeneratePDF}
         title="Podpisz Raport Audytu"
       />
+
+      {/* QR Code Dialog */}
+      <Dialog open={!!qrDevice} onOpenChange={(o) => !o && setQrDevice(null)}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Kod QR — {qrDevice?.name}</DialogTitle>
+            <DialogDescription>{qrDevice?.device_types?.name} • {qrDevice?.location_in_building || "Brak lokalizacji"}</DialogDescription>
+          </DialogHeader>
+          <div className="flex flex-col items-center gap-4 py-4" id="qr-print-area">
+            <div className="bg-white p-4 rounded-lg">
+              <img
+                src={`https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(`DEVICE:${qrDevice?.id}|${qrDevice?.name}|SN:${qrDevice?.serial_number || 'N/A'}`)}`}
+                alt="QR Code"
+                className="w-48 h-48"
+              />
+            </div>
+            <div className="text-center space-y-1">
+              <p className="font-semibold text-sm">{qrDevice?.name}</p>
+              <p className="text-xs text-muted-foreground">SN: {qrDevice?.serial_number || "brak"}</p>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setQrDevice(null)}>Zamknij</Button>
+            <Button onClick={() => {
+              const printWindow = window.open('', '_blank');
+              if (printWindow) {
+                printWindow.document.write(`<html><head><title>QR - ${qrDevice?.name}</title></head><body style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:100vh;font-family:sans-serif;">
+                  <img src="https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(`DEVICE:${qrDevice?.id}|${qrDevice?.name}|SN:${qrDevice?.serial_number || 'N/A'}`)}" />
+                  <h2>${qrDevice?.name}</h2><p>SN: ${qrDevice?.serial_number || 'brak'}</p><p>${qrDevice?.location_in_building || ''}</p>
+                </body></html>`);
+                printWindow.document.close();
+                printWindow.print();
+              }
+            }}>
+              <Printer className="mr-2 h-4 w-4" /> Drukuj
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
