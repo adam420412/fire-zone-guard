@@ -4,6 +4,7 @@ import {
   Shield, Settings, Flame, ChevronLeft, ChevronRight,
   User, LogOut, Menu, X, ClipboardCheck, FileText, Users, UsersRound, Search, Command, BarChart2, CalendarDays
 } from "lucide-react";
+import { ThemeToggle } from "@/components/ThemeToggle";
 import { useState, useEffect } from "react";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/hooks/useAuth";
@@ -167,6 +168,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
             </div>
           </div>
           <div className="flex items-center gap-2 sm:gap-3">
+            <ThemeToggle />
             <NotificationBell />
             <div className="hidden sm:flex items-center gap-2 rounded-md bg-secondary px-3 py-1.5">
               <div className="flex h-6 w-6 items-center justify-center rounded-full fire-gradient">
