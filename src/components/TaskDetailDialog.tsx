@@ -37,7 +37,7 @@ export default function TaskDetailDialog({ task, open, onOpenChange }: Props) {
   const deleteReminder = useDeleteReminder();
 
   const { toast } = useToast();
-  const { role: authRole } = useAuth();
+  const { role: authRole, user, profileId } = useAuth();
   const isAdmin = authRole === 'admin' || authRole === 'super_admin';
 
   const { data: financialItems, isLoading: finLoading, error: finError } = useTaskFinancialItems(task?.id || "");
