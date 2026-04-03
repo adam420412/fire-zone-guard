@@ -94,6 +94,17 @@ export function useCreateQuote() {
   });
 }
 
+export function useUpdateQuote() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ id, updates }: { id: string; updates: any }) => {
+      const { error } = await supabase.from("quotes").update(updates).eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["quotes"] }),
+  });
+}
+
 export function useQuoteItems(quoteId: string) {
   return useQuery({
     queryKey: ["quote_items", quoteId],
