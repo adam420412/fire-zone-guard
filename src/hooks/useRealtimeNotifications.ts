@@ -121,6 +121,17 @@ export function useRealtimeNotifications() {
             message: `${sub.title}${sub.deadline ? ` — termin: ${new Date(sub.deadline).toLocaleDateString("pl-PL")}` : ""}`,
             taskId: sub.task_id,
           });
+          // Telegram: subtask assigned
+          const recipients: string[] = [sub.assignee_id];
+          if (sub.created_by && sub.created_by !== sub.assignee_id) recipients.push(sub.created_by);
+          sendTelegramNotification({
+            type: "subtask_assigned",
+            subtask_id: sub.id,
+            task_id: sub.task_id,
+            task_title: sub.title,
+            deadline: sub.deadline ? new Date(sub.deadline).toLocaleDateString("pl-PL") : undefined,
+            recipient_profile_ids: recipients,
+          });
         }
       })
       .on("postgres_changes", { event: "UPDATE", schema: "public", table: "subtasks" }, (payload) => {
