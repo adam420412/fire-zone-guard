@@ -49,9 +49,20 @@ export default function AuditDetailPage() {
   const audit = audits?.find(a => a.id === id);
   const buildingId = audit ? (audit as any).building_id : null;
   
-  // Get documents and protocols for this building
+  // Get documents, devices and building detail for this building
   const { data: documents } = useDocuments(buildingId || "");
   const { data: devices } = useBuildingDevices(buildingId || "");
+  const { data: buildingDetail } = useBuildingDetail(buildingId || "");
+
+  const handleFloorPlanUploaded = (url: string) => {
+    if (!buildingId) return;
+    updateBuilding({ id: buildingId, updates: { floor_plan_url: url } });
+  };
+
+  const handleDevicePositioned = async (deviceId: string, x: number, y: number) => {
+    const { error } = await supabase.from("devices").update({ floor_plan_x: x, floor_plan_y: y } as any).eq("id", deviceId);
+    if (error) toast.error("Błąd zapisu pozycji");
+  };
   const buildingProtocols = useMemo(() => {
     if (!allProtocols || !buildingId) return [];
     return allProtocols.filter((p: any) => p.building_id === buildingId);
