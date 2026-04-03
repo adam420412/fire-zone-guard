@@ -1,5 +1,5 @@
 import { useState, useMemo } from "react";
-import { useTasks, useProfiles, useProtocols, useAudits, useMeetings, useCompanies, useBuildings, useCreateMeeting } from "@/hooks/useSupabaseData";
+import { useTasks, useProfiles, useProtocols, useAudits, useMeetings, useCompanies, useBuildings, useCreateMeeting, useAllSubtasks } from "@/hooks/useSupabaseData";
 import { useAuth } from "@/hooks/useAuth";
 import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameMonth, isSameDay, isToday, addMonths, subMonths, getDay } from "date-fns";
 import { pl } from "date-fns/locale";
@@ -19,6 +19,7 @@ import { toast } from "sonner";
 const WEEKDAYS = ["Pon", "Wt", "Śr", "Czw", "Pt", "Sob", "Nie"];
 
 function getTaskColor(task: any) {
+  if (task._type === 'subtask') return "bg-indigo-500/15 text-indigo-400 border-indigo-500/30";
   if (task._type === 'meeting') return "bg-accent/30 text-accent-foreground border-accent/40";
   if (task._type === 'audit') return "bg-secondary text-secondary-foreground border-border";
   if (task._type === 'protocol') return "bg-muted text-muted-foreground border-border";
@@ -117,6 +118,7 @@ export default function CalendarPage() {
   const { data: audits, isLoading: auL } = useAudits();
   const { data: meetings, isLoading: mtL } = useMeetings();
   const { data: profiles, isLoading: pfL } = useProfiles();
+  const { data: allSubtasks } = useAllSubtasks();
   const { role, profileId } = useAuth();
 
   const isAdmin = role === "super_admin" || role === "admin";
@@ -212,7 +214,25 @@ export default function CalendarPage() {
         attendees: m.attendees,
       }));
 
-    return [...dayTasks, ...dayProtocols, ...dayAudits, ...dayMeetings];
+    const daySubtasks = (allSubtasks ?? [])
+      .filter((s: any) => {
+        if (!s.deadline || !isSameDay(new Date(s.deadline), day)) return false;
+        if (activeFilterId === "all") return true;
+        return s.assignee_id === activeFilterId || s.created_by === activeFilterId;
+      })
+      .map((s: any) => ({
+        id: s.id,
+        title: `📋 ${s.title}`,
+        status: s.status ?? "Nowe",
+        deadline: s.deadline,
+        buildingName: "",
+        priority: "średni",
+        _type: "subtask",
+        taskTitle: s.taskTitle,
+        assigneeName: s.assigneeName,
+      }));
+
+    return [...dayTasks, ...daySubtasks, ...dayProtocols, ...dayAudits, ...dayMeetings];
   };
 
   // Calendar grid

@@ -37,7 +37,7 @@ export default function TaskDetailDialog({ task, open, onOpenChange }: Props) {
   const deleteReminder = useDeleteReminder();
 
   const { toast } = useToast();
-  const { role: authRole } = useAuth();
+  const { role: authRole, user, profileId } = useAuth();
   const isAdmin = authRole === 'admin' || authRole === 'super_admin';
 
   const { data: financialItems, isLoading: finLoading, error: finError } = useTaskFinancialItems(task?.id || "");
@@ -149,7 +149,8 @@ export default function TaskDetailDialog({ task, open, onOpenChange }: Props) {
         description: newSubtask.description || null,
         deadline: newSubtask.deadline || null,
         assignee_id: newSubtask.assignee_id || null,
-      });
+        created_by: profileId || null,
+      } as any);
       setNewSubtask({ title: "", description: "", deadline: "", assignee_id: "" });
       toast({ title: "Podzadanie dodane" });
     } catch (err: any) {
@@ -568,81 +569,136 @@ export default function TaskDetailDialog({ task, open, onOpenChange }: Props) {
             </div>
           </TabsContent>
 
-          {/* PODZADANIA (Subtasks) */}
           <TabsContent value="subtasks" className="space-y-4 mt-4">
-            <div className="rounded-md border border-border bg-secondary/20 p-3 space-y-3">
+            <div className="rounded-md border border-border bg-secondary/20 p-4 space-y-3">
               <h4 className="text-xs font-semibold text-card-foreground">Nowe podzadanie</h4>
-              <div className="grid gap-3 sm:grid-cols-2">
+              <div className="grid gap-3">
                 <input 
                   type="text" 
-                  placeholder="Tytuł podzadania" 
+                  placeholder="Tytuł podzadania *" 
                   value={newSubtask.title}
                   onChange={e => setNewSubtask(s => ({ ...s, title: e.target.value }))}
                   className={inputCls} 
                 />
-                <select
-                  value={newSubtask.assignee_id}
-                  onChange={e => setNewSubtask(s => ({ ...s, assignee_id: e.target.value }))}
-                  className={inputCls}
-                >
-                  <option value="">Przypisz (opcjonalnie)</option>
-                  {companyProfiles.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
-                </select>
+                <textarea
+                  placeholder="Opis podzadania (opcjonalnie)"
+                  value={newSubtask.description}
+                  onChange={e => setNewSubtask(s => ({ ...s, description: e.target.value }))}
+                  className={inputCls + " min-h-[60px]"}
+                />
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="text-xs text-muted-foreground mb-1 block">Osoba odpowiedzialna</label>
+                    <select
+                      value={newSubtask.assignee_id}
+                      onChange={e => setNewSubtask(s => ({ ...s, assignee_id: e.target.value }))}
+                      className={inputCls}
+                    >
+                      <option value="">Wybierz osobę...</option>
+                      {companyProfiles.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="text-xs text-muted-foreground mb-1 block">Termin wykonania</label>
+                    <input 
+                      type="date" 
+                      value={newSubtask.deadline}
+                      onChange={e => setNewSubtask(s => ({ ...s, deadline: e.target.value }))}
+                      className={inputCls} 
+                    />
+                  </div>
+                </div>
               </div>
               <button
                 onClick={handleAddSubtask}
                 disabled={!newSubtask.title.trim() || createSubtask.isPending}
                 className="rounded-md fire-gradient px-4 py-1.5 text-xs font-semibold text-primary-foreground hover:opacity-90 disabled:opacity-50 transition-opacity"
               >
+                {createSubtask.isPending && <Loader2 className="inline mr-1 h-3 w-3 animate-spin" />}
                 + Dodaj podzadanie
               </button>
             </div>
 
-            <div className="space-y-2 mt-4">
+            <div className="space-y-3 mt-4">
               {(subtasks ?? []).length === 0 ? (
                 <p className="py-4 text-center text-xs text-muted-foreground">Brak utworzonych podzadań</p>
               ) : (
-                subtasks?.map(sub => (
-                  <div key={sub.id} className="rounded-md border border-border p-3 grid gap-3 sm:grid-cols-12 items-center bg-card">
-                    <div className="sm:col-span-5 flex items-center gap-2">
-                      <ListTodo className="h-4 w-4 text-muted-foreground shrink-0" />
-                      <span className={cn("text-sm font-medium", sub.status === "Zamknięte" && "line-through opacity-50")}>
-                        {sub.title}
-                      </span>
-                    </div>
-                    
-                    <div className="sm:col-span-3">
-                      <select
-                        value={sub.status}
-                        onChange={e => updateSubtask.mutate({ id: sub.id, status: e.target.value as TaskStatus })}
-                        className={cn(inputCls, "h-8 py-0", statusColors[sub.status as TaskStatus] ? "font-semibold" : "")}
-                      >
-                        {kanbanStatuses.map(s => <option key={s} value={s}>{s}</option>)}
-                      </select>
-                    </div>
+                subtasks?.map(sub => {
+                  const isOverdue = sub.deadline && new Date(sub.deadline) < new Date() && sub.status !== "Zamknięte";
+                  return (
+                    <div key={sub.id} className={cn(
+                      "rounded-lg border p-4 bg-card space-y-3",
+                      isOverdue ? "border-destructive/40" : "border-border"
+                    )}>
+                      {/* Header row */}
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2">
+                            <ListTodo className="h-4 w-4 text-muted-foreground shrink-0" />
+                            <span className={cn("text-sm font-semibold", sub.status === "Zamknięte" && "line-through opacity-50")}>
+                              {sub.title}
+                            </span>
+                            {isOverdue && <AlertTriangle className="h-3.5 w-3.5 text-destructive shrink-0" />}
+                          </div>
+                          {sub.description && (
+                            <p className="text-xs text-muted-foreground mt-1 ml-6">{sub.description}</p>
+                          )}
+                        </div>
+                        <button 
+                          onClick={() => deleteSubtask.mutate(sub.id)}
+                          className="text-muted-foreground hover:text-destructive p-1 shrink-0"
+                          title="Usuń podzadanie"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </button>
+                      </div>
 
-                    <div className="sm:col-span-3">
-                      <select
-                        value={sub.assignee_id ?? ""}
-                        onChange={e => updateSubtask.mutate({ id: sub.id, assignee_id: e.target.value || null })}
-                        className={cn(inputCls, "h-8 py-0")}
-                      >
-                        <option value="">Nieprzypisany</option>
-                        {companyProfiles.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
-                      </select>
-                    </div>
+                      {/* Info row */}
+                      <div className="flex flex-wrap items-center gap-3 text-xs text-muted-foreground ml-6">
+                        {sub.deadline && (
+                          <span className={cn("flex items-center gap-1", isOverdue && "text-destructive font-medium")}>
+                            <Calendar className="h-3 w-3" />
+                            {new Date(sub.deadline).toLocaleDateString("pl-PL")}
+                            {isOverdue && " – PRZETERMINOWANE"}
+                          </span>
+                        )}
+                        <span className="flex items-center gap-1">
+                          <User className="h-3 w-3" /> {(sub as any).assigneeName}
+                        </span>
+                        {(sub as any).creatorName && (sub as any).creatorName !== "—" && (
+                          <span className="flex items-center gap-1 text-muted-foreground/70">
+                            Przydzielił: {(sub as any).creatorName}
+                          </span>
+                        )}
+                      </div>
 
-                    <div className="sm:col-span-1 flex justify-end">
-                      <button 
-                        onClick={() => deleteSubtask.mutate(sub.id)}
-                        className="text-muted-foreground hover:text-critical p-1"
-                        title="Usuń podzadanie"
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </button>
+                      {/* Controls row */}
+                      <div className="grid grid-cols-2 gap-3 ml-6">
+                        <div>
+                          <label className="text-[10px] text-muted-foreground">Status</label>
+                          <select
+                            value={sub.status ?? "Nowe"}
+                            onChange={e => updateSubtask.mutate({ id: sub.id, status: e.target.value as TaskStatus })}
+                            className={cn(inputCls, "h-8 py-0 text-xs")}
+                          >
+                            {kanbanStatuses.map(s => <option key={s} value={s}>{s}</option>)}
+                          </select>
+                        </div>
+                        <div>
+                          <label className="text-[10px] text-muted-foreground">Osoba odpowiedzialna</label>
+                          <select
+                            value={sub.assignee_id ?? ""}
+                            onChange={e => updateSubtask.mutate({ id: sub.id, assignee_id: e.target.value || null })}
+                            className={cn(inputCls, "h-8 py-0 text-xs")}
+                          >
+                            <option value="">Nieprzypisany</option>
+                            {companyProfiles.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
+                          </select>
+                        </div>
+                      </div>
                     </div>
-                  </div>
-                ))
+                  );
+                })
               )}
             </div>
           </TabsContent>
