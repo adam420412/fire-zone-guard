@@ -27,8 +27,9 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   ArrowLeft, Building2, MapPin, Shield, Loader2, Plus,
   CheckCircle2, AlertTriangle, Clock, Wrench, ClipboardList,
-  ChevronDown, ChevronRight, Package, Edit, QrCode, Save, Printer, FileText, UploadCloud, FolderOpen, Trash2, Download
+  ChevronDown, ChevronRight, Package, Edit, QrCode, Save, Printer, FileText, UploadCloud, FolderOpen, Trash2, Download, Hammer
 } from "lucide-react";
+import CreateTaskDialog from "@/components/CreateTaskDialog";
 
 function EditBuildingDialog({ building, open, onOpenChange }: { building: any, open: boolean, onOpenChange: (o: boolean) => void }) {
   const { data: companies } = useCompanies();
