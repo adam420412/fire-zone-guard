@@ -4,6 +4,7 @@ import {
   Shield, Settings, Flame, ChevronLeft, ChevronRight,
   User, LogOut, Menu, X, ClipboardCheck, FileText, Users, UsersRound, Search, Command, BarChart2, CalendarDays
 } from "lucide-react";
+import { ThemeToggle } from "@/components/ThemeToggle";
 import { useState, useEffect } from "react";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/hooks/useAuth";
