@@ -367,6 +367,7 @@ export type Database = {
           last_service_date: string | null
           location_in_building: string | null
           manufacturer: string | null
+          manufacturer_id: string | null
           model: string | null
           name: string
           next_service_date: string | null
@@ -383,6 +384,7 @@ export type Database = {
           last_service_date?: string | null
           location_in_building?: string | null
           manufacturer?: string | null
+          manufacturer_id?: string | null
           model?: string | null
           name: string
           next_service_date?: string | null
@@ -399,6 +401,7 @@ export type Database = {
           last_service_date?: string | null
           location_in_building?: string | null
           manufacturer?: string | null
+          manufacturer_id?: string | null
           model?: string | null
           name?: string
           next_service_date?: string | null
@@ -419,6 +422,13 @@ export type Database = {
             columns: ["device_type_id"]
             isOneToOne: false
             referencedRelation: "device_types"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "devices_manufacturer_id_fkey"
+            columns: ["manufacturer_id"]
+            isOneToOne: false
+            referencedRelation: "manufacturers"
             referencedColumns: ["id"]
           },
         ]
@@ -631,6 +641,45 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      manufacturers: {
+        Row: {
+          address: string | null
+          certificate_info: string | null
+          created_at: string
+          email: string | null
+          id: string
+          name: string
+          nip: string | null
+          notes: string | null
+          phone: string | null
+          specialization: string | null
+        }
+        Insert: {
+          address?: string | null
+          certificate_info?: string | null
+          created_at?: string
+          email?: string | null
+          id?: string
+          name: string
+          nip?: string | null
+          notes?: string | null
+          phone?: string | null
+          specialization?: string | null
+        }
+        Update: {
+          address?: string | null
+          certificate_info?: string | null
+          created_at?: string
+          email?: string | null
+          id?: string
+          name?: string
+          nip?: string | null
+          notes?: string | null
+          phone?: string | null
+          specialization?: string | null
+        }
+        Relationships: []
       }
       meetings: {
         Row: {
