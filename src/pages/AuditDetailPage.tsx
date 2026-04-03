@@ -187,9 +187,12 @@ export default function AuditDetailPage() {
         <div className="md:col-span-3">
           {/* 4 Tabs */}
           <Tabs defaultValue="checklist" className="w-full">
-            <TabsList className="grid w-full grid-cols-4 bg-secondary p-1 rounded-xl">
+            <TabsList className="grid w-full grid-cols-5 bg-secondary p-1 rounded-xl">
               <TabsTrigger value="checklist" className="rounded-lg data-[state=active]:bg-card data-[state=active]:shadow-sm text-xs font-semibold">
                 <ClipboardCheck className="h-3.5 w-3.5 mr-1.5" /> Checklist
+              </TabsTrigger>
+              <TabsTrigger value="equipment" className="rounded-lg data-[state=active]:bg-card data-[state=active]:shadow-sm text-xs font-semibold">
+                <Package className="h-3.5 w-3.5 mr-1.5" /> Sprzęt
               </TabsTrigger>
               <TabsTrigger value="documents" className="rounded-lg data-[state=active]:bg-card data-[state=active]:shadow-sm text-xs font-semibold">
                 <FileText className="h-3.5 w-3.5 mr-1.5" /> Dokumenty
