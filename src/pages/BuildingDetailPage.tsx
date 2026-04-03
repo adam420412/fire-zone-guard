@@ -634,6 +634,22 @@ export default function BuildingDetailPage() {
         open={!!selectedTask}
         onOpenChange={(o) => !o && setSelectedTask(null)}
       />
+
+      {/* Repair task dialog - pre-filled from device */}
+      {repairDevice && (
+        <CreateTaskDialog
+          open={!!repairDevice}
+          onOpenChange={(o) => !o && setRepairDevice(null)}
+          defaultValues={{
+            buildingId: id!,
+            companyId: building.company_id,
+            title: `Naprawa: ${repairDevice.name}`,
+            description: `Zgłoszenie naprawy urządzenia "${repairDevice.name}" (SN: ${repairDevice.serial_number || 'brak'}, Lokalizacja: ${repairDevice.location_in_building || 'brak'})`,
+            type: "usterka" as const,
+            priority: "wysoki" as const,
+          }}
+        />
+      )}
     </div>
   );
 }
