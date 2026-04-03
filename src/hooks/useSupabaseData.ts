@@ -29,6 +29,21 @@ export function useUpdateCompany() {
   });
 }
 
+export function useCreateCompany() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (company: { name: string; nip?: string }) => {
+      const { data, error } = await supabase.from("companies").insert({ name: company.name }).select().single();
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["companies"] });
+      qc.invalidateQueries({ queryKey: ["companies_stats"] });
+    },
+  });
+}
+
 // ---- BUILDINGS with computed safety status ----
 export interface BuildingWithStatus extends Tables<"buildings"> {
   companyName?: string;

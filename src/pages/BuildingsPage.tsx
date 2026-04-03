@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { useBuildings, useCompanies, useCreateBuilding } from "@/hooks/useSupabaseData";
 import { useAuth } from "@/hooks/useAuth";
 import { safetyStatusConfig } from "@/lib/constants";
