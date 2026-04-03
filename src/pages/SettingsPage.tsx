@@ -111,7 +111,7 @@ function ProfileTab() {
       if (!user) throw new Error("Brak sesji");
       const { error } = await supabase
         .from("profiles")
-        .update({ name, phone } as any)
+        .update({ name, phone, telegram_chat_id: telegramChatId || null } as any)
         .eq("id", user.id);
       if (error) throw error;
     },
