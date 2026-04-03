@@ -8,7 +8,7 @@ import { cn } from "@/lib/utils";
 import {
   Loader2, Users, Shield, Building2, Save, User, Lock, Bell,
   CheckCircle2, Eye, EyeOff, Mail, Phone, AlertTriangle,
-  Settings as SettingsIcon, ChevronRight
+  Settings as SettingsIcon, ChevronRight, Send
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -96,11 +96,13 @@ function ProfileTab() {
 
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
+  const [telegramChatId, setTelegramChatId] = useState("");
   const [initialized, setInitialized] = useState(false);
 
   if (profile && !initialized) {
     setName(profile.name ?? "");
     setPhone((profile as any).phone ?? "");
+    setTelegramChatId((profile as any).telegram_chat_id ?? "");
     setInitialized(true);
   }
 
@@ -109,7 +111,7 @@ function ProfileTab() {
       if (!user) throw new Error("Brak sesji");
       const { error } = await supabase
         .from("profiles")
-        .update({ name, phone } as any)
+        .update({ name, phone, telegram_chat_id: telegramChatId || null } as any)
         .eq("id", user.id);
       if (error) throw error;
     },
@@ -145,6 +147,14 @@ function ProfileTab() {
             <Phone className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
             <Input className="pl-8" value={phone} onChange={e => setPhone(e.target.value)} placeholder="+48 000 000 000" />
           </div>
+        </div>
+        <div className="space-y-1.5">
+          <Label>Telegram Chat ID</Label>
+          <div className="relative">
+            <Send className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+            <Input className="pl-8" value={telegramChatId} onChange={e => setTelegramChatId(e.target.value)} placeholder="np. 123456789" />
+          </div>
+          <p className="text-[10px] text-muted-foreground">Napisz <b>/start</b> do bota, a następnie użyj <b>/chatid</b> aby poznać swoje Chat ID.</p>
         </div>
         <p className="text-xs text-muted-foreground">E-mail: <span className="font-medium text-foreground">{user?.email}</span> (zmiana e-mail przez obsługę)</p>
       </div>

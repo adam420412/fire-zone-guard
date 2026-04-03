@@ -2,6 +2,7 @@ import { useEffect, useState, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { useQueryClient } from "@tanstack/react-query";
+import { sendTelegramNotification } from "@/lib/telegramNotify";
 
 export interface Notification {
   id: string;
@@ -83,6 +84,20 @@ export function useRealtimeNotifications() {
             });
           }
 
+          // Telegram: status change
+          if (task.status !== old.status) {
+            const recipients: string[] = [];
+            if (task.assignee_id) recipients.push(task.assignee_id);
+            sendTelegramNotification({
+              type: "status_change",
+              task_id: task.id,
+              task_title: task.title,
+              old_status: old.status,
+              new_status: task.status,
+              recipient_profile_ids: recipients,
+            });
+          }
+
           if (task.status === "Zamknięte" && old.status !== "Zamknięte") {
             addNotification({
               type: "info",
@@ -105,6 +120,17 @@ export function useRealtimeNotifications() {
             title: "📋 Nowe podzadanie przypisane",
             message: `${sub.title}${sub.deadline ? ` — termin: ${new Date(sub.deadline).toLocaleDateString("pl-PL")}` : ""}`,
             taskId: sub.task_id,
+          });
+          // Telegram: subtask assigned
+          const recipients: string[] = [sub.assignee_id];
+          if (sub.created_by && sub.created_by !== sub.assignee_id) recipients.push(sub.created_by);
+          sendTelegramNotification({
+            type: "subtask_assigned",
+            subtask_id: sub.id,
+            task_id: sub.task_id,
+            task_title: sub.title,
+            deadline: sub.deadline ? new Date(sub.deadline).toLocaleDateString("pl-PL") : undefined,
+            recipient_profile_ids: recipients,
           });
         }
       })

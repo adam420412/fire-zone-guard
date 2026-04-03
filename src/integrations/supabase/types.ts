@@ -802,6 +802,7 @@ export type Database = {
           email: string
           id: string
           name: string
+          telegram_chat_id: string | null
           user_id: string
         }
         Insert: {
@@ -810,6 +811,7 @@ export type Database = {
           email: string
           id?: string
           name: string
+          telegram_chat_id?: string | null
           user_id: string
         }
         Update: {
@@ -818,6 +820,7 @@ export type Database = {
           email?: string
           id?: string
           name?: string
+          telegram_chat_id?: string | null
           user_id?: string
         }
         Relationships: [
