@@ -99,6 +99,35 @@ export function useRealtimeNotifications() {
       .on("postgres_changes", { event: "*", schema: "public", table: "audits" }, () => {
         qc.invalidateQueries({ queryKey: ["audits"] });
       })
+      .on("postgres_changes", { event: "*", schema: "public", table: "sales_opportunities" }, (payload) => {
+        qc.invalidateQueries({ queryKey: ["sales_opportunities"] });
+        if (payload.eventType === "INSERT") {
+          const opp = payload.new as any;
+          addNotification({
+            type: "info",
+            title: "💰 Nowa szansa sprzedażowa!",
+            message: `${opp.company_name}${opp.estimated_value ? ` — ${Number(opp.estimated_value).toLocaleString("pl-PL")} zł` : ""}`,
+          });
+        }
+        if (payload.eventType === "UPDATE") {
+          const opp = payload.new as any;
+          const old = payload.old as any;
+          if (opp.status === "zlecenie" && old.status !== "zlecenie") {
+            addNotification({
+              type: "info",
+              title: "🎉 Szansa przekształcona w zlecenie!",
+              message: `${opp.company_name}`,
+            });
+          }
+          if (opp.status === "archiwum" && old.status !== "archiwum") {
+            addNotification({
+              type: "warning",
+              title: "📁 Szansa zarchiwizowana",
+              message: `${opp.company_name}`,
+            });
+          }
+        }
+      })
       .on("postgres_changes", { event: "*", schema: "public", table: "employee_development_plans" }, () => {
         qc.invalidateQueries({ queryKey: ["employee_development_plans"] });
       })

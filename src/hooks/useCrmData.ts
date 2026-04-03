@@ -129,6 +129,58 @@ export function useCreateQuoteItem() {
   });
 }
 
+// ---- SALES OPPORTUNITIES ----
+export function useSalesOpportunities() {
+  return useQuery({
+    queryKey: ["sales_opportunities"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("sales_opportunities")
+        .select("*, companies(name)")
+        .order("created_at", { ascending: false });
+      if (error) throw error;
+      return (data ?? []).map((o: any) => ({
+        ...o,
+        linked_company_name: o.companies?.name ?? null,
+      }));
+    },
+  });
+}
+
+export function useCreateOpportunity() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (opp: any) => {
+      const { data, error } = await supabase.from("sales_opportunities").insert(opp).select().single();
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["sales_opportunities"] }),
+  });
+}
+
+export function useUpdateOpportunity() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ id, updates }: { id: string; updates: any }) => {
+      const { error } = await supabase.from("sales_opportunities").update(updates).eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["sales_opportunities"] }),
+  });
+}
+
+export function useDeleteOpportunity() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase.from("sales_opportunities").delete().eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["sales_opportunities"] }),
+  });
+}
+
 export function useDeleteQuoteItem() {
   const qc = useQueryClient();
   return useMutation({

@@ -1,6 +1,6 @@
 import { useState, useMemo } from "react";
-import { useQuotes, useQuoteItems, useServices, useContacts, useCreateQuote, useCreateQuoteItem, useUpdateQuote } from "@/hooks/useCrmData";
-import { useCompanies } from "@/hooks/useSupabaseData";
+import { useQuotes, useQuoteItems, useServices, useContacts, useCreateQuote, useCreateQuoteItem, useUpdateQuote, useSalesOpportunities, useCreateOpportunity, useUpdateOpportunity, useDeleteOpportunity } from "@/hooks/useCrmData";
+import { useCompanies, useCreateCompany } from "@/hooks/useSupabaseData";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -12,8 +12,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
-import { Plus, Loader2, FileText, Search, ShoppingCart, CheckCircle, XCircle, DollarSign, TrendingUp, BarChart3, Percent } from "lucide-react";
+import { Plus, Loader2, FileText, Search, ShoppingCart, CheckCircle, XCircle, DollarSign, TrendingUp, BarChart3, Percent, Target, Building2, Archive, ArrowRight, Trash2 } from "lucide-react";
 import { generateReportPDF } from "@/lib/pdfGenerator";
 
 const REVENUE_CATEGORIES = ["Szkolenia", "Dokumentacja", "Serwis", "Wykonawstwo", "Montaż", "Audyty", "Odbiory"] as const;
@@ -381,19 +382,92 @@ function QuoteDetailDialog({ quote, open, onOpenChange }: { quote: any; open: bo
   );
 }
 
+const OPP_STATUS_MAP: Record<string, { label: string; variant: "default" | "secondary" | "destructive" | "outline"; color: string }> = {
+  "nowy_lead": { label: "Nowy lead", variant: "secondary", color: "bg-blue-500/10 text-blue-500" },
+  "kontakt": { label: "Kontakt", variant: "outline", color: "bg-amber-500/10 text-amber-500" },
+  "oferta": { label: "Oferta", variant: "outline", color: "bg-purple-500/10 text-purple-500" },
+  "zlecenie": { label: "Zlecenie", variant: "default", color: "bg-emerald-500/10 text-emerald-500" },
+  "archiwum": { label: "Archiwum", variant: "destructive", color: "bg-muted text-muted-foreground" },
+};
+
+const OPP_FLOW = ["nowy_lead", "kontakt", "oferta", "zlecenie", "archiwum"];
+
+// ---- Add Opportunity Dialog ----
+function AddOpportunityDialog({ open, onOpenChange }: { open: boolean; onOpenChange: (o: boolean) => void }) {
+  const { mutate: create, isPending } = useCreateOpportunity();
+  const [form, setForm] = useState({ company_name: "", contact_name: "", contact_email: "", contact_phone: "", description: "", estimated_value: 0, source: "manual" });
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!form.company_name.trim()) { toast.error("Podaj nazwę firmy/klienta."); return; }
+    create(form, {
+      onSuccess: () => { toast.success("Szansa sprzedażowa dodana!"); onOpenChange(false); setForm({ company_name: "", contact_name: "", contact_email: "", contact_phone: "", description: "", estimated_value: 0, source: "manual" }); },
+      onError: (err) => toast.error("Błąd: " + err.message),
+    });
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-lg">
+        <form onSubmit={handleSubmit}>
+          <DialogHeader>
+            <DialogTitle>Nowa szansa sprzedażowa</DialogTitle>
+            <DialogDescription>Dodaj potencjalnego klienta lub lead.</DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            <div className="space-y-2"><Label>Nazwa firmy / klienta *</Label><Input value={form.company_name} onChange={e => setForm({ ...form, company_name: e.target.value })} required placeholder="np. ABC Sp. z o.o." /></div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2"><Label>Osoba kontaktowa</Label><Input value={form.contact_name} onChange={e => setForm({ ...form, contact_name: e.target.value })} /></div>
+              <div className="space-y-2"><Label>Telefon</Label><Input value={form.contact_phone} onChange={e => setForm({ ...form, contact_phone: e.target.value })} placeholder="+48..." /></div>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2"><Label>Email</Label><Input type="email" value={form.contact_email} onChange={e => setForm({ ...form, contact_email: e.target.value })} /></div>
+              <div className="space-y-2"><Label>Szacowana wartość (zł)</Label><Input type="number" min={0} value={form.estimated_value} onChange={e => setForm({ ...form, estimated_value: parseFloat(e.target.value) || 0 })} /></div>
+            </div>
+            <div className="space-y-2"><Label>Opis / czego dotyczy</Label><Textarea value={form.description} onChange={e => setForm({ ...form, description: e.target.value })} placeholder="Czego ma dotyczyć zlecenie..." rows={3} /></div>
+            <div className="space-y-2"><Label>Źródło</Label>
+              <Select value={form.source} onValueChange={v => setForm({ ...form, source: v })}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="manual">Ręczne</SelectItem>
+                  <SelectItem value="referral">Polecenie</SelectItem>
+                  <SelectItem value="website">Strona www</SelectItem>
+                  <SelectItem value="phone">Telefon</SelectItem>
+                  <SelectItem value="email">Email</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button type="button" variant="ghost" onClick={() => onOpenChange(false)}>Anuluj</Button>
+            <Button type="submit" disabled={isPending}>{isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}Dodaj</Button>
+          </DialogFooter>
+        </form>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 // ---- Main Finance Page ----
 export default function FinancePage() {
   const { role } = useAuth();
-  const { data: quotes, isLoading } = useQuotes();
+  const { data: quotes, isLoading: quotesLoading } = useQuotes();
   const { data: companies } = useCompanies();
   const { data: services } = useServices();
+  const { data: opportunities, isLoading: oppsLoading } = useSalesOpportunities();
+  const { mutate: updateOpportunity } = useUpdateOpportunity();
+  const { mutate: deleteOpportunity } = useDeleteOpportunity();
+  const { mutate: createCompany } = useCreateCompany();
 
   const [createQuoteOpen, setCreateQuoteOpen] = useState(false);
+  const [addOppOpen, setAddOppOpen] = useState(false);
   const [selectedQuote, setSelectedQuote] = useState<any>(null);
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
+  const [oppStatusFilter, setOppStatusFilter] = useState("active");
 
   const isSuperAdmin = role === "super_admin";
+  const isLoading = quotesLoading || oppsLoading;
 
   const filteredQuotes = useMemo(() => {
     if (!quotes) return [];
@@ -406,26 +480,44 @@ export default function FinancePage() {
     return list;
   }, [quotes, statusFilter, search]);
 
-  // Revenue by category
-  const revenueByCategory = useMemo(() => {
-    const cats: Record<string, number> = {};
-    REVENUE_CATEGORIES.forEach(c => { cats[c] = 0; });
-    // Count accepted quotes totals (simplified - in production would link to tasks)
-    return cats;
-  }, []);
+  const filteredOpps = useMemo(() => {
+    if (!opportunities) return [];
+    if (oppStatusFilter === "active") return opportunities.filter((o: any) => o.status !== "archiwum");
+    if (oppStatusFilter === "archiwum") return opportunities.filter((o: any) => o.status === "archiwum");
+    return opportunities;
+  }, [opportunities, oppStatusFilter]);
 
-  // Stats
   const stats = useMemo(() => {
-    if (!quotes) return { total: 0, accepted: 0, pending: 0, revenue: 0 };
+    if (!quotes) return { total: 0, accepted: 0, pending: 0, revenue: 0, oppsCount: 0, oppsValue: 0 };
     const accepted = quotes.filter((q: any) => q.status === "zaakceptowana");
     const pending = quotes.filter((q: any) => q.status === "wersja robocza" || q.status === "wysłana");
+    const activeOpps = (opportunities ?? []).filter((o: any) => o.status !== "archiwum");
     return {
       total: quotes.length,
       accepted: accepted.length,
       pending: pending.length,
       revenue: accepted.reduce((s: number, q: any) => s + Number(q.total), 0),
+      oppsCount: activeOpps.length,
+      oppsValue: activeOpps.reduce((s: number, o: any) => s + Number(o.estimated_value || 0), 0),
     };
-  }, [quotes]);
+  }, [quotes, opportunities]);
+
+  const handleOppStatusChange = (id: string, newStatus: string) => {
+    updateOpportunity({ id, updates: { status: newStatus, updated_at: new Date().toISOString() } }, {
+      onSuccess: () => toast.success(`Status zmieniony na: ${OPP_STATUS_MAP[newStatus]?.label ?? newStatus}`),
+    });
+  };
+
+  const handleConvertToCompany = (opp: any) => {
+    createCompany({ name: opp.company_name }, {
+      onSuccess: (newCompany: any) => {
+        updateOpportunity({ id: opp.id, updates: { status: "zlecenie", company_id: newCompany.id, updated_at: new Date().toISOString() } }, {
+          onSuccess: () => toast.success(`"${opp.company_name}" przekształcono w firmę i zlecenie!`),
+        });
+      },
+      onError: (err) => toast.error("Błąd tworzenia firmy: " + err.message),
+    });
+  };
 
   if (isLoading) return <div className="flex h-64 items-center justify-center"><Loader2 className="h-6 w-6 animate-spin text-primary" /></div>;
 
@@ -434,165 +526,250 @@ export default function FinancePage() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold tracking-tight">Finanse</h1>
-          <p className="text-sm text-muted-foreground">Oferty, zlecenia i przychody</p>
+          <p className="text-sm text-muted-foreground">Szanse sprzedażowe, oferty, zlecenia i przychody</p>
         </div>
         {isSuperAdmin && (
-          <Button onClick={() => setCreateQuoteOpen(true)} className="fire-gradient">
-            <Plus className="mr-2 h-4 w-4" /> Nowa oferta
-          </Button>
+          <div className="flex gap-2">
+            <Button variant="outline" onClick={() => setAddOppOpen(true)}>
+              <Target className="mr-2 h-4 w-4" /> Nowa szansa
+            </Button>
+            <Button onClick={() => setCreateQuoteOpen(true)} className="fire-gradient">
+              <Plus className="mr-2 h-4 w-4" /> Nowa oferta
+            </Button>
+          </div>
         )}
       </div>
 
       {/* Stats Cards */}
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <Card>
-          <CardContent className="pt-5 pb-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-xs text-muted-foreground font-medium">Wszystkie oferty</p>
-                <p className="text-2xl font-bold">{stats.total}</p>
-              </div>
-              <div className="h-10 w-10 rounded-lg bg-secondary flex items-center justify-center">
-                <FileText className="h-5 w-5 text-muted-foreground" />
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="pt-5 pb-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-xs text-muted-foreground font-medium">Zatwierdzone</p>
-                <p className="text-2xl font-bold text-emerald-500">{stats.accepted}</p>
-              </div>
-              <div className="h-10 w-10 rounded-lg bg-emerald-500/10 flex items-center justify-center">
-                <CheckCircle className="h-5 w-5 text-emerald-500" />
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="pt-5 pb-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-xs text-muted-foreground font-medium">Oczekujące</p>
-                <p className="text-2xl font-bold text-amber-500">{stats.pending}</p>
-              </div>
-              <div className="h-10 w-10 rounded-lg bg-amber-500/10 flex items-center justify-center">
-                <ShoppingCart className="h-5 w-5 text-amber-500" />
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="pt-5 pb-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-xs text-muted-foreground font-medium">Przychód (zatw.)</p>
-                <p className="text-2xl font-bold text-primary">{stats.revenue.toLocaleString("pl-PL")} zł</p>
-              </div>
-              <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center">
-                <TrendingUp className="h-5 w-5 text-primary" />
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+        <Card><CardContent className="pt-5 pb-4"><div className="flex items-center justify-between"><div><p className="text-xs text-muted-foreground font-medium">Szanse sprzedażowe</p><p className="text-2xl font-bold">{stats.oppsCount}</p><p className="text-xs text-muted-foreground">{stats.oppsValue.toLocaleString("pl-PL")} zł potencjał</p></div><div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center"><Target className="h-5 w-5 text-primary" /></div></div></CardContent></Card>
+        <Card><CardContent className="pt-5 pb-4"><div className="flex items-center justify-between"><div><p className="text-xs text-muted-foreground font-medium">Oferty</p><p className="text-2xl font-bold">{stats.total}</p></div><div className="h-10 w-10 rounded-lg bg-secondary flex items-center justify-center"><FileText className="h-5 w-5 text-muted-foreground" /></div></div></CardContent></Card>
+        <Card><CardContent className="pt-5 pb-4"><div className="flex items-center justify-between"><div><p className="text-xs text-muted-foreground font-medium">Zatwierdzone</p><p className="text-2xl font-bold text-emerald-500">{stats.accepted}</p></div><div className="h-10 w-10 rounded-lg bg-emerald-500/10 flex items-center justify-center"><CheckCircle className="h-5 w-5 text-emerald-500" /></div></div></CardContent></Card>
+        <Card><CardContent className="pt-5 pb-4"><div className="flex items-center justify-between"><div><p className="text-xs text-muted-foreground font-medium">Przychód (zatw.)</p><p className="text-2xl font-bold text-primary">{stats.revenue.toLocaleString("pl-PL")} zł</p></div><div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center"><TrendingUp className="h-5 w-5 text-primary" /></div></div></CardContent></Card>
       </div>
 
-      {/* Revenue Categories */}
-      <Card>
-        <CardHeader className="pb-3">
-          <CardTitle className="text-base flex items-center gap-2"><BarChart3 className="h-4 w-4" /> Kategorie przychodów</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-3">
-            {REVENUE_CATEGORIES.map(cat => (
-              <div key={cat} className="p-3 rounded-lg border border-border bg-secondary/30 text-center">
-                <p className="text-[10px] text-muted-foreground uppercase tracking-wider font-semibold">{cat}</p>
-                <p className="text-sm font-bold mt-1">{(filteredQuotes.filter((q: any) => q.status === "zaakceptowana").length > 0 ? "—" : "0 zł")}</p>
-              </div>
-            ))}
-          </div>
-        </CardContent>
-      </Card>
+      <Tabs defaultValue="opportunities" className="w-full">
+        <TabsList className="bg-secondary p-1 rounded-xl">
+          <TabsTrigger value="opportunities" className="rounded-lg data-[state=active]:bg-card data-[state=active]:shadow-sm font-semibold">
+            <Target className="h-4 w-4 mr-1.5" /> Szanse ({(opportunities ?? []).filter((o: any) => o.status !== "archiwum").length})
+          </TabsTrigger>
+          <TabsTrigger value="quotes" className="rounded-lg data-[state=active]:bg-card data-[state=active]:shadow-sm font-semibold">
+            <FileText className="h-4 w-4 mr-1.5" /> Oferty ({(quotes ?? []).length})
+          </TabsTrigger>
+          <TabsTrigger value="categories" className="rounded-lg data-[state=active]:bg-card data-[state=active]:shadow-sm font-semibold">
+            <BarChart3 className="h-4 w-4 mr-1.5" /> Kategorie
+          </TabsTrigger>
+        </TabsList>
 
-      {/* Quotes Table */}
-      <Card>
-        <CardHeader>
-          <div className="flex items-center justify-between">
-            <div>
-              <CardTitle className="text-base">Oferty i zlecenia</CardTitle>
-              <CardDescription>Zarządzaj ofertami, zatwierdzaj i generuj zlecenia</CardDescription>
-            </div>
-            <div className="flex gap-2">
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                <Input placeholder="Szukaj..." value={search} onChange={e => setSearch(e.target.value)} className="pl-9 w-48" />
-              </div>
-              <Select value={statusFilter} onValueChange={setStatusFilter}>
-                <SelectTrigger className="w-40"><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">Wszystkie</SelectItem>
-                  <SelectItem value="wersja robocza">Wersja robocza</SelectItem>
-                  <SelectItem value="wysłana">Wysłane</SelectItem>
-                  <SelectItem value="zaakceptowana">Zaakceptowane</SelectItem>
-                  <SelectItem value="odrzucona">Odrzucone</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
+        {/* ---- OPPORTUNITIES TAB ---- */}
+        <TabsContent value="opportunities" className="mt-4 space-y-4">
+          <div className="flex items-center gap-3">
+            <Select value={oppStatusFilter} onValueChange={setOppStatusFilter}>
+              <SelectTrigger className="w-44"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="active">Aktywne</SelectItem>
+                <SelectItem value="archiwum">Archiwum</SelectItem>
+                <SelectItem value="all">Wszystkie</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
-        </CardHeader>
-        <CardContent>
-          {filteredQuotes.length === 0 ? (
-            <div className="text-center py-12 text-muted-foreground border-2 border-dashed border-border rounded-lg">
-              <DollarSign className="h-10 w-10 mx-auto mb-3 opacity-30" />
-              <p>Brak ofert</p>
-              <p className="text-sm mt-1">Utwórz pierwszą ofertę klikając "Nowa oferta".</p>
+
+          {filteredOpps.length === 0 ? (
+            <div className="text-center py-16 text-muted-foreground border-2 border-dashed border-border rounded-lg">
+              <Target className="h-10 w-10 mx-auto mb-3 opacity-30" />
+              <p>Brak szans sprzedażowych</p>
+              <p className="text-sm mt-1">Dodaj nowego potencjalnego klienta.</p>
             </div>
           ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Nr oferty</TableHead>
-                  <TableHead>Firma</TableHead>
-                  <TableHead>Kontakt</TableHead>
-                  <TableHead className="text-right">Rabat</TableHead>
-                  <TableHead className="text-right">Kwota netto</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead>Data</TableHead>
-                  <TableHead className="text-right">Akcje</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {filteredQuotes.map((q: any) => (
-                  <TableRow key={q.id} className="cursor-pointer hover:bg-secondary/50" onClick={() => setSelectedQuote(q)}>
-                    <TableCell className="font-mono text-sm font-medium">{q.quote_number}</TableCell>
-                    <TableCell>{q.company_name}</TableCell>
-                    <TableCell className="text-muted-foreground text-sm">{q.contact_name || "—"}</TableCell>
-                    <TableCell className="text-right text-sm">
-                      {Number(q.discount_percent) > 0 ? <span className="text-destructive font-medium">{q.discount_percent}%</span> : "—"}
-                    </TableCell>
-                    <TableCell className="text-right font-semibold">{Number(q.total).toLocaleString("pl-PL")} zł</TableCell>
-                    <TableCell>
-                      <Badge variant={STATUS_MAP[q.status]?.variant ?? "secondary"}>
-                        {STATUS_MAP[q.status]?.label ?? q.status}
-                      </Badge>
-                    </TableCell>
-                    <TableCell className="text-sm text-muted-foreground">{new Date(q.created_at).toLocaleDateString("pl-PL")}</TableCell>
-                    <TableCell className="text-right">
-                      <Button variant="ghost" size="icon" className="h-8 w-8" onClick={(e) => { e.stopPropagation(); setSelectedQuote(q); }}>
-                        <FileText className="h-4 w-4" />
-                      </Button>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+              {filteredOpps.map((opp: any) => {
+                const statusInfo = OPP_STATUS_MAP[opp.status] ?? OPP_STATUS_MAP["nowy_lead"];
+                const currentIdx = OPP_FLOW.indexOf(opp.status);
+                const nextStatus = currentIdx < OPP_FLOW.length - 2 ? OPP_FLOW[currentIdx + 1] : null;
+
+                return (
+                  <Card key={opp.id} className="group relative">
+                    <CardContent className="pt-5 pb-4 space-y-3">
+                      <div className="flex items-start justify-between">
+                        <div>
+                          <p className="font-semibold text-sm">{opp.company_name}</p>
+                          {opp.contact_name && <p className="text-xs text-muted-foreground">{opp.contact_name}</p>}
+                        </div>
+                        <Badge className={`${statusInfo.color} border-0 text-xs`}>{statusInfo.label}</Badge>
+                      </div>
+
+                      {opp.description && <p className="text-xs text-muted-foreground line-clamp-2">{opp.description}</p>}
+
+                      <div className="flex items-center justify-between text-xs">
+                        {opp.estimated_value > 0 && (
+                          <span className="font-semibold text-primary">{Number(opp.estimated_value).toLocaleString("pl-PL")} zł</span>
+                        )}
+                        <span className="text-muted-foreground">{new Date(opp.created_at).toLocaleDateString("pl-PL")}</span>
+                      </div>
+
+                      {opp.contact_phone && <p className="text-xs text-muted-foreground">📞 {opp.contact_phone}</p>}
+                      {opp.contact_email && <p className="text-xs text-muted-foreground">✉️ {opp.contact_email}</p>}
+
+                      {/* Actions */}
+                      {isSuperAdmin && opp.status !== "archiwum" && (
+                        <div className="flex gap-1.5 pt-2 border-t border-border flex-wrap">
+                          {nextStatus && nextStatus !== "archiwum" && (
+                            <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => handleOppStatusChange(opp.id, nextStatus)}>
+                              <ArrowRight className="mr-1 h-3 w-3" /> {OPP_STATUS_MAP[nextStatus]?.label}
+                            </Button>
+                          )}
+                          {opp.status === "oferta" && !opp.company_id && (
+                            <Button size="sm" variant="default" className="h-7 text-xs" onClick={() => handleConvertToCompany(opp)}>
+                              <Building2 className="mr-1 h-3 w-3" /> Utwórz firmę + zlecenie
+                            </Button>
+                          )}
+                          {opp.company_id && (
+                            <Badge variant="outline" className="text-xs"><Building2 className="mr-1 h-3 w-3" /> Firma utworzona</Badge>
+                          )}
+                          <Button size="sm" variant="ghost" className="h-7 text-xs text-muted-foreground" onClick={() => handleOppStatusChange(opp.id, "archiwum")}>
+                            <Archive className="mr-1 h-3 w-3" /> Archiwum
+                          </Button>
+                          <Button size="sm" variant="ghost" className="h-7 text-xs text-destructive" onClick={() => deleteOpportunity(opp.id, { onSuccess: () => toast.success("Usunięto.") })}>
+                            <Trash2 className="h-3 w-3" />
+                          </Button>
+                        </div>
+                      )}
+                    </CardContent>
+                  </Card>
+                );
+              })}
+            </div>
           )}
-        </CardContent>
-      </Card>
+        </TabsContent>
+
+        {/* ---- QUOTES TAB ---- */}
+        <TabsContent value="quotes" className="mt-4">
+          <Card>
+            <CardHeader>
+              <div className="flex items-center justify-between">
+                <div>
+                  <CardTitle className="text-base">Oferty i zlecenia</CardTitle>
+                  <CardDescription>Zarządzaj ofertami, zatwierdzaj i generuj zlecenia</CardDescription>
+                </div>
+                <div className="flex gap-2">
+                  <div className="relative">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                    <Input placeholder="Szukaj..." value={search} onChange={e => setSearch(e.target.value)} className="pl-9 w-48" />
+                  </div>
+                  <Select value={statusFilter} onValueChange={setStatusFilter}>
+                    <SelectTrigger className="w-40"><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">Wszystkie</SelectItem>
+                      <SelectItem value="wersja robocza">Wersja robocza</SelectItem>
+                      <SelectItem value="wysłana">Wysłane</SelectItem>
+                      <SelectItem value="zaakceptowana">Zaakceptowane</SelectItem>
+                      <SelectItem value="odrzucona">Odrzucone</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent>
+              {filteredQuotes.length === 0 ? (
+                <div className="text-center py-12 text-muted-foreground border-2 border-dashed border-border rounded-lg">
+                  <DollarSign className="h-10 w-10 mx-auto mb-3 opacity-30" />
+                  <p>Brak ofert</p>
+                </div>
+              ) : (
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Nr oferty</TableHead>
+                      <TableHead>Firma</TableHead>
+                      <TableHead>Kontakt</TableHead>
+                      <TableHead className="text-right">Rabat</TableHead>
+                      <TableHead className="text-right">Kwota netto</TableHead>
+                      <TableHead>Status</TableHead>
+                      <TableHead>Data</TableHead>
+                      <TableHead className="text-right">Akcje</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {filteredQuotes.map((q: any) => (
+                      <TableRow key={q.id} className="cursor-pointer hover:bg-secondary/50" onClick={() => setSelectedQuote(q)}>
+                        <TableCell className="font-mono text-sm font-medium">{q.quote_number}</TableCell>
+                        <TableCell>{q.company_name}</TableCell>
+                        <TableCell className="text-muted-foreground text-sm">{q.contact_name || "—"}</TableCell>
+                        <TableCell className="text-right text-sm">
+                          {Number(q.discount_percent) > 0 ? <span className="text-destructive font-medium">{q.discount_percent}%</span> : "—"}
+                        </TableCell>
+                        <TableCell className="text-right font-semibold">{Number(q.total).toLocaleString("pl-PL")} zł</TableCell>
+                        <TableCell>
+                          <Badge variant={STATUS_MAP[q.status]?.variant ?? "secondary"}>
+                            {STATUS_MAP[q.status]?.label ?? q.status}
+                          </Badge>
+                        </TableCell>
+                        <TableCell className="text-sm text-muted-foreground">{new Date(q.created_at).toLocaleDateString("pl-PL")}</TableCell>
+                        <TableCell className="text-right">
+                          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={(e) => { e.stopPropagation(); setSelectedQuote(q); }}>
+                            <FileText className="h-4 w-4" />
+                          </Button>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {/* ---- CATEGORIES TAB ---- */}
+        <TabsContent value="categories" className="mt-4">
+          <Card>
+            <CardHeader className="pb-3">
+              <CardTitle className="text-base flex items-center gap-2"><BarChart3 className="h-4 w-4" /> Kategorie przychodów</CardTitle>
+              <CardDescription>Podział usług wg kategorii</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-3">
+                {REVENUE_CATEGORIES.map(cat => {
+                  const catServices = (services ?? []).filter((s: any) => s.category === cat);
+                  return (
+                    <div key={cat} className="p-3 rounded-lg border border-border bg-secondary/30 text-center space-y-1">
+                      <p className="text-[10px] text-muted-foreground uppercase tracking-wider font-semibold">{cat}</p>
+                      <p className="text-lg font-bold">{catServices.length}</p>
+                      <p className="text-[10px] text-muted-foreground">usług</p>
+                    </div>
+                  );
+                })}
+              </div>
+
+              {/* Services list */}
+              <div className="mt-6">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Kategoria</TableHead>
+                      <TableHead>Usługa</TableHead>
+                      <TableHead>Jednostka</TableHead>
+                      <TableHead className="text-right">Cena netto</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {(services ?? []).map((s: any) => (
+                      <TableRow key={s.id}>
+                        <TableCell><Badge variant="outline" className="text-xs">{s.category}</Badge></TableCell>
+                        <TableCell className="font-medium">{s.name}</TableCell>
+                        <TableCell className="text-sm text-muted-foreground">{s.unit}</TableCell>
+                        <TableCell className="text-right font-semibold">{Number(s.unit_price).toLocaleString("pl-PL")} zł</TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+      </Tabs>
 
       <CreateQuoteDialog open={createQuoteOpen} onOpenChange={setCreateQuoteOpen} />
+      <AddOpportunityDialog open={addOppOpen} onOpenChange={setAddOppOpen} />
       <QuoteDetailDialog quote={selectedQuote} open={!!selectedQuote} onOpenChange={(o) => { if (!o) setSelectedQuote(null); }} />
     </div>
   );
