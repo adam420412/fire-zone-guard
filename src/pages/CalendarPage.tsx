@@ -214,7 +214,25 @@ export default function CalendarPage() {
         attendees: m.attendees,
       }));
 
-    return [...dayTasks, ...dayProtocols, ...dayAudits, ...dayMeetings];
+    const daySubtasks = (allSubtasks ?? [])
+      .filter((s: any) => {
+        if (!s.deadline || !isSameDay(new Date(s.deadline), day)) return false;
+        if (activeFilterId === "all") return true;
+        return s.assignee_id === activeFilterId || s.created_by === activeFilterId;
+      })
+      .map((s: any) => ({
+        id: s.id,
+        title: `📋 ${s.title}`,
+        status: s.status ?? "Nowe",
+        deadline: s.deadline,
+        buildingName: "",
+        priority: "średni",
+        _type: "subtask",
+        taskTitle: s.taskTitle,
+        assigneeName: s.assigneeName,
+      }));
+
+    return [...dayTasks, ...daySubtasks, ...dayProtocols, ...dayAudits, ...dayMeetings];
   };
 
   // Calendar grid
