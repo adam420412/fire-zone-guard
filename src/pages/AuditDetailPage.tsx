@@ -32,6 +32,7 @@ export default function AuditDetailPage() {
   const { mutate: updateChecklist } = useUpdateChecklist();
   const { mutate: batchCreateChecklist } = useBatchCreateChecklist();
   const { data: allProtocols } = useProtocols();
+  const { mutate: updateBuilding } = useUpdateBuilding();
   
   const { role } = useAuth();
   const isSuperAdmin = role === 'super_admin' || role === 'inspektor' || role === 'audytor';
