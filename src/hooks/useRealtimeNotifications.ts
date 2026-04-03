@@ -84,6 +84,20 @@ export function useRealtimeNotifications() {
             });
           }
 
+          // Telegram: status change
+          if (task.status !== old.status) {
+            const recipients: string[] = [];
+            if (task.assignee_id) recipients.push(task.assignee_id);
+            sendTelegramNotification({
+              type: "status_change",
+              task_id: task.id,
+              task_title: task.title,
+              old_status: old.status,
+              new_status: task.status,
+              recipient_profile_ids: recipients,
+            });
+          }
+
           if (task.status === "Zamknięte" && old.status !== "Zamknięte") {
             addNotification({
               type: "info",
