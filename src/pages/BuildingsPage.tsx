@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { useBuildings, useCompanies, useCreateBuilding } from "@/hooks/useSupabaseData";
 import { useAuth } from "@/hooks/useAuth";
 import { safetyStatusConfig } from "@/lib/constants";
@@ -97,9 +97,20 @@ function CreateBuildingDialog({ open, onOpenChange }: { open: boolean, onOpenCha
 
 export default function BuildingsPage() {
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const companyFilter = searchParams.get("company");
   const { data: buildings, isLoading } = useBuildings();
+  const { data: companies } = useCompanies();
   const { role } = useAuth();
   const [isCreateOpen, setIsCreateOpen] = useState(false);
+
+  const filteredBuildings = companyFilter
+    ? (buildings ?? []).filter((b: any) => b.company_id === companyFilter)
+    : (buildings ?? []);
+  
+  const filterCompanyName = companyFilter
+    ? companies?.find(c => c.id === companyFilter)?.name
+    : null;
 
   const handleExportCSV = () => {
     if (!buildings) return;
@@ -139,8 +150,16 @@ export default function BuildingsPage() {
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight">Obiekty</h1>
-          <p className="text-sm text-muted-foreground">Lista wszystkich obiektów w systemie</p>
+          <h1 className="text-2xl font-bold tracking-tight">
+            Obiekty {filterCompanyName && <span className="text-primary">— {filterCompanyName}</span>}
+          </h1>
+          <p className="text-sm text-muted-foreground">
+            {filterCompanyName ? (
+              <button onClick={() => setSearchParams({})} className="hover:underline text-primary">
+                ← Pokaż wszystkie obiekty
+              </button>
+            ) : "Lista wszystkich obiektów w systemie"}
+          </p>
         </div>
         <div className="flex items-center gap-2">
           {role === 'super_admin' && (
@@ -161,7 +180,7 @@ export default function BuildingsPage() {
       <CreateBuildingDialog open={isCreateOpen} onOpenChange={setIsCreateOpen} />
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-        {(buildings ?? []).map((building: any) => {
+        {filteredBuildings.map((building: any) => {
           const status = ((building.safetyStatus in safetyStatusConfig) ? building.safetyStatus : "bezpieczny") as SafetyStatus;
           const statusConf = safetyStatusConfig[status];
           const StatusIcon = statusConf?.icon ?? Shield;
