@@ -19,6 +19,7 @@ import { toast } from "sonner";
 const WEEKDAYS = ["Pon", "Wt", "Śr", "Czw", "Pt", "Sob", "Nie"];
 
 function getTaskColor(task: any) {
+  if (task._type === 'subtask') return "bg-indigo-500/15 text-indigo-400 border-indigo-500/30";
   if (task._type === 'meeting') return "bg-accent/30 text-accent-foreground border-accent/40";
   if (task._type === 'audit') return "bg-secondary text-secondary-foreground border-border";
   if (task._type === 'protocol') return "bg-muted text-muted-foreground border-border";
