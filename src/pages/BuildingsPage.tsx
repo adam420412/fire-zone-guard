@@ -150,8 +150,16 @@ export default function BuildingsPage() {
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight">Obiekty</h1>
-          <p className="text-sm text-muted-foreground">Lista wszystkich obiektów w systemie</p>
+          <h1 className="text-2xl font-bold tracking-tight">
+            Obiekty {filterCompanyName && <span className="text-primary">— {filterCompanyName}</span>}
+          </h1>
+          <p className="text-sm text-muted-foreground">
+            {filterCompanyName ? (
+              <button onClick={() => setSearchParams({})} className="hover:underline text-primary">
+                ← Pokaż wszystkie obiekty
+              </button>
+            ) : "Lista wszystkich obiektów w systemie"}
+          </p>
         </div>
         <div className="flex items-center gap-2">
           {role === 'super_admin' && (
