@@ -880,10 +880,13 @@ export type Database = {
       }
       quotes: {
         Row: {
+          approved_at: string | null
+          approved_by: string | null
           company_id: string
           contact_id: string | null
           created_at: string
           created_by: string | null
+          discount_percent: number | null
           id: string
           notes: string | null
           quote_number: string
@@ -892,10 +895,13 @@ export type Database = {
           valid_until: string | null
         }
         Insert: {
+          approved_at?: string | null
+          approved_by?: string | null
           company_id: string
           contact_id?: string | null
           created_at?: string
           created_by?: string | null
+          discount_percent?: number | null
           id?: string
           notes?: string | null
           quote_number?: string
@@ -904,10 +910,13 @@ export type Database = {
           valid_until?: string | null
         }
         Update: {
+          approved_at?: string | null
+          approved_by?: string | null
           company_id?: string
           contact_id?: string | null
           created_at?: string
           created_by?: string | null
+          discount_percent?: number | null
           id?: string
           notes?: string | null
           quote_number?: string
