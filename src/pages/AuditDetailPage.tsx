@@ -1,8 +1,9 @@
 import { useState, useMemo } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { ChevronLeft, Save, Plus, Printer, Trash2, FileDown, FileText, Users, Shield, ClipboardCheck } from "lucide-react";
+import { ChevronLeft, Save, Plus, Printer, Trash2, FileDown, FileText, Users, Shield, ClipboardCheck, Package, QrCode } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAudits, useAuditChecklists, useCreateChecklist, useDeleteChecklist, useUpdateChecklist, useBatchCreateChecklist, useProtocols, useDocuments } from "@/hooks/useSupabaseData";
+import { useBuildingDevices } from "@/hooks/useBuildingData";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -40,12 +41,14 @@ export default function AuditDetailPage() {
   const [newItem, setNewItem] = useState({ category: "Ogólne", question: "", status: "BRAK", notes: "" });
   const [ibpNotes, setIbpNotes] = useState("");
   const [occupants, setOccupants] = useState("");
+  const [qrDevice, setQrDevice] = useState<any>(null);
   
   const audit = audits?.find(a => a.id === id);
   const buildingId = audit ? (audit as any).building_id : null;
   
   // Get documents and protocols for this building
   const { data: documents } = useDocuments(buildingId || "");
+  const { data: devices } = useBuildingDevices(buildingId || "");
   const buildingProtocols = useMemo(() => {
     if (!allProtocols || !buildingId) return [];
     return allProtocols.filter((p: any) => p.building_id === buildingId);
@@ -184,9 +187,12 @@ export default function AuditDetailPage() {
         <div className="md:col-span-3">
           {/* 4 Tabs */}
           <Tabs defaultValue="checklist" className="w-full">
-            <TabsList className="grid w-full grid-cols-4 bg-secondary p-1 rounded-xl">
+            <TabsList className="grid w-full grid-cols-5 bg-secondary p-1 rounded-xl">
               <TabsTrigger value="checklist" className="rounded-lg data-[state=active]:bg-card data-[state=active]:shadow-sm text-xs font-semibold">
                 <ClipboardCheck className="h-3.5 w-3.5 mr-1.5" /> Checklist
+              </TabsTrigger>
+              <TabsTrigger value="equipment" className="rounded-lg data-[state=active]:bg-card data-[state=active]:shadow-sm text-xs font-semibold">
+                <Package className="h-3.5 w-3.5 mr-1.5" /> Sprzęt
               </TabsTrigger>
               <TabsTrigger value="documents" className="rounded-lg data-[state=active]:bg-card data-[state=active]:shadow-sm text-xs font-semibold">
                 <FileText className="h-3.5 w-3.5 mr-1.5" /> Dokumenty
@@ -296,7 +302,81 @@ export default function AuditDetailPage() {
               </Card>
             </TabsContent>
 
-            {/* TAB 2: Dokumenty & Protokoły */}
+            {/* TAB 2: Sprzęt / Ewidencja */}
+            <TabsContent value="equipment" className="mt-4">
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-base flex items-center gap-2">
+                    <Package className="h-5 w-5 text-primary" />
+                    Ewidencja sprzętu PPOŻ
+                  </CardTitle>
+                  <CardDescription>
+                    Inwentaryzacja urządzeń w obiekcie — {(devices ?? []).length} szt. łącznie
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  {(devices ?? []).length === 0 ? (
+                    <div className="text-center py-10 text-muted-foreground border-2 border-dashed border-border rounded-md">
+                      <p>Brak urządzeń w tym obiekcie.</p>
+                      <p className="text-sm mt-1">Dodaj urządzenia w zakładce budynku.</p>
+                    </div>
+                  ) : (
+                    <>
+                      {/* Summary by type */}
+                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
+                        {Object.entries(
+                          (devices ?? []).reduce((acc: Record<string, number>, d: any) => {
+                            const type = d.device_types?.name || "Inne";
+                            acc[type] = (acc[type] || 0) + 1;
+                            return acc;
+                          }, {})
+                        ).map(([type, count]) => (
+                          <div key={type} className="rounded-lg border border-border p-3 text-center bg-secondary/30">
+                            <p className="text-2xl font-bold text-primary">{count as number}</p>
+                            <p className="text-xs text-muted-foreground">{type}</p>
+                          </div>
+                        ))}
+                      </div>
+
+                      <Table>
+                        <TableHeader>
+                          <TableRow>
+                            <TableHead>Nazwa</TableHead>
+                            <TableHead>Typ</TableHead>
+                            <TableHead>Lokalizacja</TableHead>
+                            <TableHead>SN</TableHead>
+                            <TableHead>Status</TableHead>
+                            <TableHead className="text-right">QR</TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {(devices ?? []).map((device: any) => (
+                            <TableRow key={device.id}>
+                              <TableCell className="font-medium">{device.name}</TableCell>
+                              <TableCell className="text-muted-foreground text-sm">{device.device_types?.name || "-"}</TableCell>
+                              <TableCell className="text-sm">{device.location_in_building || "-"}</TableCell>
+                              <TableCell className="text-xs text-muted-foreground font-mono">{device.serial_number || "-"}</TableCell>
+                              <TableCell>
+                                <Badge variant={device.status === "aktywne" ? "default" : "destructive"} className="text-xs">
+                                  {device.status}
+                                </Badge>
+                              </TableCell>
+                              <TableCell className="text-right">
+                                <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setQrDevice(device)} title="Pokaż kod QR">
+                                  <QrCode className="h-4 w-4" />
+                                </Button>
+                              </TableCell>
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
+                    </>
+                  )}
+                </CardContent>
+              </Card>
+            </TabsContent>
+
+            {/* TAB 3: Dokumenty & Protokoły */}
             <TabsContent value="documents" className="mt-4 space-y-4">
               <Card>
                 <CardHeader>
@@ -550,6 +630,45 @@ export default function AuditDetailPage() {
         onConfirm={handleGeneratePDF}
         title="Podpisz Raport Audytu"
       />
+
+      {/* QR Code Dialog */}
+      <Dialog open={!!qrDevice} onOpenChange={(o) => !o && setQrDevice(null)}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Kod QR — {qrDevice?.name}</DialogTitle>
+            <DialogDescription>{qrDevice?.device_types?.name} • {qrDevice?.location_in_building || "Brak lokalizacji"}</DialogDescription>
+          </DialogHeader>
+          <div className="flex flex-col items-center gap-4 py-4" id="qr-print-area">
+            <div className="bg-white p-4 rounded-lg">
+              <img
+                src={`https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(`DEVICE:${qrDevice?.id}|${qrDevice?.name}|SN:${qrDevice?.serial_number || 'N/A'}`)}`}
+                alt="QR Code"
+                className="w-48 h-48"
+              />
+            </div>
+            <div className="text-center space-y-1">
+              <p className="font-semibold text-sm">{qrDevice?.name}</p>
+              <p className="text-xs text-muted-foreground">SN: {qrDevice?.serial_number || "brak"}</p>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setQrDevice(null)}>Zamknij</Button>
+            <Button onClick={() => {
+              const printWindow = window.open('', '_blank');
+              if (printWindow) {
+                printWindow.document.write(`<html><head><title>QR - ${qrDevice?.name}</title></head><body style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:100vh;font-family:sans-serif;">
+                  <img src="https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(`DEVICE:${qrDevice?.id}|${qrDevice?.name}|SN:${qrDevice?.serial_number || 'N/A'}`)}" />
+                  <h2>${qrDevice?.name}</h2><p>SN: ${qrDevice?.serial_number || 'brak'}</p><p>${qrDevice?.location_in_building || ''}</p>
+                </body></html>`);
+                printWindow.document.close();
+                printWindow.print();
+              }
+            }}>
+              <Printer className="mr-2 h-4 w-4" /> Drukuj
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
