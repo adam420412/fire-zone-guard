@@ -41,6 +41,7 @@ export default function AuditDetailPage() {
   const [newItem, setNewItem] = useState({ category: "Ogólne", question: "", status: "BRAK", notes: "" });
   const [ibpNotes, setIbpNotes] = useState("");
   const [occupants, setOccupants] = useState("");
+  const [qrDevice, setQrDevice] = useState<any>(null);
   
   const audit = audits?.find(a => a.id === id);
   const buildingId = audit ? (audit as any).building_id : null;
