@@ -96,11 +96,13 @@ function ProfileTab() {
 
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
+  const [telegramChatId, setTelegramChatId] = useState("");
   const [initialized, setInitialized] = useState(false);
 
   if (profile && !initialized) {
     setName(profile.name ?? "");
     setPhone((profile as any).phone ?? "");
+    setTelegramChatId((profile as any).telegram_chat_id ?? "");
     setInitialized(true);
   }
 
