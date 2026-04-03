@@ -25,6 +25,7 @@ const adminNavItems = [
   { icon: BarChart2, label: "Analityka", path: "/analytics" },
   { icon: CalendarDays, label: "Kalendarz", path: "/calendar" },
   { icon: Factory, label: "Producenci", path: "/manufacturers" },
+  { icon: Contact, label: "CRM", path: "/crm" },
   { icon: Settings, label: "Ustawienia", path: "/settings" },
 ];
 
