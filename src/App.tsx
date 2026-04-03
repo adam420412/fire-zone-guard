@@ -23,6 +23,7 @@ import MeetingsPage from "@/pages/MeetingsPage";
 import EmployeesPage from "@/pages/EmployeesPage";
 import AnalyticsPage from "@/pages/AnalyticsPage";
 import CalendarPage from "@/pages/CalendarPage";
+import ManufacturersPage from "@/pages/ManufacturersPage";
 import NotFound from "./pages/NotFound";
 import { Loader2 } from "lucide-react";
 
@@ -74,6 +75,7 @@ function ProtectedRoutes() {
             <Route path="/employees" element={<EmployeesPage />} />
             <Route path="/analytics" element={<AnalyticsPage />} />
             <Route path="/calendar" element={<CalendarPage />} />
+            <Route path="/manufacturers" element={<ManufacturersPage />} />
             <Route path="/settings" element={<SettingsPage />} />
             <Route path="*" element={<NotFound />} />
           </>
