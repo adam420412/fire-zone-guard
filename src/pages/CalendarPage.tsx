@@ -1,5 +1,5 @@
 import { useState, useMemo } from "react";
-import { useTasks, useProfiles, useProtocols, useAudits, useMeetings, useCompanies, useBuildings, useCreateMeeting } from "@/hooks/useSupabaseData";
+import { useTasks, useProfiles, useProtocols, useAudits, useMeetings, useCompanies, useBuildings, useCreateMeeting, useAllSubtasks } from "@/hooks/useSupabaseData";
 import { useAuth } from "@/hooks/useAuth";
 import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameMonth, isSameDay, isToday, addMonths, subMonths, getDay } from "date-fns";
 import { pl } from "date-fns/locale";
