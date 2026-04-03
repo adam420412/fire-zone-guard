@@ -118,6 +118,7 @@ export default function CalendarPage() {
   const { data: audits, isLoading: auL } = useAudits();
   const { data: meetings, isLoading: mtL } = useMeetings();
   const { data: profiles, isLoading: pfL } = useProfiles();
+  const { data: allSubtasks } = useAllSubtasks();
   const { role, profileId } = useAuth();
 
   const isAdmin = role === "super_admin" || role === "admin";
