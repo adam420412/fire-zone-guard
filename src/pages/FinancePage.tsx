@@ -509,7 +509,7 @@ export default function FinancePage() {
   };
 
   const handleConvertToCompany = (opp: any) => {
-    createCompany({ name: opp.company_name, address: "", nip: "" }, {
+    createCompany({ name: opp.company_name }, {
       onSuccess: (newCompany: any) => {
         updateOpportunity({ id: opp.id, updates: { status: "zlecenie", company_id: newCompany.id, updated_at: new Date().toISOString() } }, {
           onSuccess: () => toast.success(`"${opp.company_name}" przekształcono w firmę i zlecenie!`),
