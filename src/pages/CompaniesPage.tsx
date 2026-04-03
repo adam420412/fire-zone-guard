@@ -81,6 +81,10 @@ function CreateCompanyDialog({ open, onOpenChange }: { open: boolean; onOpenChan
               <Label>Nazwa Firmy</Label>
               <Input value={name} onChange={e => setName(e.target.value)} placeholder="Nazwa kontrahenta" required />
             </div>
+            <div className="space-y-2">
+              <Label>Adres</Label>
+              <Input value={address} onChange={e => setAddress(e.target.value)} placeholder="ul. Przykładowa 1, 00-001 Warszawa" />
+            </div>
           </div>
           <DialogFooter>
             <Button type="button" variant="ghost" onClick={() => onOpenChange(false)}>Anuluj</Button>
