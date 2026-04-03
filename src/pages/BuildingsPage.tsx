@@ -180,7 +180,7 @@ export default function BuildingsPage() {
       <CreateBuildingDialog open={isCreateOpen} onOpenChange={setIsCreateOpen} />
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-        {(buildings ?? []).map((building: any) => {
+        {filteredBuildings.map((building: any) => {
           const status = ((building.safetyStatus in safetyStatusConfig) ? building.safetyStatus : "bezpieczny") as SafetyStatus;
           const statusConf = safetyStatusConfig[status];
           const StatusIcon = statusConf?.icon ?? Shield;
