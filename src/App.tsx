@@ -25,6 +25,7 @@ import AnalyticsPage from "@/pages/AnalyticsPage";
 import CalendarPage from "@/pages/CalendarPage";
 import ManufacturersPage from "@/pages/ManufacturersPage";
 import CrmPage from "@/pages/CrmPage";
+import FinancePage from "@/pages/FinancePage";
 import NotFound from "./pages/NotFound";
 import { Loader2 } from "lucide-react";
 
