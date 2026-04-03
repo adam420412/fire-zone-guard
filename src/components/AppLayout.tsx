@@ -24,6 +24,7 @@ const adminNavItems = [
   { icon: UsersRound, label: "Zespół", path: "/employees" },
   { icon: BarChart2, label: "Analityka", path: "/analytics" },
   { icon: CalendarDays, label: "Kalendarz", path: "/calendar" },
+  { icon: Factory, label: "Producenci", path: "/manufacturers" },
   { icon: Settings, label: "Ustawienia", path: "/settings" },
 ];
 
