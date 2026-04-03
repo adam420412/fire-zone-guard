@@ -466,6 +466,7 @@ export default function CalendarPage() {
                 {!selectedDay && <p className="text-xs text-muted-foreground/60 mt-1">Kliknij w dzień aby zobaczyć zadania</p>}
               </div>
             ) : (
+              dayTasks.map((task) => (
                 <button
                   key={task.id}
                   onClick={() => { if (task._type === "task") setSelectedTask(task); }}
@@ -514,6 +515,7 @@ export default function CalendarPage() {
                     </div>
                   </div>
                 </button>
+              ))
             )}
           </div>
         </div>
