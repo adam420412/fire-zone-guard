@@ -149,7 +149,8 @@ export default function TaskDetailDialog({ task, open, onOpenChange }: Props) {
         description: newSubtask.description || null,
         deadline: newSubtask.deadline || null,
         assignee_id: newSubtask.assignee_id || null,
-      });
+        created_by: profileId || null,
+      } as any);
       setNewSubtask({ title: "", description: "", deadline: "", assignee_id: "" });
       toast({ title: "Podzadanie dodane" });
     } catch (err: any) {
