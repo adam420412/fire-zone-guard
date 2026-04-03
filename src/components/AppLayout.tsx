@@ -26,6 +26,7 @@ const adminNavItems = [
   { icon: CalendarDays, label: "Kalendarz", path: "/calendar" },
   { icon: Factory, label: "Producenci", path: "/manufacturers" },
   { icon: Contact, label: "CRM", path: "/crm" },
+  { icon: DollarSign, label: "Finanse", path: "/finance" },
   { icon: Settings, label: "Ustawienia", path: "/settings" },
 ];
 
