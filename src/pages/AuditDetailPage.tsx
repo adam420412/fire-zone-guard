@@ -1,9 +1,11 @@
 import { useState, useMemo } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { ChevronLeft, Save, Plus, Printer, Trash2, FileDown, FileText, Users, Shield, ClipboardCheck, Package, QrCode } from "lucide-react";
+import { ChevronLeft, Save, Plus, Printer, Trash2, FileDown, FileText, Users, Shield, ClipboardCheck, Package, QrCode, MapPin } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { useAudits, useAuditChecklists, useCreateChecklist, useDeleteChecklist, useUpdateChecklist, useBatchCreateChecklist, useProtocols, useDocuments } from "@/hooks/useSupabaseData";
-import { useBuildingDevices } from "@/hooks/useBuildingData";
+import { useAudits, useAuditChecklists, useCreateChecklist, useDeleteChecklist, useUpdateChecklist, useBatchCreateChecklist, useProtocols, useDocuments, useUpdateBuilding } from "@/hooks/useSupabaseData";
+import { useBuildingDevices, useBuildingDetail } from "@/hooks/useBuildingData";
+import { FloorPlanViewer } from "@/components/FloorPlanViewer";
+import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -30,6 +32,7 @@ export default function AuditDetailPage() {
   const { mutate: updateChecklist } = useUpdateChecklist();
   const { mutate: batchCreateChecklist } = useBatchCreateChecklist();
   const { data: allProtocols } = useProtocols();
+  const { mutate: updateBuilding } = useUpdateBuilding();
   
   const { role } = useAuth();
   const isSuperAdmin = role === 'super_admin' || role === 'inspektor' || role === 'audytor';
@@ -46,9 +49,20 @@ export default function AuditDetailPage() {
   const audit = audits?.find(a => a.id === id);
   const buildingId = audit ? (audit as any).building_id : null;
   
-  // Get documents and protocols for this building
+  // Get documents, devices and building detail for this building
   const { data: documents } = useDocuments(buildingId || "");
   const { data: devices } = useBuildingDevices(buildingId || "");
+  const { data: buildingDetail } = useBuildingDetail(buildingId || "");
+
+  const handleFloorPlanUploaded = (url: string) => {
+    if (!buildingId) return;
+    updateBuilding({ id: buildingId, updates: { floor_plan_url: url } });
+  };
+
+  const handleDevicePositioned = async (deviceId: string, x: number, y: number) => {
+    const { error } = await supabase.from("devices").update({ floor_plan_x: x, floor_plan_y: y } as any).eq("id", deviceId);
+    if (error) toast.error("Błąd zapisu pozycji");
+  };
   const buildingProtocols = useMemo(() => {
     if (!allProtocols || !buildingId) return [];
     return allProtocols.filter((p: any) => p.building_id === buildingId);
@@ -372,6 +386,29 @@ export default function AuditDetailPage() {
                       </Table>
                     </>
                   )}
+                </CardContent>
+              </Card>
+
+              {/* Floor Plan Section */}
+              <Card className="mt-4">
+                <CardHeader>
+                  <CardTitle className="text-base flex items-center gap-2">
+                    <MapPin className="h-5 w-5 text-primary" />
+                    Rzut budynku z oznaczeniem urządzeń
+                  </CardTitle>
+                  <CardDescription>
+                    Prześlij rzut projektowy i oznacz lokalizację urządzeń dla zespołu
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <FloorPlanViewer
+                    buildingId={buildingId || ""}
+                    floorPlanUrl={(buildingDetail as any)?.floor_plan_url || null}
+                    devices={(devices ?? []) as any[]}
+                    onFloorPlanUploaded={handleFloorPlanUploaded}
+                    onDevicePositioned={handleDevicePositioned}
+                    editable={isSuperAdmin}
+                  />
                 </CardContent>
               </Card>
             </TabsContent>

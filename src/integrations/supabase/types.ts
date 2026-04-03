@@ -191,6 +191,7 @@ export type Database = {
           company_id: string
           created_at: string
           evacuation_last_date: string | null
+          floor_plan_url: string | null
           ibp_valid_until: string | null
           id: string
           name: string
@@ -200,6 +201,7 @@ export type Database = {
           company_id: string
           created_at?: string
           evacuation_last_date?: string | null
+          floor_plan_url?: string | null
           ibp_valid_until?: string | null
           id?: string
           name: string
@@ -209,6 +211,7 @@ export type Database = {
           company_id?: string
           created_at?: string
           evacuation_last_date?: string | null
+          floor_plan_url?: string | null
           ibp_valid_until?: string | null
           id?: string
           name?: string
@@ -362,6 +365,8 @@ export type Database = {
           building_id: string
           created_at: string
           device_type_id: string
+          floor_plan_x: number | null
+          floor_plan_y: number | null
           id: string
           installed_at: string | null
           last_service_date: string | null
@@ -379,6 +384,8 @@ export type Database = {
           building_id: string
           created_at?: string
           device_type_id: string
+          floor_plan_x?: number | null
+          floor_plan_y?: number | null
           id?: string
           installed_at?: string | null
           last_service_date?: string | null
@@ -396,6 +403,8 @@ export type Database = {
           building_id?: string
           created_at?: string
           device_type_id?: string
+          floor_plan_x?: number | null
+          floor_plan_y?: number | null
           id?: string
           installed_at?: string | null
           last_service_date?: string | null
