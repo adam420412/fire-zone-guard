@@ -48,6 +48,7 @@ export default function AuditDetailPage() {
   
   // Get documents and protocols for this building
   const { data: documents } = useDocuments(buildingId || "");
+  const { data: devices } = useBuildingDevices(buildingId || "");
   const buildingProtocols = useMemo(() => {
     if (!allProtocols || !buildingId) return [];
     return allProtocols.filter((p: any) => p.building_id === buildingId);
