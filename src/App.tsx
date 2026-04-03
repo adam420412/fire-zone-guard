@@ -75,6 +75,7 @@ function ProtectedRoutes() {
             <Route path="/employees" element={<EmployeesPage />} />
             <Route path="/analytics" element={<AnalyticsPage />} />
             <Route path="/calendar" element={<CalendarPage />} />
+            <Route path="/manufacturers" element={<ManufacturersPage />} />
             <Route path="/settings" element={<SettingsPage />} />
             <Route path="*" element={<NotFound />} />
           </>
