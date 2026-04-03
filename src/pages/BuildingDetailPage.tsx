@@ -141,6 +141,7 @@ export default function BuildingDetailPage() {
   const [showAddDevice, setShowAddDevice] = useState(false);
   const [showEditBuilding, setShowEditBuilding] = useState(false);
   const [qrDevice, setQrDevice] = useState<any>(null);
+  const [repairDevice, setRepairDevice] = useState<any>(null);
   
   const { data: documents, isLoading: docsLoading } = useDocuments(id || "");
   const uploadDoc = useUploadDocument();
