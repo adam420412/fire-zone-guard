@@ -29,6 +29,7 @@ function CreateCompanyDialog({ open, onOpenChange }: { open: boolean; onOpenChan
   const { mutate: createCompany, isPending } = useCreateCompany();
   const [nip, setNip] = useState("");
   const [name, setName] = useState("");
+  const [address, setAddress] = useState("");
   const [isSearching, setIsSearching] = useState(false);
 
   const handleNipSearch = async () => {
@@ -36,6 +37,7 @@ function CreateCompanyDialog({ open, onOpenChange }: { open: boolean; onOpenChan
     try {
       const result = await fetchCompanyByNIP(nip);
       setName(result.name);
+      setAddress(result.address);
       toast.success("Dane pobrane z rejestru MF!");
     } catch (err: any) {
       toast.error(err.message || "Nie udało się pobrać danych.");
@@ -47,11 +49,11 @@ function CreateCompanyDialog({ open, onOpenChange }: { open: boolean; onOpenChan
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!name.trim()) { toast.error("Podaj nazwę firmy."); return; }
-    createCompany({ name: name.trim() }, {
+    createCompany({ name: name.trim(), nip: nip.replace(/[\s-]/g, ""), address: address.trim() } as any, {
       onSuccess: () => {
         toast.success("Klient został dodany!");
         onOpenChange(false);
-        setNip(""); setName("");
+        setNip(""); setName(""); setAddress("");
       },
       onError: (err) => toast.error("Błąd: " + err.message),
     });
@@ -78,6 +80,10 @@ function CreateCompanyDialog({ open, onOpenChange }: { open: boolean; onOpenChan
             <div className="space-y-2">
               <Label>Nazwa Firmy</Label>
               <Input value={name} onChange={e => setName(e.target.value)} placeholder="Nazwa kontrahenta" required />
+            </div>
+            <div className="space-y-2">
+              <Label>Adres</Label>
+              <Input value={address} onChange={e => setAddress(e.target.value)} placeholder="ul. Przykładowa 1, 00-001 Warszawa" />
             </div>
           </div>
           <DialogFooter>
