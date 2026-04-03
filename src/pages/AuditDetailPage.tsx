@@ -302,7 +302,81 @@ export default function AuditDetailPage() {
               </Card>
             </TabsContent>
 
-            {/* TAB 2: Dokumenty & Protokoły */}
+            {/* TAB 2: Sprzęt / Ewidencja */}
+            <TabsContent value="equipment" className="mt-4">
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-base flex items-center gap-2">
+                    <Package className="h-5 w-5 text-primary" />
+                    Ewidencja sprzętu PPOŻ
+                  </CardTitle>
+                  <CardDescription>
+                    Inwentaryzacja urządzeń w obiekcie — {(devices ?? []).length} szt. łącznie
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  {(devices ?? []).length === 0 ? (
+                    <div className="text-center py-10 text-muted-foreground border-2 border-dashed border-border rounded-md">
+                      <p>Brak urządzeń w tym obiekcie.</p>
+                      <p className="text-sm mt-1">Dodaj urządzenia w zakładce budynku.</p>
+                    </div>
+                  ) : (
+                    <>
+                      {/* Summary by type */}
+                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
+                        {Object.entries(
+                          (devices ?? []).reduce((acc: Record<string, number>, d: any) => {
+                            const type = d.device_types?.name || "Inne";
+                            acc[type] = (acc[type] || 0) + 1;
+                            return acc;
+                          }, {})
+                        ).map(([type, count]) => (
+                          <div key={type} className="rounded-lg border border-border p-3 text-center bg-secondary/30">
+                            <p className="text-2xl font-bold text-primary">{count as number}</p>
+                            <p className="text-xs text-muted-foreground">{type}</p>
+                          </div>
+                        ))}
+                      </div>
+
+                      <Table>
+                        <TableHeader>
+                          <TableRow>
+                            <TableHead>Nazwa</TableHead>
+                            <TableHead>Typ</TableHead>
+                            <TableHead>Lokalizacja</TableHead>
+                            <TableHead>SN</TableHead>
+                            <TableHead>Status</TableHead>
+                            <TableHead className="text-right">QR</TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {(devices ?? []).map((device: any) => (
+                            <TableRow key={device.id}>
+                              <TableCell className="font-medium">{device.name}</TableCell>
+                              <TableCell className="text-muted-foreground text-sm">{device.device_types?.name || "-"}</TableCell>
+                              <TableCell className="text-sm">{device.location_in_building || "-"}</TableCell>
+                              <TableCell className="text-xs text-muted-foreground font-mono">{device.serial_number || "-"}</TableCell>
+                              <TableCell>
+                                <Badge variant={device.status === "aktywne" ? "default" : "destructive"} className="text-xs">
+                                  {device.status}
+                                </Badge>
+                              </TableCell>
+                              <TableCell className="text-right">
+                                <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setQrDevice(device)} title="Pokaż kod QR">
+                                  <QrCode className="h-4 w-4" />
+                                </Button>
+                              </TableCell>
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
+                    </>
+                  )}
+                </CardContent>
+              </Card>
+            </TabsContent>
+
+            {/* TAB 3: Dokumenty & Protokoły */}
             <TabsContent value="documents" className="mt-4 space-y-4">
               <Card>
                 <CardHeader>
