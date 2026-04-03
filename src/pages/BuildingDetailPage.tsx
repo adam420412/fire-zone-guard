@@ -27,8 +27,9 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   ArrowLeft, Building2, MapPin, Shield, Loader2, Plus,
   CheckCircle2, AlertTriangle, Clock, Wrench, ClipboardList,
-  ChevronDown, ChevronRight, Package, Edit, QrCode, Save, Printer, FileText, UploadCloud, FolderOpen, Trash2, Download
+  ChevronDown, ChevronRight, Package, Edit, QrCode, Save, Printer, FileText, UploadCloud, FolderOpen, Trash2, Download, Hammer
 } from "lucide-react";
+import CreateTaskDialog from "@/components/CreateTaskDialog";
 
 function EditBuildingDialog({ building, open, onOpenChange }: { building: any, open: boolean, onOpenChange: (o: boolean) => void }) {
   const { data: companies } = useCompanies();
@@ -140,6 +141,7 @@ export default function BuildingDetailPage() {
   const [showAddDevice, setShowAddDevice] = useState(false);
   const [showEditBuilding, setShowEditBuilding] = useState(false);
   const [qrDevice, setQrDevice] = useState<any>(null);
+  const [repairDevice, setRepairDevice] = useState<any>(null);
   
   const { data: documents, isLoading: docsLoading } = useDocuments(id || "");
   const uploadDoc = useUploadDocument();
@@ -434,13 +436,22 @@ export default function BuildingDetailPage() {
                               </span>
                             </td>
                             <td className="px-5 py-4 text-right">
-                              <button 
-                                onClick={() => setQrDevice(device)}
-                                className="inline-flex items-center justify-center p-2 hover:bg-secondary rounded-lg text-muted-foreground hover:text-primary transition-colors focus:outline-none focus:ring-2 focus:ring-primary/50"
-                                title="Karta i Kod QR"
-                              >
-                                <QrCode className="h-5 w-5" />
-                              </button>
+                              <div className="flex items-center justify-end gap-1">
+                                <button 
+                                  onClick={() => setRepairDevice(device)}
+                                  className="inline-flex items-center justify-center p-2 hover:bg-warning/10 rounded-lg text-muted-foreground hover:text-warning transition-colors"
+                                  title="Zgłoś naprawę — utwórz zadanie serwisowe"
+                                >
+                                  <Hammer className="h-4 w-4" />
+                                </button>
+                                <button 
+                                  onClick={() => setQrDevice(device)}
+                                  className="inline-flex items-center justify-center p-2 hover:bg-secondary rounded-lg text-muted-foreground hover:text-primary transition-colors"
+                                  title="Karta i Kod QR"
+                                >
+                                  <QrCode className="h-5 w-5" />
+                                </button>
+                              </div>
                             </td>
                           </tr>
                         );
@@ -623,6 +634,22 @@ export default function BuildingDetailPage() {
         open={!!selectedTask}
         onOpenChange={(o) => !o && setSelectedTask(null)}
       />
+
+      {/* Repair task dialog - pre-filled from device */}
+      {repairDevice && (
+        <CreateTaskDialog
+          open={!!repairDevice}
+          onOpenChange={(o) => !o && setRepairDevice(null)}
+          defaultValues={{
+            buildingId: id!,
+            companyId: building.company_id,
+            title: `Naprawa: ${repairDevice.name}`,
+            description: `Zgłoszenie naprawy urządzenia "${repairDevice.name}" (SN: ${repairDevice.serial_number || 'brak'}, Lokalizacja: ${repairDevice.location_in_building || 'brak'})`,
+            type: "usterka" as const,
+            priority: "wysoki" as const,
+          }}
+        />
+      )}
     </div>
   );
 }
