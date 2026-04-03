@@ -18,16 +18,25 @@ import { toast } from "sonner";
 
 const WEEKDAYS = ["Pon", "Wt", "Śr", "Czw", "Pt", "Sob", "Nie"];
 
+function getDeadlineColor(deadline: string | null, status: string | null) {
+  if (status === "Zamknięte") return "bg-success/20 text-success border-success/30";
+  if (!deadline) return "bg-primary/10 text-primary border-primary/20";
+  const now = new Date();
+  const dl = new Date(deadline);
+  const diffMs = dl.getTime() - now.getTime();
+  const diffDays = diffMs / (1000 * 60 * 60 * 24);
+  if (diffDays < 0) return "bg-critical/20 text-critical border-critical/30"; // overdue
+  if (diffDays <= 2) return "bg-red-500/20 text-red-400 border-red-500/30"; // 2 days
+  if (diffDays <= 4) return "bg-orange-500/20 text-orange-400 border-orange-500/30"; // 4 days
+  if (diffDays <= 7) return "bg-yellow-500/20 text-yellow-500 border-yellow-500/30"; // 7 days
+  return "bg-emerald-500/15 text-emerald-500 border-emerald-500/30"; // safe
+}
+
 function getTaskColor(task: any) {
-  if (task._type === 'subtask') return "bg-indigo-500/15 text-indigo-400 border-indigo-500/30";
   if (task._type === 'meeting') return "bg-accent/30 text-accent-foreground border-accent/40";
   if (task._type === 'audit') return "bg-secondary text-secondary-foreground border-border";
   if (task._type === 'protocol') return "bg-muted text-muted-foreground border-border";
-  if (task.status === "Zamknięte") return "bg-success/20 text-success border-success/30";
-  if (task.isOverdue) return "bg-critical/20 text-critical border-critical/30";
-  if (task.priority === "krytyczny") return "bg-critical/10 text-critical border-critical/20";
-  if (task.priority === "wysoki") return "bg-warning/10 text-warning border-warning/20";
-  return "bg-primary/10 text-primary border-primary/20";
+  return getDeadlineColor(task.deadline, task.status);
 }
 
 function CreateMeetingDialog({ open, onOpenChange }: { open: boolean; onOpenChange: (o: boolean) => void }) {
