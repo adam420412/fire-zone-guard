@@ -97,9 +97,20 @@ function CreateBuildingDialog({ open, onOpenChange }: { open: boolean, onOpenCha
 
 export default function BuildingsPage() {
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const companyFilter = searchParams.get("company");
   const { data: buildings, isLoading } = useBuildings();
+  const { data: companies } = useCompanies();
   const { role } = useAuth();
   const [isCreateOpen, setIsCreateOpen] = useState(false);
+
+  const filteredBuildings = companyFilter
+    ? (buildings ?? []).filter((b: any) => b.company_id === companyFilter)
+    : (buildings ?? []);
+  
+  const filterCompanyName = companyFilter
+    ? companies?.find(c => c.id === companyFilter)?.name
+    : null;
 
   const handleExportCSV = () => {
     if (!buildings) return;
