@@ -23,6 +23,7 @@ import MeetingsPage from "@/pages/MeetingsPage";
 import EmployeesPage from "@/pages/EmployeesPage";
 import AnalyticsPage from "@/pages/AnalyticsPage";
 import CalendarPage from "@/pages/CalendarPage";
+import ManufacturersPage from "@/pages/ManufacturersPage";
 import NotFound from "./pages/NotFound";
 import { Loader2 } from "lucide-react";
 
