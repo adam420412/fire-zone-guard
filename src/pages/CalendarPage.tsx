@@ -18,16 +18,25 @@ import { toast } from "sonner";
 
 const WEEKDAYS = ["Pon", "Wt", "Śr", "Czw", "Pt", "Sob", "Nie"];
 
+function getDeadlineColor(deadline: string | null, status: string | null) {
+  if (status === "Zamknięte") return "bg-success/20 text-success border-success/30";
+  if (!deadline) return "bg-primary/10 text-primary border-primary/20";
+  const now = new Date();
+  const dl = new Date(deadline);
+  const diffMs = dl.getTime() - now.getTime();
+  const diffDays = diffMs / (1000 * 60 * 60 * 24);
+  if (diffDays < 0) return "bg-critical/20 text-critical border-critical/30"; // overdue
+  if (diffDays <= 2) return "bg-red-500/20 text-red-400 border-red-500/30"; // 2 days
+  if (diffDays <= 4) return "bg-orange-500/20 text-orange-400 border-orange-500/30"; // 4 days
+  if (diffDays <= 7) return "bg-yellow-500/20 text-yellow-500 border-yellow-500/30"; // 7 days
+  return "bg-emerald-500/15 text-emerald-500 border-emerald-500/30"; // safe
+}
+
 function getTaskColor(task: any) {
-  if (task._type === 'subtask') return "bg-indigo-500/15 text-indigo-400 border-indigo-500/30";
   if (task._type === 'meeting') return "bg-accent/30 text-accent-foreground border-accent/40";
   if (task._type === 'audit') return "bg-secondary text-secondary-foreground border-border";
   if (task._type === 'protocol') return "bg-muted text-muted-foreground border-border";
-  if (task.status === "Zamknięte") return "bg-success/20 text-success border-success/30";
-  if (task.isOverdue) return "bg-critical/20 text-critical border-critical/30";
-  if (task.priority === "krytyczny") return "bg-critical/10 text-critical border-critical/20";
-  if (task.priority === "wysoki") return "bg-warning/10 text-warning border-warning/20";
-  return "bg-primary/10 text-primary border-primary/20";
+  return getDeadlineColor(task.deadline, task.status);
 }
 
 function CreateMeetingDialog({ open, onOpenChange }: { open: boolean; onOpenChange: (o: boolean) => void }) {
@@ -319,7 +328,23 @@ export default function CalendarPage() {
             </Select>
           )}
 
-          <div className="hidden sm:flex items-center gap-3 text-sm text-muted-foreground">
+          <div className="hidden sm:flex items-center gap-3 text-sm text-muted-foreground flex-wrap">
+            <span className="flex items-center gap-1.5">
+              <span className="h-2 w-2 rounded-full bg-emerald-500" />
+              &gt;7 dni
+            </span>
+            <span className="flex items-center gap-1.5">
+              <span className="h-2 w-2 rounded-full bg-yellow-500" />
+              ≤7 dni
+            </span>
+            <span className="flex items-center gap-1.5">
+              <span className="h-2 w-2 rounded-full bg-orange-500" />
+              ≤4 dni
+            </span>
+            <span className="flex items-center gap-1.5">
+              <span className="h-2 w-2 rounded-full bg-red-500" />
+              ≤2 dni
+            </span>
             <span className="flex items-center gap-1.5">
               <span className="h-2 w-2 rounded-full bg-critical" />
               Zaległe: {monthOverdue}
@@ -327,10 +352,6 @@ export default function CalendarPage() {
             <span className="flex items-center gap-1.5">
               <span className="h-2 w-2 rounded-full bg-success" />
               Zamknięte: {monthClosed}
-            </span>
-            <span className="flex items-center gap-1.5">
-              <span className="h-2 w-2 rounded-full bg-primary" />
-              Łącznie: {monthTasks.length}
             </span>
           </div>
           <Button onClick={() => setIsMeetingOpen(true)} className="fire-gradient">
@@ -452,38 +473,43 @@ export default function CalendarPage() {
                   className="w-full p-4 text-left hover:bg-secondary/50 transition-colors"
                 >
                   <div className="flex items-start gap-3">
-                    <div
-                      className={cn(
-                        "mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full",
-                        task.status === "Zamknięte"
-                          ? "bg-success/20"
-                          : task.isOverdue
-                          ? "bg-critical/20"
-                          : task._type === "meeting"
-                          ? "bg-accent/30"
-                          : task._type === "audit"
-                          ? "bg-secondary"
-                          : task._type === "protocol"
-                          ? "bg-muted"
-                          : "bg-primary/20"
-                      )}
-                    >
-                      {task.status === "Zamknięte" ? (
-                        <CheckCircle2 className="h-3 w-3 text-success" />
-                      ) : task.isOverdue ? (
-                        <AlertTriangle className="h-3 w-3 text-critical" />
-                      ) : (
-                        <Clock className={cn("h-3 w-3", task._type === "meeting" ? "text-accent-foreground" : "text-primary")} />
-                      )}
-                    </div>
+                    <div className={cn(
+                      "mt-0.5 flex h-2 w-2 shrink-0 rounded-full",
+                      getTaskColor(task).split(" ").find(c => c.startsWith("bg-")) ?? "bg-primary/20"
+                    )} />
                     <div className="min-w-0 flex-1">
-                      <p className="text-sm font-semibold text-card-foreground line-clamp-2">{task.title}</p>
-                      <p className="text-xs text-muted-foreground mt-0.5">{task.buildingName}</p>
-                      <div className="flex items-center gap-2 mt-1.5">
-                        <span className={cn("rounded-full px-1.5 py-0.5 text-[8px] font-extrabold uppercase", priorityColors[task.priority as TaskPriority])}>
-                          {task.priority}
+                      <div className="flex items-center gap-2">
+                        <span className={cn(
+                          "rounded px-1.5 py-0.5 text-[8px] font-bold uppercase",
+                          task._type === "subtask" ? "bg-indigo-500/15 text-indigo-400" :
+                          task._type === "meeting" ? "bg-accent/30 text-accent-foreground" :
+                          task._type === "audit" ? "bg-secondary text-secondary-foreground" :
+                          task._type === "protocol" ? "bg-muted text-muted-foreground" :
+                          "bg-primary/10 text-primary"
+                        )}>
+                          {task._type === "subtask" ? "Podzadanie" :
+                           task._type === "meeting" ? "Spotkanie" :
+                           task._type === "audit" ? "Audyt" :
+                           task._type === "protocol" ? "Protokół" : "Zadanie"}
                         </span>
-                        {task.assigneeName && <span className="text-[10px] text-muted-foreground">{task.assigneeName}</span>}
+                        {task.deadline && (
+                          <span className={cn(
+                            "text-[9px] font-bold",
+                            getDeadlineColor(task.deadline, task.status).split(" ").find(c => c.startsWith("text-")) ?? "text-primary"
+                          )}>
+                            {format(new Date(task.deadline), "HH:mm", { locale: pl })}
+                          </span>
+                        )}
+                      </div>
+                      <p className="text-sm font-semibold text-card-foreground line-clamp-2 mt-1">{task.title}</p>
+                      {task.buildingName && <p className="text-xs text-muted-foreground mt-0.5">{task.buildingName}</p>}
+                      {task.taskTitle && <p className="text-[10px] text-muted-foreground/70 mt-0.5">↳ {task.taskTitle}</p>}
+                      <div className="flex items-center gap-2 mt-1.5">
+                        {task.assigneeName && (
+                          <span className="flex items-center gap-1 text-[10px] text-muted-foreground">
+                            <User className="h-3 w-3" /> {task.assigneeName}
+                          </span>
+                        )}
                         {task.attendees && <span className="text-[10px] text-muted-foreground">{task.attendees}</span>}
                       </div>
                     </div>
