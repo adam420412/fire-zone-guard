@@ -5,23 +5,33 @@ import { taskTypes, priorities } from "@/lib/constants";
 import { useToast } from "@/hooks/use-toast";
 import { Loader2 } from "lucide-react";
 
+interface DefaultValues {
+  buildingId?: string;
+  companyId?: string;
+  title?: string;
+  description?: string;
+  type?: string;
+  priority?: string;
+}
+
 interface Props {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  defaultValues?: DefaultValues;
 }
 
-export default function CreateTaskDialog({ open, onOpenChange }: Props) {
+export default function CreateTaskDialog({ open, onOpenChange, defaultValues }: Props) {
   const { data: buildings } = useBuildings();
   const { data: profiles } = useProfiles();
   const createTask = useCreateTask();
   const { toast } = useToast();
 
   const [form, setForm] = useState({
-    title: "",
-    description: "",
-    type: "usterka" as string,
-    priority: "średni" as string,
-    building_id: "",
+    title: defaultValues?.title || "",
+    description: defaultValues?.description || "",
+    type: defaultValues?.type || "usterka" as string,
+    priority: defaultValues?.priority || "średni" as string,
+    building_id: defaultValues?.buildingId || "",
     assignee_id: "",
     sla_hours: 72,
     deadline: "",
