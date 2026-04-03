@@ -1,8 +1,9 @@
 import { useState, useMemo } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { ChevronLeft, Save, Plus, Printer, Trash2, FileDown, FileText, Users, Shield, ClipboardCheck } from "lucide-react";
+import { ChevronLeft, Save, Plus, Printer, Trash2, FileDown, FileText, Users, Shield, ClipboardCheck, Package, QrCode } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAudits, useAuditChecklists, useCreateChecklist, useDeleteChecklist, useUpdateChecklist, useBatchCreateChecklist, useProtocols, useDocuments } from "@/hooks/useSupabaseData";
+import { useBuildingDevices } from "@/hooks/useBuildingData";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
