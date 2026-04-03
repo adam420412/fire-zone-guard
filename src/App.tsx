@@ -25,6 +25,7 @@ import AnalyticsPage from "@/pages/AnalyticsPage";
 import CalendarPage from "@/pages/CalendarPage";
 import ManufacturersPage from "@/pages/ManufacturersPage";
 import CrmPage from "@/pages/CrmPage";
+import FinancePage from "@/pages/FinancePage";
 import NotFound from "./pages/NotFound";
 import { Loader2 } from "lucide-react";
 
@@ -78,6 +79,7 @@ function ProtectedRoutes() {
             <Route path="/calendar" element={<CalendarPage />} />
             <Route path="/manufacturers" element={<ManufacturersPage />} />
             <Route path="/crm" element={<CrmPage />} />
+            <Route path="/finance" element={<FinancePage />} />
             <Route path="/settings" element={<SettingsPage />} />
             <Route path="*" element={<NotFound />} />
           </>
