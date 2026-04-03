@@ -328,7 +328,23 @@ export default function CalendarPage() {
             </Select>
           )}
 
-          <div className="hidden sm:flex items-center gap-3 text-sm text-muted-foreground">
+          <div className="hidden sm:flex items-center gap-3 text-sm text-muted-foreground flex-wrap">
+            <span className="flex items-center gap-1.5">
+              <span className="h-2 w-2 rounded-full bg-emerald-500" />
+              &gt;7 dni
+            </span>
+            <span className="flex items-center gap-1.5">
+              <span className="h-2 w-2 rounded-full bg-yellow-500" />
+              ≤7 dni
+            </span>
+            <span className="flex items-center gap-1.5">
+              <span className="h-2 w-2 rounded-full bg-orange-500" />
+              ≤4 dni
+            </span>
+            <span className="flex items-center gap-1.5">
+              <span className="h-2 w-2 rounded-full bg-red-500" />
+              ≤2 dni
+            </span>
             <span className="flex items-center gap-1.5">
               <span className="h-2 w-2 rounded-full bg-critical" />
               Zaległe: {monthOverdue}
@@ -336,10 +352,6 @@ export default function CalendarPage() {
             <span className="flex items-center gap-1.5">
               <span className="h-2 w-2 rounded-full bg-success" />
               Zamknięte: {monthClosed}
-            </span>
-            <span className="flex items-center gap-1.5">
-              <span className="h-2 w-2 rounded-full bg-primary" />
-              Łącznie: {monthTasks.length}
             </span>
           </div>
           <Button onClick={() => setIsMeetingOpen(true)} className="fire-gradient">
