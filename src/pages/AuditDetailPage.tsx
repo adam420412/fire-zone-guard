@@ -388,6 +388,29 @@ export default function AuditDetailPage() {
                   )}
                 </CardContent>
               </Card>
+
+              {/* Floor Plan Section */}
+              <Card className="mt-4">
+                <CardHeader>
+                  <CardTitle className="text-base flex items-center gap-2">
+                    <MapPin className="h-5 w-5 text-primary" />
+                    Rzut budynku z oznaczeniem urządzeń
+                  </CardTitle>
+                  <CardDescription>
+                    Prześlij rzut projektowy i oznacz lokalizację urządzeń dla zespołu
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <FloorPlanViewer
+                    buildingId={buildingId || ""}
+                    floorPlanUrl={(buildingDetail as any)?.floor_plan_url || null}
+                    devices={(devices ?? []) as any[]}
+                    onFloorPlanUploaded={handleFloorPlanUploaded}
+                    onDevicePositioned={handleDevicePositioned}
+                    editable={isSuperAdmin}
+                  />
+                </CardContent>
+              </Card>
             </TabsContent>
 
             {/* TAB 3: Dokumenty & Protokoły */}
