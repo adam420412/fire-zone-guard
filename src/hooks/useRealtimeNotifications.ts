@@ -96,6 +96,31 @@ export function useRealtimeNotifications() {
       .on("postgres_changes", { event: "*", schema: "public", table: "service_protocols" }, () => {
         qc.invalidateQueries({ queryKey: ["service_protocols"] });
       })
+      .on("postgres_changes", { event: "INSERT", schema: "public", table: "subtasks" }, (payload) => {
+        qc.invalidateQueries({ queryKey: ["all_subtasks"] });
+        const sub = payload.new as any;
+        if (sub.assignee_id) {
+          addNotification({
+            type: "info",
+            title: "📋 Nowe podzadanie przypisane",
+            message: `${sub.title}${sub.deadline ? ` — termin: ${new Date(sub.deadline).toLocaleDateString("pl-PL")}` : ""}`,
+            taskId: sub.task_id,
+          });
+        }
+      })
+      .on("postgres_changes", { event: "UPDATE", schema: "public", table: "subtasks" }, (payload) => {
+        qc.invalidateQueries({ queryKey: ["all_subtasks"] });
+        const sub = payload.new as any;
+        const old = payload.old as any;
+        if (sub.status === "Zamknięte" && old.status !== "Zamknięte") {
+          addNotification({
+            type: "info",
+            title: "✅ Podzadanie zamknięte",
+            message: sub.title,
+            taskId: sub.task_id,
+          });
+        }
+      })
       .on("postgres_changes", { event: "*", schema: "public", table: "audits" }, () => {
         qc.invalidateQueries({ queryKey: ["audits"] });
       })

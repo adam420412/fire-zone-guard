@@ -334,6 +334,7 @@ export function useCompaniesWithStats() {
 // ==== SUBTASKS ====
 export interface SubtaskWithAssignee extends Tables<"subtasks"> {
   assigneeName?: string;
+  creatorName?: string;
 }
 
 export function useSubtasks(taskId: string) {
@@ -346,12 +347,41 @@ export function useSubtasks(taskId: string) {
         .eq("task_id", taskId)
         .order("created_at", { ascending: true });
       if (error) throw error;
+      
+      // Fetch creator names separately since created_by has no FK
+      const creatorIds = [...new Set((data ?? []).map((s: any) => s.created_by).filter(Boolean))];
+      let creatorsMap: Record<string, string> = {};
+      if (creatorIds.length > 0) {
+        const { data: creators } = await supabase.from("profiles").select("id, name").in("id", creatorIds);
+        (creators ?? []).forEach((c: any) => { creatorsMap[c.id] = c.name; });
+      }
+      
       return (data ?? []).map((s: any) => ({
         ...s,
         assigneeName: s.profiles?.name ?? "Nieprzypisany",
+        creatorName: s.created_by ? creatorsMap[s.created_by] ?? "—" : "—",
       })) as SubtaskWithAssignee[];
     },
     enabled: !!taskId,
+  });
+}
+
+export function useAllSubtasks() {
+  return useQuery({
+    queryKey: ["all_subtasks"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("subtasks")
+        .select("*, profiles!subtasks_assignee_id_fkey(name), tasks(title, building_id, company_id)")
+        .not("deadline", "is", null)
+        .order("deadline", { ascending: true });
+      if (error) throw error;
+      return (data ?? []).map((s: any) => ({
+        ...s,
+        assigneeName: s.profiles?.name ?? "Nieprzypisany",
+        taskTitle: s.tasks?.title ?? "",
+      }));
+    },
   });
 }
 
