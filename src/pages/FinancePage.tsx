@@ -1,6 +1,6 @@
 import { useState, useMemo } from "react";
 import { useQuotes, useQuoteItems, useServices, useContacts, useCreateQuote, useCreateQuoteItem, useUpdateQuote, useSalesOpportunities, useCreateOpportunity, useUpdateOpportunity, useDeleteOpportunity } from "@/hooks/useCrmData";
-import { useCompanies, useCreateCompany } from "@/hooks/useSupabaseData";
+import { useCompanies, useCreateCompany, useTaskFinanceSummary } from "@/hooks/useSupabaseData";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -453,8 +453,9 @@ export default function FinancePage() {
   const { role } = useAuth();
   const { data: quotes, isLoading: quotesLoading } = useQuotes();
   const { data: companies } = useCompanies();
-  const { data: services } = useServices();
+  const { data: services, isLoading: servicesLoading } = useServices();
   const { data: opportunities, isLoading: oppsLoading } = useSalesOpportunities();
+  const { data: financeSummary, isLoading: financeLoading } = useTaskFinanceSummary();
   const { mutate: updateOpportunity } = useUpdateOpportunity();
   const { mutate: deleteOpportunity } = useDeleteOpportunity();
   const { mutate: createCompany } = useCreateCompany();
@@ -467,7 +468,6 @@ export default function FinancePage() {
   const [oppStatusFilter, setOppStatusFilter] = useState("active");
 
   const isSuperAdmin = role === "super_admin";
-  const isLoading = quotesLoading || oppsLoading;
 
   const filteredQuotes = useMemo(() => {
     if (!quotes) return [];
@@ -519,7 +519,7 @@ export default function FinancePage() {
     });
   };
 
-  if (isLoading) return <div className="flex h-64 items-center justify-center"><Loader2 className="h-6 w-6 animate-spin text-primary" /></div>;
+  
 
   return (
     <div className="space-y-6">
@@ -541,11 +541,13 @@ export default function FinancePage() {
       </div>
 
       {/* Stats Cards */}
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-6">
         <Card><CardContent className="pt-5 pb-4"><div className="flex items-center justify-between"><div><p className="text-xs text-muted-foreground font-medium">Szanse sprzedażowe</p><p className="text-2xl font-bold">{stats.oppsCount}</p><p className="text-xs text-muted-foreground">{stats.oppsValue.toLocaleString("pl-PL")} zł potencjał</p></div><div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center"><Target className="h-5 w-5 text-primary" /></div></div></CardContent></Card>
-        <Card><CardContent className="pt-5 pb-4"><div className="flex items-center justify-between"><div><p className="text-xs text-muted-foreground font-medium">Oferty</p><p className="text-2xl font-bold">{stats.total}</p></div><div className="h-10 w-10 rounded-lg bg-secondary flex items-center justify-center"><FileText className="h-5 w-5 text-muted-foreground" /></div></div></CardContent></Card>
-        <Card><CardContent className="pt-5 pb-4"><div className="flex items-center justify-between"><div><p className="text-xs text-muted-foreground font-medium">Zatwierdzone</p><p className="text-2xl font-bold text-emerald-500">{stats.accepted}</p></div><div className="h-10 w-10 rounded-lg bg-emerald-500/10 flex items-center justify-center"><CheckCircle className="h-5 w-5 text-emerald-500" /></div></div></CardContent></Card>
-        <Card><CardContent className="pt-5 pb-4"><div className="flex items-center justify-between"><div><p className="text-xs text-muted-foreground font-medium">Przychód (zatw.)</p><p className="text-2xl font-bold text-primary">{stats.revenue.toLocaleString("pl-PL")} zł</p></div><div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center"><TrendingUp className="h-5 w-5 text-primary" /></div></div></CardContent></Card>
+        <Card><CardContent className="pt-5 pb-4"><div className="flex items-center justify-between"><div><p className="text-xs text-muted-foreground font-medium">Oferty</p><p className="text-2xl font-bold">{stats.total}</p><p className="text-xs text-muted-foreground">{stats.accepted} zatwierdzone</p></div><div className="h-10 w-10 rounded-lg bg-secondary flex items-center justify-center"><FileText className="h-5 w-5 text-muted-foreground" /></div></div></CardContent></Card>
+        <Card><CardContent className="pt-5 pb-4"><div className="flex items-center justify-between"><div><p className="text-xs text-muted-foreground font-medium">Przychody z zadań</p><p className="text-2xl font-bold text-primary">{financeSummary ? financeSummary.totalIncome.toLocaleString("pl-PL") : "0"} zł</p><p className="text-xs text-muted-foreground">{financeSummary?.tasksWithFinance ?? 0} zadań z ewidencją</p></div><div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center">{financeLoading ? <Loader2 className="h-5 w-5 animate-spin text-primary" /> : <TrendingUp className="h-5 w-5 text-primary" />}</div></div></CardContent></Card>
+        <Card><CardContent className="pt-5 pb-4"><div className="flex items-center justify-between"><div><p className="text-xs text-muted-foreground font-medium">Koszty zadań</p><p className="text-2xl font-bold text-destructive">{financeSummary ? financeSummary.totalCosts.toLocaleString("pl-PL") : "0"} zł</p><p className="text-xs text-muted-foreground">Wg arkusza zadaniowego</p></div><div className="h-10 w-10 rounded-lg bg-destructive/10 flex items-center justify-center"><ShoppingCart className="h-5 w-5 text-destructive" /></div></div></CardContent></Card>
+        <Card><CardContent className="pt-5 pb-4"><div className="flex items-center justify-between"><div><p className="text-xs text-muted-foreground font-medium">Bilans</p><p className="text-2xl font-bold">{financeSummary ? financeSummary.balance.toLocaleString("pl-PL") : "0"} zł</p><p className="text-xs text-muted-foreground">Przychody - koszty</p></div><div className="h-10 w-10 rounded-lg bg-secondary flex items-center justify-center"><DollarSign className="h-5 w-5 text-foreground" /></div></div></CardContent></Card>
+        <Card><CardContent className="pt-5 pb-4"><div className="flex items-center justify-between"><div><p className="text-xs text-muted-foreground font-medium">Marża</p><p className="text-2xl font-bold">{financeSummary ? `${Math.round(financeSummary.margin)}%` : "0%"}</p><p className="text-xs text-muted-foreground">Na podstawie pozycji finansowych</p></div><div className="h-10 w-10 rounded-lg bg-secondary flex items-center justify-center"><Percent className="h-5 w-5 text-foreground" /></div></div></CardContent></Card>
       </div>
 
       <Tabs defaultValue="opportunities" className="w-full">

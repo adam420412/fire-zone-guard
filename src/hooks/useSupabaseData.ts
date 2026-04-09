@@ -969,11 +969,43 @@ export function useTaskFinancialItems(taskId: string) {
         .select("*")
         .eq("task_id", taskId)
         .order("created_at", { ascending: true });
-      
+
       if (error && error.code !== "42P01") throw error;
       return data as any[];
     },
     enabled: !!taskId,
+  });
+}
+
+export function useTaskFinanceSummary() {
+  return useQuery({
+    queryKey: ["task_finance_summary"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("task_financial_items")
+        .select("task_id, type, amount");
+
+      if (error && error.code !== "42P01") throw error;
+
+      const items = data ?? [];
+      const totalIncome = items
+        .filter((item: any) => item.type === "income")
+        .reduce((sum: number, item: any) => sum + Math.abs(Number(item.amount) || 0), 0);
+      const totalCosts = items
+        .filter((item: any) => item.type === "expense")
+        .reduce((sum: number, item: any) => sum + Math.abs(Number(item.amount) || 0), 0);
+      const balance = totalIncome - totalCosts;
+      const margin = totalIncome > 0 ? (balance / totalIncome) * 100 : 0;
+      const tasksWithFinance = new Set(items.map((item: any) => item.task_id).filter(Boolean)).size;
+
+      return {
+        totalIncome,
+        totalCosts,
+        balance,
+        margin,
+        tasksWithFinance,
+      };
+    },
   });
 }
 
@@ -990,6 +1022,7 @@ export function useCreateFinancialItem() {
     },
     onSuccess: (_, variables) => {
       qc.invalidateQueries({ queryKey: ["task_financial_items", variables.task_id] });
+      qc.invalidateQueries({ queryKey: ["task_finance_summary"] });
     },
   });
 }
@@ -1006,6 +1039,7 @@ export function useDeleteFinancialItem() {
     },
     onSuccess: (_, variables) => {
       qc.invalidateQueries({ queryKey: ["task_financial_items", variables.taskId] });
+      qc.invalidateQueries({ queryKey: ["task_finance_summary"] });
     },
   });
 }
