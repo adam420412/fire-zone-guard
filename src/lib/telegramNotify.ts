@@ -1,7 +1,7 @@
 import { supabase } from "@/integrations/supabase/client";
 
 interface TelegramNotifyPayload {
-  type: "status_change" | "deadline_warning" | "overdue" | "subtask_assigned";
+  type: "status_change" | "deadline_warning" | "overdue" | "subtask_assigned" | "custom_message";
   task_id?: string;
   subtask_id?: string;
   task_title: string;
@@ -11,6 +11,7 @@ interface TelegramNotifyPayload {
   days_left?: number;
   assignee_name?: string;
   creator_name?: string;
+  custom_text?: string;
   recipient_profile_ids: string[];
 }
 
