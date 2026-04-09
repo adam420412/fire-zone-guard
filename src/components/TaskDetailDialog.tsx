@@ -14,7 +14,7 @@ import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 import {
   Building2, User, Clock, Calendar, AlertTriangle, History,
-  ArrowRight, Loader2, Plus, Trash2, Bell, ListTodo, Wallet, TrendingUp, TrendingDown, Lock
+  ArrowRight, Loader2, Plus, Trash2, Bell, ListTodo, Wallet, TrendingUp, TrendingDown, Lock, Send
 } from "lucide-react";
 
 interface Props {
@@ -107,6 +107,8 @@ export default function TaskDetailDialog({ task, open, onOpenChange }: Props) {
   const [newSubtask, setNewSubtask] = useState({ title: "", description: "", deadline: "", assignee_id: "" });
   const [newReminder, setNewReminder] = useState({ remind_at: "", recipient_email: "", message: "", subtask_id: "" });
   const [showReminderForm, setShowReminderForm] = useState(false);
+  const [telegramMsg, setTelegramMsg] = useState("");
+  const [sendingTelegram, setSendingTelegram] = useState(false);
 
   if (!task) return null;
 
