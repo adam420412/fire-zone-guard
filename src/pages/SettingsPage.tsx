@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useCallback } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useCompanies } from "@/hooks/useSupabaseData";
@@ -8,7 +8,7 @@ import { cn } from "@/lib/utils";
 import {
   Loader2, Users, Shield, Building2, Save, User, Lock, Bell,
   CheckCircle2, Eye, EyeOff, Mail, Phone, AlertTriangle,
-  Settings as SettingsIcon, ChevronRight, Send
+  Settings as SettingsIcon, ChevronRight, Send, Link2, Copy, RefreshCw
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
