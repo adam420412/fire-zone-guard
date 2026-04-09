@@ -12,6 +12,7 @@ import { kanbanStatuses, priorityColors, statusColors, taskTypeLabels } from "@/
 import type { TaskStatus, TaskPriority, TaskType } from "@/lib/constants";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
+import { sendTelegramNotification } from "@/lib/telegramNotify";
 import {
   Building2, User, Clock, Calendar, AlertTriangle, History,
   ArrowRight, Loader2, Plus, Trash2, Bell, ListTodo, Wallet, TrendingUp, TrendingDown, Lock, Send
