@@ -13,7 +13,8 @@ interface NotifyPayload {
     | "status_change"
     | "deadline_warning"
     | "overdue"
-    | "subtask_assigned";
+    | "subtask_assigned"
+    | "custom_message";
   task_id?: string;
   subtask_id?: string;
   task_title: string;
@@ -23,6 +24,7 @@ interface NotifyPayload {
   days_left?: number;
   assignee_name?: string;
   creator_name?: string;
+  custom_text?: string;
   // Recipients: profile IDs to notify
   recipient_profile_ids: string[];
 }
@@ -94,6 +96,13 @@ function buildMessage(payload: NotifyPayload): string {
           ? `👤 Przydzielił: ${payload.creator_name}\n`
           : "") +
         (payload.deadline ? `📅 Termin: ${payload.deadline}` : "")
+      );
+
+    case "custom_message":
+      return (
+        `📩 <b>Wiadomość od administratora</b>\n\n` +
+        (payload.task_title ? `📋 Zadanie: <b>${payload.task_title}</b>\n\n` : "") +
+        (payload.custom_text || "")
       );
 
     default:
