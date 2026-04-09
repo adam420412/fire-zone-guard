@@ -570,6 +570,50 @@ export default function TaskDetailDialog({ task, open, onOpenChange }: Props) {
                 </div>
               )}
             </div>
+
+            {/* SEKCJA TELEGRAM - tylko super_admin */}
+            {authRole === 'super_admin' && task.assignee_id && (
+              <div className="border-t border-border pt-4 space-y-3">
+                <h3 className="text-sm font-semibold text-card-foreground flex items-center gap-1.5">
+                  <Send className="h-4 w-4" /> Wyślij wiadomość Telegram
+                </h3>
+                <p className="text-[11px] text-muted-foreground">
+                  Wiadomość zostanie wysłana do osoby przypisanej do tego zadania.
+                </p>
+                <textarea
+                  value={telegramMsg}
+                  onChange={e => setTelegramMsg(e.target.value)}
+                  placeholder="Treść wiadomości..."
+                  className={inputCls + " min-h-[60px]"}
+                />
+                <button
+                  onClick={async () => {
+                    if (!telegramMsg.trim() || !task.assignee_id) return;
+                    setSendingTelegram(true);
+                    try {
+                      await sendTelegramNotification({
+                        type: "custom_message",
+                        task_id: task.id,
+                        task_title: task.title,
+                        custom_text: telegramMsg.trim(),
+                        recipient_profile_ids: [task.assignee_id],
+                      });
+                      toast({ title: "Wiadomość wysłana na Telegram" });
+                      setTelegramMsg("");
+                    } catch {
+                      toast({ title: "Błąd wysyłania", variant: "destructive" });
+                    } finally {
+                      setSendingTelegram(false);
+                    }
+                  }}
+                  disabled={sendingTelegram || !telegramMsg.trim()}
+                  className="rounded-md fire-gradient px-4 py-1.5 text-xs font-semibold text-primary-foreground hover:opacity-90 disabled:opacity-50 transition-opacity flex items-center gap-1.5"
+                >
+                  {sendingTelegram ? <Loader2 className="h-3 w-3 animate-spin" /> : <Send className="h-3 w-3" />}
+                  Wyślij
+                </button>
+              </div>
+            )}
           </TabsContent>
 
           <TabsContent value="subtasks" className="space-y-4 mt-4">
