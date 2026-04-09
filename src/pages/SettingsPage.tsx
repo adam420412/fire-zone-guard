@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useCallback } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useCompanies } from "@/hooks/useSupabaseData";
@@ -8,7 +8,7 @@ import { cn } from "@/lib/utils";
 import {
   Loader2, Users, Shield, Building2, Save, User, Lock, Bell,
   CheckCircle2, Eye, EyeOff, Mail, Phone, AlertTriangle,
-  Settings as SettingsIcon, ChevronRight, Send
+  Settings as SettingsIcon, ChevronRight, Send, Link2, Copy, RefreshCw
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -88,6 +88,111 @@ const TABS = [
 ];
 
 // ---------- TAB: My Profile ----------
+function TelegramLinkSection() {
+  const { user } = useAuth();
+  const { data: profile } = useMyProfile();
+  const { toast } = useToast();
+  const [linkCode, setLinkCode] = useState<string | null>(null);
+  const [expiresAt, setExpiresAt] = useState<Date | null>(null);
+
+  const generateCode = useMutation({
+    mutationFn: async () => {
+      if (!user) throw new Error("Brak sesji");
+      const token = Math.random().toString(36).substring(2, 8).toUpperCase();
+      const { error } = await supabase
+        .from("telegram_link_tokens" as any)
+        .insert({ user_id: user.id, token } as any);
+      if (error) throw error;
+      return token;
+    },
+    onSuccess: (token) => {
+      setLinkCode(token);
+      setExpiresAt(new Date(Date.now() + 10 * 60 * 1000));
+      toast({ title: "🔗 Kod wygenerowany! Ważny 10 minut." });
+    },
+    onError: (e: any) => toast({ title: "Błąd", description: e.message, variant: "destructive" }),
+  });
+
+  const copyLink = useCallback(() => {
+    if (!linkCode) return;
+    const url = `https://t.me/Firezonepomagier_bot?start=${linkCode}`;
+    navigator.clipboard.writeText(url);
+    toast({ title: "📋 Link skopiowany!" });
+  }, [linkCode, toast]);
+
+  const isLinked = !!profile?.telegram_chat_id;
+
+  if (isLinked) {
+    return (
+      <div className="rounded-xl border border-success/30 bg-success/10 p-4 flex items-start gap-3">
+        <CheckCircle2 className="h-5 w-5 text-success mt-0.5 shrink-0" />
+        <div>
+          <p className="text-sm font-medium text-success">Telegram połączony</p>
+          <p className="text-xs text-muted-foreground mt-0.5">Chat ID: {profile.telegram_chat_id}</p>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-3">
+      <div className="rounded-xl border border-border bg-secondary/30 p-4 space-y-3">
+        <div className="flex items-center gap-2">
+          <Send className="h-4 w-4 text-primary" />
+          <p className="text-sm font-medium">Połącz Telegram</p>
+        </div>
+        <p className="text-xs text-muted-foreground">
+          Wygeneruj jednorazowy kod, a następnie kliknij link lub wyślij go do bota <b>@Firezonepomagier_bot</b>.
+        </p>
+
+        {linkCode ? (
+          <div className="space-y-2">
+            <div className="flex items-center gap-2 rounded-lg border border-primary/30 bg-primary/5 px-3 py-2">
+              <code className="flex-1 text-lg font-bold tracking-widest text-primary">{linkCode}</code>
+              <button onClick={copyLink} className="text-muted-foreground hover:text-foreground">
+                <Copy className="h-4 w-4" />
+              </button>
+            </div>
+            <a
+              href={`https://t.me/Firezonepomagier_bot?start=${linkCode}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center justify-center gap-2 rounded-lg bg-[#0088cc] px-4 py-2 text-sm font-medium text-white hover:bg-[#0077b5] transition-colors"
+            >
+              <Link2 className="h-4 w-4" />
+              Otwórz w Telegram
+            </a>
+            {expiresAt && (
+              <p className="text-[10px] text-muted-foreground text-center">
+                Kod ważny do {expiresAt.toLocaleTimeString("pl-PL", { hour: "2-digit", minute: "2-digit" })}
+              </p>
+            )}
+            <button
+              onClick={() => generateCode.mutate()}
+              disabled={generateCode.isPending}
+              className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground"
+            >
+              <RefreshCw className="h-3 w-3" />
+              Wygeneruj nowy kod
+            </button>
+          </div>
+        ) : (
+          <Button
+            onClick={() => generateCode.mutate()}
+            disabled={generateCode.isPending}
+            variant="outline"
+            size="sm"
+            className="w-full"
+          >
+            {generateCode.isPending ? <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" /> : <Link2 className="mr-2 h-3.5 w-3.5" />}
+            Wygeneruj kod połączenia
+          </Button>
+        )}
+      </div>
+    </div>
+  );
+}
+
 function ProfileTab() {
   const { user } = useAuth();
   const { data: profile, isLoading } = useMyProfile();
@@ -96,13 +201,11 @@ function ProfileTab() {
 
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
-  const [telegramChatId, setTelegramChatId] = useState("");
   const [initialized, setInitialized] = useState(false);
 
   if (profile && !initialized) {
     setName(profile.name ?? "");
     setPhone((profile as any).phone ?? "");
-    setTelegramChatId((profile as any).telegram_chat_id ?? "");
     setInitialized(true);
   }
 
@@ -111,7 +214,7 @@ function ProfileTab() {
       if (!user) throw new Error("Brak sesji");
       const { error } = await supabase
         .from("profiles")
-        .update({ name, phone, telegram_chat_id: telegramChatId || null } as any)
+        .update({ name, phone } as any)
         .eq("id", user.id);
       if (error) throw error;
     },
@@ -148,16 +251,10 @@ function ProfileTab() {
             <Input className="pl-8" value={phone} onChange={e => setPhone(e.target.value)} placeholder="+48 000 000 000" />
           </div>
         </div>
-        <div className="space-y-1.5">
-          <Label>Telegram Chat ID</Label>
-          <div className="relative">
-            <Send className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
-            <Input className="pl-8" value={telegramChatId} onChange={e => setTelegramChatId(e.target.value)} placeholder="np. 123456789" />
-          </div>
-          <p className="text-[10px] text-muted-foreground">Obecnie możesz wpisać Chat ID ręcznie. Automatyczne podpinanie przez <b>/start</b> będzie dostępne po wdrożeniu backendowego powiązania konta.</p>
-        </div>
         <p className="text-xs text-muted-foreground">E-mail: <span className="font-medium text-foreground">{user?.email}</span> (zmiana e-mail przez obsługę)</p>
       </div>
+
+      <TelegramLinkSection />
 
       <Button
         onClick={() => saveProfile.mutate()}
