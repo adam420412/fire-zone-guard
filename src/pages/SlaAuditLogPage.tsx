@@ -435,7 +435,8 @@ export default function SlaAuditLogPage() {
                     return (
                       <li
                         key={entry.id}
-                        className="group flex items-start gap-3 rounded-lg border border-border bg-card px-4 py-3 transition-colors hover:border-primary/40 hover:bg-card/60"
+                        onClick={() => setSelectedEntry(entry)}
+                        className="group flex cursor-pointer items-start gap-3 rounded-lg border border-border bg-card px-4 py-3 transition-colors hover:border-primary/40 hover:bg-card/60"
                       >
                         <div
                           className={cn(
@@ -457,6 +458,7 @@ export default function SlaAuditLogPage() {
                             {entry.ticket_number && (
                               <Link
                                 to={`/sla/${entry.ticket_id}`}
+                                onClick={(e) => e.stopPropagation()}
                                 className="text-xs font-mono text-primary hover:underline"
                               >
                                 {entry.ticket_number}
@@ -478,15 +480,26 @@ export default function SlaAuditLogPage() {
                           </div>
                         </div>
 
-                        <div className="shrink-0 text-right">
-                          <div className="font-mono text-[11px] text-muted-foreground">
-                            {formatDateTime(entry.created_at).split(", ")[1]}
-                          </div>
-                          {entry.actor_label && (
-                            <div className="text-[10px] text-muted-foreground/70">
-                              {entry.actor_label}
+                        <div className="flex shrink-0 items-start gap-2">
+                          <div className="text-right">
+                            <div className="font-mono text-[11px] text-muted-foreground">
+                              {formatDateTime(entry.created_at).split(", ")[1]}
                             </div>
-                          )}
+                            {entry.actor_label && (
+                              <div className="text-[10px] text-muted-foreground/70">
+                                {entry.actor_label}
+                              </div>
+                            )}
+                          </div>
+                          <button
+                            type="button"
+                            onClick={(e) => { e.stopPropagation(); setSelectedEntry(entry); }}
+                            className="rounded-md border border-transparent p-1.5 text-muted-foreground opacity-0 transition-all hover:border-primary/40 hover:text-primary group-hover:opacity-100"
+                            title="Pokaż szczegóły"
+                            aria-label="Pokaż szczegóły"
+                          >
+                            <Eye className="h-3.5 w-3.5" />
+                          </button>
                         </div>
                       </li>
                     );
