@@ -368,6 +368,16 @@ export default function SlaAuditLogPage() {
               <option key={t} value={t}>{EVENT_LABELS[t] ?? t}</option>
             ))}
           </select>
+          <button
+            type="button"
+            onClick={handleExportCsv}
+            disabled={filtered.length === 0}
+            className="inline-flex items-center gap-1.5 rounded-md border border-border bg-card px-3 py-1.5 text-sm font-medium transition-colors hover:border-primary/40 hover:text-primary disabled:cursor-not-allowed disabled:opacity-50"
+            title="Eksportuj przefiltrowane zdarzenia do CSV"
+          >
+            <Download className="h-3.5 w-3.5" />
+            Eksport CSV
+          </button>
         </div>
       </div>
 
