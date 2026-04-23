@@ -491,42 +491,86 @@ export type Database = {
       }
       employee_development_plans: {
         Row: {
+          building_id: string | null
+          company_id: string | null
           created_at: string
+          email: string | null
+          employment_date: string | null
+          first_name: string | null
           health_exam_valid_until: string | null
           id: string
+          is_active: boolean
+          last_name: string | null
           manager_id: string | null
+          notes: string | null
           onboarding_progress: number | null
+          phone: string | null
           position: string | null
           start_date: string | null
           status: string | null
           training_status: string | null
-          user_id: string
+          updated_at: string
+          user_id: string | null
         }
         Insert: {
+          building_id?: string | null
+          company_id?: string | null
           created_at?: string
+          email?: string | null
+          employment_date?: string | null
+          first_name?: string | null
           health_exam_valid_until?: string | null
           id?: string
+          is_active?: boolean
+          last_name?: string | null
           manager_id?: string | null
+          notes?: string | null
           onboarding_progress?: number | null
+          phone?: string | null
           position?: string | null
           start_date?: string | null
           status?: string | null
           training_status?: string | null
-          user_id: string
+          updated_at?: string
+          user_id?: string | null
         }
         Update: {
+          building_id?: string | null
+          company_id?: string | null
           created_at?: string
+          email?: string | null
+          employment_date?: string | null
+          first_name?: string | null
           health_exam_valid_until?: string | null
           id?: string
+          is_active?: boolean
+          last_name?: string | null
           manager_id?: string | null
+          notes?: string | null
           onboarding_progress?: number | null
+          phone?: string | null
           position?: string | null
           start_date?: string | null
           status?: string | null
           training_status?: string | null
-          user_id?: string
+          updated_at?: string
+          user_id?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "employee_development_plans_building_id_fkey"
+            columns: ["building_id"]
+            isOneToOne: false
+            referencedRelation: "buildings"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "employee_development_plans_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "employee_development_plans_manager_id_fkey"
             columns: ["manager_id"]
@@ -1473,7 +1517,54 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      employees_with_details: {
+        Row: {
+          building_id: string | null
+          building_name: string | null
+          company_id: string | null
+          created_at: string | null
+          email: string | null
+          employment_date: string | null
+          first_name: string | null
+          full_name: string | null
+          health_exam_valid_until: string | null
+          id: string | null
+          is_active: boolean | null
+          last_name: string | null
+          notes: string | null
+          onboarding_progress: number | null
+          phone: string | null
+          position: string | null
+          start_date: string | null
+          status: string | null
+          training_status: string | null
+          updated_at: string | null
+          user_id: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "employee_development_plans_building_id_fkey"
+            columns: ["building_id"]
+            isOneToOne: false
+            referencedRelation: "buildings"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "employee_development_plans_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "employee_development_plans_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Functions: {
       calculate_building_safety_status: {
@@ -1490,6 +1581,7 @@ export type Database = {
         Returns: boolean
       }
       is_company_admin: { Args: { _company_id: string }; Returns: boolean }
+      is_hr_manager: { Args: never; Returns: boolean }
       is_super_admin: { Args: never; Returns: boolean }
     }
     Enums: {
