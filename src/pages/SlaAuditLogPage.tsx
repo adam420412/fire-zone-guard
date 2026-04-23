@@ -32,9 +32,13 @@ function useAllSlaEvents(limit = 1000) {
   return useQuery({
     queryKey: ["sla_ticket_events", "all", limit],
     queryFn: async (): Promise<SlaEventRow[]> => {
+      // Order newest-first; tiebreak on id so events written in the same
+      // transaction (e.g. created + status_change from the same trigger)
+      // get a stable, deterministic order instead of bouncing around.
       const { data, error } = await (supabase.from as any)("sla_ticket_events")
         .select("*")
         .order("created_at", { ascending: false })
+        .order("id", { ascending: false })
         .limit(limit);
       if (error) throw error;
       return (data ?? []) as SlaEventRow[];
