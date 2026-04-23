@@ -157,7 +157,20 @@ function renderPayload(eventType: string, payload: Record<string, unknown> | nul
 export default function SlaAuditLogPage() {
   const { role } = useAuth();
   const { data: tickets = [], isLoading: ticketsLoading } = useSlaTickets();
-  const { data: events = [], isLoading: eventsLoading } = useAllSlaEvents();
+  const {
+    data: eventPages,
+    isLoading: eventsLoading,
+    fetchNextPage,
+    hasNextPage,
+    isFetchingNextPage,
+  } = useAllSlaEvents();
+
+  // Flatten all loaded pages into a single chronological array. Order is
+  // already DESC because each page is queried that way.
+  const events = useMemo<SlaEventRow[]>(
+    () => eventPages?.pages.flatMap((p) => p.rows) ?? [],
+    [eventPages],
+  );
 
   const [search, setSearch] = useState("");
   const [eventFilter, setEventFilter] = useState<string>("all");
@@ -199,21 +212,54 @@ export default function SlaAuditLogPage() {
   }, [timeline, search, eventFilter]);
 
   const groupedByDay = useMemo(() => {
-    const groups = new Map<string, TimelineEntry[]>();
+    const groups = new Map<string, { label: string; entries: TimelineEntry[] }>();
     filtered.forEach((entry) => {
-      const day = new Date(entry.created_at).toLocaleDateString("pl-PL", {
+      const d = new Date(entry.created_at);
+      const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+      const label = d.toLocaleDateString("pl-PL", {
         weekday: "long", day: "2-digit", month: "long", year: "numeric",
       });
-      if (!groups.has(day)) groups.set(day, []);
-      groups.get(day)!.push(entry);
+      let bucket = groups.get(key);
+      if (!bucket) {
+        bucket = { label, entries: [] };
+        groups.set(key, bucket);
+      }
+      bucket.entries.push(entry);
     });
-    return Array.from(groups.entries());
+    groups.forEach((bucket) => {
+      bucket.entries.sort((a, b) => {
+        const diff = new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+        if (diff !== 0) return diff;
+        return b.id.localeCompare(a.id);
+      });
+    });
+    return Array.from(groups.entries())
+      .sort(([a], [b]) => b.localeCompare(a))
+      .map(([, bucket]) => [bucket.label, bucket.entries] as const);
   }, [filtered]);
 
   const eventTypeOptions = useMemo(() => {
     const set = new Set(events.map((e) => e.event_type));
     return Array.from(set);
   }, [events]);
+
+  // Auto-load older pages when the sentinel scrolls into view. Re-creates the
+  // observer when fetch state changes so it doesn't double-fire mid-flight.
+  const sentinelRef = useRef<HTMLDivElement | null>(null);
+  useEffect(() => {
+    const node = sentinelRef.current;
+    if (!node || !hasNextPage || isFetchingNextPage) return;
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0]?.isIntersecting) {
+          fetchNextPage();
+        }
+      },
+      { rootMargin: "200px" },
+    );
+    observer.observe(node);
+    return () => observer.disconnect();
+  }, [hasNextPage, isFetchingNextPage, fetchNextPage, filtered.length]);
 
   const isLoading = ticketsLoading || eventsLoading;
   const isAdmin = role === "super_admin" || role === "admin";
