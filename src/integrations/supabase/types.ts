@@ -332,6 +332,45 @@ export type Database = {
           },
         ]
       }
+      device_requirement_rules: {
+        Row: {
+          area_max: number | null
+          area_min: number | null
+          building_class: string | null
+          created_at: string
+          id: string
+          is_active: boolean
+          legal_basis: string | null
+          notes: string | null
+          quantity_formula: string | null
+          required_device_type: string
+        }
+        Insert: {
+          area_max?: number | null
+          area_min?: number | null
+          building_class?: string | null
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          legal_basis?: string | null
+          notes?: string | null
+          quantity_formula?: string | null
+          required_device_type: string
+        }
+        Update: {
+          area_max?: number | null
+          area_min?: number | null
+          building_class?: string | null
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          legal_basis?: string | null
+          notes?: string | null
+          quantity_formula?: string | null
+          required_device_type?: string
+        }
+        Relationships: []
+      }
       device_services: {
         Row: {
           created_at: string
@@ -839,6 +878,62 @@ export type Database = {
           },
         ]
       }
+      notifications_outbox: {
+        Row: {
+          body: string | null
+          channel: string
+          created_at: string
+          error: string | null
+          id: string
+          payload: Json | null
+          related_id: string | null
+          related_table: string | null
+          scheduled_for: string
+          sent_at: string | null
+          status: string
+          subject: string | null
+          user_id: string | null
+        }
+        Insert: {
+          body?: string | null
+          channel: string
+          created_at?: string
+          error?: string | null
+          id?: string
+          payload?: Json | null
+          related_id?: string | null
+          related_table?: string | null
+          scheduled_for?: string
+          sent_at?: string | null
+          status?: string
+          subject?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          body?: string | null
+          channel?: string
+          created_at?: string
+          error?: string | null
+          id?: string
+          payload?: Json | null
+          related_id?: string | null
+          related_table?: string | null
+          scheduled_for?: string
+          sent_at?: string | null
+          status?: string
+          subject?: string | null
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "notifications_outbox_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profiles: {
         Row: {
           company_id: string | null
@@ -988,6 +1083,87 @@ export type Database = {
           },
         ]
       }
+      recurring_events: {
+        Row: {
+          assigned_to: string | null
+          completed_at: string | null
+          created_at: string
+          created_by: string | null
+          description: string | null
+          due_date: string
+          id: string
+          interval_months: number | null
+          last_done_date: string | null
+          next_due_date: string | null
+          notes: string | null
+          recurrence_rule: string | null
+          related_id: string | null
+          related_table: string | null
+          reminder_days_before: number[]
+          status: string
+          title: string
+          type: string
+          updated_at: string
+        }
+        Insert: {
+          assigned_to?: string | null
+          completed_at?: string | null
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          due_date: string
+          id?: string
+          interval_months?: number | null
+          last_done_date?: string | null
+          next_due_date?: string | null
+          notes?: string | null
+          recurrence_rule?: string | null
+          related_id?: string | null
+          related_table?: string | null
+          reminder_days_before?: number[]
+          status?: string
+          title: string
+          type: string
+          updated_at?: string
+        }
+        Update: {
+          assigned_to?: string | null
+          completed_at?: string | null
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          due_date?: string
+          id?: string
+          interval_months?: number | null
+          last_done_date?: string | null
+          next_due_date?: string | null
+          notes?: string | null
+          recurrence_rule?: string | null
+          related_id?: string | null
+          related_table?: string | null
+          reminder_days_before?: number[]
+          status?: string
+          title?: string
+          type?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "recurring_events_assigned_to_fkey"
+            columns: ["assigned_to"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "recurring_events_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       sales_opportunities: {
         Row: {
           company_id: string | null
@@ -1127,6 +1303,196 @@ export type Database = {
           unit_price?: number
         }
         Relationships: []
+      }
+      sla_ticket_events: {
+        Row: {
+          actor_id: string | null
+          actor_label: string | null
+          created_at: string
+          event_type: string
+          id: string
+          payload: Json | null
+          ticket_id: string
+        }
+        Insert: {
+          actor_id?: string | null
+          actor_label?: string | null
+          created_at?: string
+          event_type: string
+          id?: string
+          payload?: Json | null
+          ticket_id: string
+        }
+        Update: {
+          actor_id?: string | null
+          actor_label?: string | null
+          created_at?: string
+          event_type?: string
+          id?: string
+          payload?: Json | null
+          ticket_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sla_ticket_events_actor_id_fkey"
+            columns: ["actor_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sla_ticket_events_ticket_id_fkey"
+            columns: ["ticket_id"]
+            isOneToOne: false
+            referencedRelation: "sla_tickets"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sla_ticket_events_ticket_id_fkey"
+            columns: ["ticket_id"]
+            isOneToOne: false
+            referencedRelation: "sla_tickets_with_details"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      sla_tickets: {
+        Row: {
+          ai_category: Json | null
+          ai_draft_email: string | null
+          ai_summary: string | null
+          assigned_to: string | null
+          building_id: string | null
+          closed_at: string | null
+          company_id: string | null
+          created_at: string
+          description: string
+          device_id: string | null
+          device_type: string | null
+          diagnosis: string | null
+          first_response_at: string | null
+          id: string
+          notes: string | null
+          on_site_at: string | null
+          photo_urls: string[] | null
+          priority: string
+          protocol_url: string | null
+          related_task_id: string | null
+          reporter_email: string | null
+          reporter_name: string | null
+          reporter_phone: string | null
+          reporter_user_id: string | null
+          resolved_at: string | null
+          sla_resolution_due: string | null
+          sla_response_due: string | null
+          status: string
+          ticket_number: string | null
+          type: string
+          updated_at: string
+        }
+        Insert: {
+          ai_category?: Json | null
+          ai_draft_email?: string | null
+          ai_summary?: string | null
+          assigned_to?: string | null
+          building_id?: string | null
+          closed_at?: string | null
+          company_id?: string | null
+          created_at?: string
+          description: string
+          device_id?: string | null
+          device_type?: string | null
+          diagnosis?: string | null
+          first_response_at?: string | null
+          id?: string
+          notes?: string | null
+          on_site_at?: string | null
+          photo_urls?: string[] | null
+          priority?: string
+          protocol_url?: string | null
+          related_task_id?: string | null
+          reporter_email?: string | null
+          reporter_name?: string | null
+          reporter_phone?: string | null
+          reporter_user_id?: string | null
+          resolved_at?: string | null
+          sla_resolution_due?: string | null
+          sla_response_due?: string | null
+          status?: string
+          ticket_number?: string | null
+          type?: string
+          updated_at?: string
+        }
+        Update: {
+          ai_category?: Json | null
+          ai_draft_email?: string | null
+          ai_summary?: string | null
+          assigned_to?: string | null
+          building_id?: string | null
+          closed_at?: string | null
+          company_id?: string | null
+          created_at?: string
+          description?: string
+          device_id?: string | null
+          device_type?: string | null
+          diagnosis?: string | null
+          first_response_at?: string | null
+          id?: string
+          notes?: string | null
+          on_site_at?: string | null
+          photo_urls?: string[] | null
+          priority?: string
+          protocol_url?: string | null
+          related_task_id?: string | null
+          reporter_email?: string | null
+          reporter_name?: string | null
+          reporter_phone?: string | null
+          reporter_user_id?: string | null
+          resolved_at?: string | null
+          sla_resolution_due?: string | null
+          sla_response_due?: string | null
+          status?: string
+          ticket_number?: string | null
+          type?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sla_tickets_assigned_to_fkey"
+            columns: ["assigned_to"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sla_tickets_building_id_fkey"
+            columns: ["building_id"]
+            isOneToOne: false
+            referencedRelation: "buildings"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sla_tickets_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sla_tickets_device_id_fkey"
+            columns: ["device_id"]
+            isOneToOne: false
+            referencedRelation: "devices"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sla_tickets_related_task_id_fkey"
+            columns: ["related_task_id"]
+            isOneToOne: false
+            referencedRelation: "tasks"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       subtasks: {
         Row: {
@@ -1376,9 +1742,12 @@ export type Database = {
           priority: Database["public"]["Enums"]["task_priority"]
           repair_price: number | null
           sla_hours: number
+          source: string | null
+          source_id: string | null
           status: Database["public"]["Enums"]["task_status"]
           title: string
           type: Database["public"]["Enums"]["task_type"]
+          workflow_stage: string | null
         }
         Insert: {
           assignee_id?: string | null
@@ -1395,9 +1764,12 @@ export type Database = {
           priority?: Database["public"]["Enums"]["task_priority"]
           repair_price?: number | null
           sla_hours?: number
+          source?: string | null
+          source_id?: string | null
           status?: Database["public"]["Enums"]["task_status"]
           title: string
           type?: Database["public"]["Enums"]["task_type"]
+          workflow_stage?: string | null
         }
         Update: {
           assignee_id?: string | null
@@ -1414,9 +1786,12 @@ export type Database = {
           priority?: Database["public"]["Enums"]["task_priority"]
           repair_price?: number | null
           sla_hours?: number
+          source?: string | null
+          source_id?: string | null
           status?: Database["public"]["Enums"]["task_status"]
           title?: string
           type?: Database["public"]["Enums"]["task_type"]
+          workflow_stage?: string | null
         }
         Relationships: [
           {
@@ -1565,6 +1940,85 @@ export type Database = {
           },
         ]
       }
+      sla_tickets_with_details: {
+        Row: {
+          ai_category: Json | null
+          ai_draft_email: string | null
+          ai_summary: string | null
+          assigned_to: string | null
+          assigned_to_email: string | null
+          assigned_to_name: string | null
+          building_address: string | null
+          building_id: string | null
+          building_name: string | null
+          closed_at: string | null
+          company_id: string | null
+          company_name: string | null
+          created_at: string | null
+          description: string | null
+          device_id: string | null
+          device_type: string | null
+          diagnosis: string | null
+          first_response_at: string | null
+          id: string | null
+          notes: string | null
+          on_site_at: string | null
+          photo_urls: string[] | null
+          priority: string | null
+          protocol_url: string | null
+          related_task_id: string | null
+          reporter_email: string | null
+          reporter_name: string | null
+          reporter_phone: string | null
+          reporter_user_id: string | null
+          resolved_at: string | null
+          sla_resolution_breached: boolean | null
+          sla_resolution_due: string | null
+          sla_response_breached: boolean | null
+          sla_response_due: string | null
+          status: string | null
+          ticket_number: string | null
+          type: string | null
+          updated_at: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sla_tickets_assigned_to_fkey"
+            columns: ["assigned_to"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sla_tickets_building_id_fkey"
+            columns: ["building_id"]
+            isOneToOne: false
+            referencedRelation: "buildings"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sla_tickets_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sla_tickets_device_id_fkey"
+            columns: ["device_id"]
+            isOneToOne: false
+            referencedRelation: "devices"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sla_tickets_related_task_id_fkey"
+            columns: ["related_task_id"]
+            isOneToOne: false
+            referencedRelation: "tasks"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Functions: {
       calculate_building_safety_status: {
@@ -1583,6 +2037,36 @@ export type Database = {
       is_company_admin: { Args: { _company_id: string }; Returns: boolean }
       is_hr_manager: { Args: never; Returns: boolean }
       is_super_admin: { Args: never; Returns: boolean }
+      mark_recurring_event_done: {
+        Args: { p_done_date?: string; p_event_id: string }
+        Returns: {
+          assigned_to: string | null
+          completed_at: string | null
+          created_at: string
+          created_by: string | null
+          description: string | null
+          due_date: string
+          id: string
+          interval_months: number | null
+          last_done_date: string | null
+          next_due_date: string | null
+          notes: string | null
+          recurrence_rule: string | null
+          related_id: string | null
+          related_table: string | null
+          reminder_days_before: number[]
+          status: string
+          title: string
+          type: string
+          updated_at: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "recurring_events"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
     }
     Enums: {
       app_role: "super_admin" | "admin" | "employee" | "client"
