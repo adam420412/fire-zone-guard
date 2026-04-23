@@ -3,9 +3,11 @@ import { useInfiniteQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useSlaTickets, STATUS_LABELS, PRIORITY_LABELS, type SlaTicket } from "@/hooks/useSlaTickets";
-import { Search, Filter, ShieldAlert, ArrowRight, Plus, Activity, Clock, Loader2, Download } from "lucide-react";
+import { Search, Filter, ShieldAlert, ArrowRight, Plus, Activity, Clock, Loader2, Download, Eye, ExternalLink } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Link } from "react-router-dom";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
 
 interface SlaEventRow {
   id: string;
