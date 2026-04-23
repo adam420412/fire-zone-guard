@@ -22,6 +22,8 @@ interface TimelineEntry {
   ticket_id: string;
   ticket_number: string | null;
   building_name: string | null;
+  company_id: string | null;
+  company_name: string | null;
   event_type: string;
   actor_label: string | null;
   payload: Record<string, unknown> | null;
