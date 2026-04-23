@@ -16,6 +16,7 @@ import { useIsMobile } from "@/hooks/use-mobile";
 const adminNavItems = [
   { icon: LayoutDashboard, label: "Dashboard", path: "/" },
   { icon: Siren, label: "SLA — Zgłoszenia", path: "/sla" },
+  { icon: History, label: "Audyt SLA", path: "/sla-audit" },
   { icon: Wrench, label: "Naprawy", path: "/repairs" },
   { icon: KanbanSquare, label: "Kanban", path: "/kanban" },
   { icon: Building2, label: "Obiekty", path: "/buildings" },
