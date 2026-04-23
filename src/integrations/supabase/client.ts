@@ -5,15 +5,23 @@ import type { Database } from './types';
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
 const SUPABASE_PUBLISHABLE_KEY = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
 
-// Import the supabase client like this:
-// import { supabase } from "@/integrations/supabase/client";
+// HOT-FIX: disable supabase-js navigator.locks coordination entirely.
+// supabase-js@2.96 has a known pathology where the auth lock holder
+// occasionally never releases (token-refresh callback hangs on a stale
+// network promise). When that happens every subsequent getSession()/
+// getUser()/REST call waits forever on the lock and the entire app
+// freezes on a loading spinner. We don't need cross-tab refresh
+// coordination for this app — single tab usage is dominant — so passing
+// a no-op lock that just runs the callback eliminates the deadlock risk.
+const noopLock = async <R>(_name: string, _acquireTimeout: number, fn: () => Promise<R>): Promise<R> => fn();
 
 export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {
   auth: {
     storage: window.localStorage,
-    storageKey: 'firezone-auth-token', // Custom key to bypass stuck lock
+    storageKey: 'firezone-auth-token',
     persistSession: true,
     autoRefreshToken: true,
     detectSessionInUrl: true,
+    lock: noopLock,
   }
 });

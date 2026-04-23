@@ -188,8 +188,23 @@ export function useCreateSlaTicket() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async (input: CreateSlaTicketInput): Promise<SlaTicket> => {
-      // Wymuszamy reporter_user_id z aktualnej sesji jeśli istnieje
-      const { data: { user } } = await supabase.auth.getUser();
+      // Wymuszamy reporter_user_id z aktualnej sesji jeśli istnieje.
+      // Race z timeoutem, bo getUser() może zawiesić się na navigator.locks.
+      // Publiczny formularz /zgloszenie nie wymaga auth, więc po timeoucie
+      // traktujemy reportera jako anonim.
+      type GetUserResult = Awaited<ReturnType<typeof supabase.auth.getUser>>;
+      let user: GetUserResult["data"]["user"] | null = null;
+      try {
+        const result = await Promise.race<GetUserResult>([
+          supabase.auth.getUser(),
+          new Promise<GetUserResult>((_, reject) =>
+            setTimeout(() => reject(new Error("auth-getUser-timeout")), 800),
+          ),
+        ]);
+        user = result?.data?.user ?? null;
+      } catch {
+        user = null;
+      }
       const payload: Record<string, unknown> = {
         building_id: input.building_id ?? null,
         company_id: input.company_id ?? null,
