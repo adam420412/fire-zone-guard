@@ -3,7 +3,7 @@ import {
   LayoutDashboard, KanbanSquare, Building2, Briefcase,
   Shield, Settings, Flame, ChevronLeft, ChevronRight,
   User, LogOut, Menu, X, ClipboardCheck, FileText, Users, UsersRound, Search, Command, BarChart2, CalendarDays, Factory, Contact, DollarSign,
-  Siren, Wrench, CalendarClock, BookOpen, BarChart3
+  Siren, Wrench, CalendarClock, BookOpen, BarChart3, History
 } from "lucide-react";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { useState, useEffect } from "react";
