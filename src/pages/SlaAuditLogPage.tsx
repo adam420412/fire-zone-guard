@@ -179,6 +179,7 @@ export default function SlaAuditLogPage() {
   const [search, setSearch] = useState("");
   const [eventFilter, setEventFilter] = useState<string>("all");
   const [companyFilter, setCompanyFilter] = useState<string>("all");
+  const [selectedEntry, setSelectedEntry] = useState<TimelineEntry | null>(null);
 
   const ticketIndex = useMemo(() => {
     const map = new Map<string, SlaTicket>();
