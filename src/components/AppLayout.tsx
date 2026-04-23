@@ -1,8 +1,9 @@
 import { Link, useLocation } from "react-router-dom";
-import { 
-  LayoutDashboard, KanbanSquare, Building2, Briefcase, 
+import {
+  LayoutDashboard, KanbanSquare, Building2, Briefcase,
   Shield, Settings, Flame, ChevronLeft, ChevronRight,
-  User, LogOut, Menu, X, ClipboardCheck, FileText, Users, UsersRound, Search, Command, BarChart2, CalendarDays, Factory, Contact, DollarSign
+  User, LogOut, Menu, X, ClipboardCheck, FileText, Users, UsersRound, Search, Command, BarChart2, CalendarDays, Factory, Contact, DollarSign,
+  Siren, Wrench, CalendarClock, BookOpen, BarChart3
 } from "lucide-react";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { useState, useEffect } from "react";
@@ -14,12 +15,17 @@ import { useIsMobile } from "@/hooks/use-mobile";
 
 const adminNavItems = [
   { icon: LayoutDashboard, label: "Dashboard", path: "/" },
+  { icon: Siren, label: "SLA — Zgłoszenia", path: "/sla" },
+  { icon: Wrench, label: "Naprawy", path: "/repairs" },
   { icon: KanbanSquare, label: "Kanban", path: "/kanban" },
   { icon: Building2, label: "Obiekty", path: "/buildings" },
   { icon: Briefcase, label: "Firmy", path: "/companies" },
   { icon: ClipboardCheck, label: "Audyty PPOŻ", path: "/audits" },
   { icon: FileText, label: "Protokoły", path: "/protocols" },
   { icon: Shield, label: "Certyfikaty", path: "/certificates" },
+  { icon: CalendarClock, label: "Terminarz", path: "/office-tasks" },
+  { icon: BookOpen, label: "Biblioteka", path: "/library" },
+  { icon: BarChart3, label: "Raporty", path: "/reports" },
   { icon: Users, label: "Spotkania", path: "/meetings" },
   { icon: UsersRound, label: "Zespół", path: "/employees" },
   { icon: BarChart2, label: "Analityka", path: "/analytics" },
@@ -32,6 +38,8 @@ const adminNavItems = [
 
 const clientNavItems = [
   { icon: LayoutDashboard, label: "Panel", path: "/" },
+  { icon: Siren, label: "Moje zgłoszenia", path: "/sla" },
+  { icon: BookOpen, label: "Biblioteka", path: "/library" },
 ];
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {

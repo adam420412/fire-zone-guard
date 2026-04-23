@@ -3,7 +3,7 @@ import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { ThemeProvider } from "next-themes";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate, useLocation } from "react-router-dom";
 import { AuthProvider, useAuth } from "@/hooks/useAuth";
 import AppLayout from "@/components/AppLayout";
 import Dashboard from "@/pages/Dashboard";
@@ -14,6 +14,7 @@ import CompaniesPage from "@/pages/CompaniesPage";
 import CertificatesPage from "@/pages/CertificatesPage";
 import SettingsPage from "@/pages/SettingsPage";
 import ClientPanel from "@/pages/ClientPanel";
+import ClientSlaPage from "@/pages/ClientSlaPage";
 import AuthPage from "@/pages/AuthPage";
 import AuditsPage from "@/pages/AuditsPage";
 import AuditDetailPage from "@/pages/AuditDetailPage";
@@ -26,6 +27,12 @@ import CalendarPage from "@/pages/CalendarPage";
 import ManufacturersPage from "@/pages/ManufacturersPage";
 import CrmPage from "@/pages/CrmPage";
 import FinancePage from "@/pages/FinancePage";
+import SlaPage from "@/pages/SlaPage";
+import RepairsKanbanPage from "@/pages/RepairsKanbanPage";
+import OfficeTasksPage from "@/pages/OfficeTasksPage";
+import LibraryPage from "@/pages/LibraryPage";
+import ReportsPage from "@/pages/ReportsPage";
+import PublicSlaIntakePage from "@/pages/PublicSlaIntakePage";
 import NotFound from "./pages/NotFound";
 import { Loader2 } from "lucide-react";
 
@@ -40,6 +47,12 @@ const queryClient = new QueryClient({
 
 function ProtectedRoutes() {
   const { user, loading, role } = useAuth();
+  const location = useLocation();
+
+  // PUBLIC ROUTES (no auth required) — must run BEFORE auth check
+  if (location.pathname === "/zgloszenie") {
+    return <PublicSlaIntakePage />;
+  }
 
   if (loading) {
     return (
@@ -59,12 +72,21 @@ function ProtectedRoutes() {
         {isClient ? (
           <>
             <Route path="/" element={<ClientPanel />} />
+            <Route path="/sla" element={<ClientSlaPage />} />
+            <Route path="/sla/:id" element={<ClientSlaPage />} />
+            <Route path="/library" element={<LibraryPage />} />
             <Route path="*" element={<Navigate to="/" replace />} />
           </>
         ) : (
           <>
             <Route path="/" element={<Dashboard />} />
             <Route path="/kanban" element={<KanbanPage />} />
+            <Route path="/sla" element={<SlaPage />} />
+            <Route path="/sla/:id" element={<SlaPage />} />
+            <Route path="/repairs" element={<RepairsKanbanPage />} />
+            <Route path="/office-tasks" element={<OfficeTasksPage />} />
+            <Route path="/library" element={<LibraryPage />} />
+            <Route path="/reports" element={<ReportsPage />} />
             <Route path="/buildings" element={<BuildingsPage />} />
             <Route path="/buildings/:id" element={<BuildingDetailPage />} />
             <Route path="/companies" element={<CompaniesPage />} />
