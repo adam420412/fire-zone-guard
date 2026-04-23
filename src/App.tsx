@@ -32,6 +32,7 @@ import RepairsKanbanPage from "@/pages/RepairsKanbanPage";
 import OfficeTasksPage from "@/pages/OfficeTasksPage";
 import LibraryPage from "@/pages/LibraryPage";
 import ReportsPage from "@/pages/ReportsPage";
+import SlaAuditLogPage from "@/pages/SlaAuditLogPage";
 import PublicSlaIntakePage from "@/pages/PublicSlaIntakePage";
 import NotFound from "./pages/NotFound";
 import { Loader2 } from "lucide-react";
