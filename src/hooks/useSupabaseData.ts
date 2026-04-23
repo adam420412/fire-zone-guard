@@ -692,60 +692,191 @@ export function useDeleteChecklist() {
 }
 
 // ==== EMPLOYEES & HR (V2) ====
+//
+// UWAGA: Po migracji 20260423120000_employees_module_v2.sql tabela
+// employee_development_plans przechowuje wszystkie pola kadrowe samodzielnie
+// (first_name, last_name, email, phone, building_id, ...). Profiles jest
+// opcjonalne - linkujemy je tylko gdy pracownik posiada konto w auth.users.
+//
+// Wszystkie hooki HR korzystają z jednego klucza ["employees"], dzięki czemu
+// invalidate po mutacjach faktycznie odświeża listę.
+const EMPLOYEES_KEY = ["employees"] as const;
+
+export interface EmployeeRecord {
+  id: string;
+  user_id: string | null;
+  first_name: string | null;
+  last_name: string | null;
+  full_name: string;
+  email: string | null;
+  phone: string | null;
+  position: string | null;
+  building_id: string | null;
+  building_name: string | null;
+  company_id: string | null;
+  employment_date: string | null;
+  start_date: string | null;
+  notes: string | null;
+  status: string | null;
+  is_active: boolean;
+  onboarding_progress: number | null;
+  training_status: string | null;
+  health_exam_valid_until: string | null;
+  created_at: string;
+  updated_at: string | null;
+  // pola pochodne wyliczane na froncie
+  initials: string;
+  health_exam_status: "ok" | "expiring" | "expired" | "missing";
+}
+
+function deriveInitials(name: string): string {
+  return name
+    .split(" ")
+    .filter(Boolean)
+    .map((n) => n[0]?.toUpperCase() ?? "")
+    .slice(0, 2)
+    .join("") || "?";
+}
+
+function deriveHealthStatus(date: string | null | undefined): EmployeeRecord["health_exam_status"] {
+  if (!date) return "missing";
+  const d = new Date(date);
+  if (Number.isNaN(d.getTime())) return "missing";
+  const now = new Date();
+  const diffDays = Math.floor((d.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+  if (diffDays < 0) return "expired";
+  if (diffDays <= 30) return "expiring";
+  return "ok";
+}
+
 export function useEmployees(buildingId?: string) {
   return useQuery({
-    queryKey: ["employee_development_plans", buildingId],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("employee_development_plans")
+    queryKey: [...EMPLOYEES_KEY, { buildingId: buildingId ?? null }],
+    queryFn: async (): Promise<EmployeeRecord[]> => {
+      // Preferowane źródło: widok employees_with_details (gotowe joiny + RLS).
+      let rows: any[] | null = null;
+      const viewQuery = supabase
+        .from("employees_with_details" as any)
         .select("*")
         .order("created_at", { ascending: false });
-      
-      const { data: error2, error: profilesErr } = await supabase.from("profiles").select("id, name");
+      const viewRes = await viewQuery;
 
-      if (error && error.code !== "42P01") throw error;
+      if (!viewRes.error && viewRes.data) {
+        rows = viewRes.data as any[];
+      } else {
+        // Fallback: starsza baza bez widoku - dociągamy joiny ręcznie
+        const { data, error } = await supabase
+          .from("employee_development_plans")
+          .select("*, buildings(name), profiles(name, email)")
+          .order("created_at", { ascending: false });
+        if (error) {
+          if (error.code === "42P01") return [];
+          throw error;
+        }
+        rows = (data ?? []).map((e: any) => {
+          const composed = `${e.first_name ?? ""} ${e.last_name ?? ""}`.trim();
+          return {
+            ...e,
+            full_name: composed || e.profiles?.name || "Pracownik",
+            email: e.email ?? e.profiles?.email ?? null,
+            building_name: e.buildings?.name ?? null,
+          };
+        });
+      }
 
-      const profileMap: Record<string, string> = {};
-      (error2 ?? []).forEach((p: any) => { profileMap[p.id] = p.name; });
+      const filtered = buildingId
+        ? rows!.filter((r: any) => r.building_id === buildingId)
+        : rows!;
 
-      return (data ?? []).map((e: any) => ({
-        ...e,
-        name: profileMap[e.user_id] ?? "Pracownik",
-        first_name: (profileMap[e.user_id] ?? "").split(" ")[0] || "",
-        last_name: (profileMap[e.user_id] ?? "").split(" ").slice(1).join(" ") || "",
-      }));
+      return filtered.map((r: any): EmployeeRecord => {
+        const fullName = (r.full_name as string | undefined) ||
+          `${r.first_name ?? ""} ${r.last_name ?? ""}`.trim() ||
+          "Pracownik";
+        return {
+          id: r.id,
+          user_id: r.user_id ?? null,
+          first_name: r.first_name ?? null,
+          last_name: r.last_name ?? null,
+          full_name: fullName,
+          email: r.email ?? null,
+          phone: r.phone ?? null,
+          position: r.position ?? null,
+          building_id: r.building_id ?? null,
+          building_name: r.building_name ?? null,
+          company_id: r.company_id ?? null,
+          employment_date: r.employment_date ?? null,
+          start_date: r.start_date ?? null,
+          notes: r.notes ?? null,
+          status: r.status ?? null,
+          is_active: r.is_active ?? true,
+          onboarding_progress: r.onboarding_progress ?? 0,
+          training_status: r.training_status ?? "Brak",
+          health_exam_valid_until: r.health_exam_valid_until ?? null,
+          created_at: r.created_at,
+          updated_at: r.updated_at ?? null,
+          initials: deriveInitials(fullName),
+          health_exam_status: deriveHealthStatus(r.health_exam_valid_until),
+        };
+      });
     },
   });
+}
+
+export interface CreateEmployeeInput {
+  first_name: string;
+  last_name: string;
+  email?: string | null;
+  phone?: string | null;
+  position?: string | null;
+  building_id?: string | null;
+  company_id?: string | null;
+  employment_date?: string | null;
+  notes?: string | null;
+  onboarding_progress?: number | null;
+  training_status?: string | null;
+  health_exam_valid_until?: string | null;
 }
 
 export function useCreateEmployee() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async (employee: any) => {
-      // W V2 dodajemy wpisy najpierw do profiles
-      // Ponieważ "employees" nie ma struktury autoryzacyjnej w MVP, symulujemy userId
-      const randomUserId = crypto.randomUUID();
-      
-      const { error: profileErr } = await supabase.from("profiles").insert([{
-        user_id: randomUserId,
-        name: `${employee.first_name ?? ''} ${employee.last_name ?? ''}`.trim() || 'Pracownik',
-        email: `employee-${randomUserId.slice(0,8)}@firezone.local`,
-      }]);
-      if (profileErr) throw profileErr;
+    mutationFn: async (input: CreateEmployeeInput) => {
+      const first = (input.first_name ?? "").trim();
+      const last = (input.last_name ?? "").trim();
+      if (!first && !last) {
+        throw new Error("Imię i nazwisko są wymagane.");
+      }
 
-      const { data, error } = await supabase.from("employee_development_plans").insert([{
-        user_id: randomUserId,
-        position: employee.position,
-        onboarding_progress: employee.onboarding_progress,
-        training_status: employee.training_status,
-        health_exam_valid_until: employee.health_exam_valid_until
-      }]).select().single();
+      const payload: Record<string, any> = {
+        first_name: first || null,
+        last_name: last || null,
+        email: input.email?.trim() || null,
+        phone: input.phone?.trim() || null,
+        position: input.position?.trim() || null,
+        building_id: input.building_id || null,
+        company_id: input.company_id || null,
+        employment_date: input.employment_date || null,
+        notes: input.notes?.trim() || null,
+        onboarding_progress: input.onboarding_progress ?? 0,
+        training_status: input.training_status ?? "Brak",
+        health_exam_valid_until: input.health_exam_valid_until || null,
+        status: "aktywny",
+        is_active: true,
+        start_date: input.employment_date || new Date().toISOString().split("T")[0],
+      };
 
+      // Wygenerowane typy Supabase wciąż wymagają user_id (przed regeneracją),
+      // ale po naszej migracji kolumna jest nullable - dlatego cast do any.
+      const { data, error } = await (supabase
+        .from("employee_development_plans") as any)
+        .insert([payload])
+        .select()
+        .single();
       if (error) throw error;
       return data;
     },
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ["employees"] });
+      qc.invalidateQueries({ queryKey: EMPLOYEES_KEY });
     },
   });
 }
@@ -753,21 +884,45 @@ export function useCreateEmployee() {
 export function useUpdateEmployee() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async ({ id, updates, profileUpdates }: { id: string; updates: any, profileUpdates?: any }) => {
-      // 1. Update the employee_development_plans record
-      const { data, error } = await supabase.from("employee_development_plans").update(updates).eq("id", id).select().single();
-      if (error) throw error;
-
-      // 2. Optionally update the profiles record if first_name/last_name changed
-      if (profileUpdates && data.user_id) {
-        const { error: profileErr } = await supabase.from("profiles").update(profileUpdates).eq("id", data.user_id);
-        if (profileErr) throw profileErr;
+    mutationFn: async ({ id, updates }: { id: string; updates: Partial<CreateEmployeeInput & { is_active: boolean; status: string }> }) => {
+      // Tylko bezpieczne, znane pola - nie chcemy przepuścić przypadkowych kluczy
+      const allowed: Record<string, any> = {};
+      const keys = [
+        "first_name","last_name","email","phone","position","building_id","company_id",
+        "employment_date","notes","onboarding_progress","training_status",
+        "health_exam_valid_until","status","is_active",
+      ] as const;
+      for (const k of keys) {
+        if (k in updates) allowed[k] = (updates as any)[k];
       }
-
+      const { data, error } = await supabase
+        .from("employee_development_plans")
+        .update(allowed)
+        .eq("id", id)
+        .select()
+        .single();
+      if (error) throw error;
       return data;
     },
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ["employees"] });
+      qc.invalidateQueries({ queryKey: EMPLOYEES_KEY });
+    },
+  });
+}
+
+export function useDeleteEmployee() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase
+        .from("employee_development_plans")
+        .delete()
+        .eq("id", id);
+      if (error) throw error;
+      return id;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: EMPLOYEES_KEY });
     },
   });
 }
