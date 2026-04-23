@@ -3,9 +3,11 @@ import { useInfiniteQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useSlaTickets, STATUS_LABELS, PRIORITY_LABELS, type SlaTicket } from "@/hooks/useSlaTickets";
-import { Search, Filter, ShieldAlert, ArrowRight, Plus, Activity, Clock, Loader2, Download } from "lucide-react";
+import { Search, Filter, ShieldAlert, ArrowRight, Plus, Activity, Clock, Loader2, Download, Eye, ExternalLink } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Link } from "react-router-dom";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
 
 interface SlaEventRow {
   id: string;
@@ -177,6 +179,7 @@ export default function SlaAuditLogPage() {
   const [search, setSearch] = useState("");
   const [eventFilter, setEventFilter] = useState<string>("all");
   const [companyFilter, setCompanyFilter] = useState<string>("all");
+  const [selectedEntry, setSelectedEntry] = useState<TimelineEntry | null>(null);
 
   const ticketIndex = useMemo(() => {
     const map = new Map<string, SlaTicket>();
@@ -432,7 +435,8 @@ export default function SlaAuditLogPage() {
                     return (
                       <li
                         key={entry.id}
-                        className="group flex items-start gap-3 rounded-lg border border-border bg-card px-4 py-3 transition-colors hover:border-primary/40 hover:bg-card/60"
+                        onClick={() => setSelectedEntry(entry)}
+                        className="group flex cursor-pointer items-start gap-3 rounded-lg border border-border bg-card px-4 py-3 transition-colors hover:border-primary/40 hover:bg-card/60"
                       >
                         <div
                           className={cn(
@@ -454,6 +458,7 @@ export default function SlaAuditLogPage() {
                             {entry.ticket_number && (
                               <Link
                                 to={`/sla/${entry.ticket_id}`}
+                                onClick={(e) => e.stopPropagation()}
                                 className="text-xs font-mono text-primary hover:underline"
                               >
                                 {entry.ticket_number}
@@ -475,15 +480,26 @@ export default function SlaAuditLogPage() {
                           </div>
                         </div>
 
-                        <div className="shrink-0 text-right">
-                          <div className="font-mono text-[11px] text-muted-foreground">
-                            {formatDateTime(entry.created_at).split(", ")[1]}
-                          </div>
-                          {entry.actor_label && (
-                            <div className="text-[10px] text-muted-foreground/70">
-                              {entry.actor_label}
+                        <div className="flex shrink-0 items-start gap-2">
+                          <div className="text-right">
+                            <div className="font-mono text-[11px] text-muted-foreground">
+                              {formatDateTime(entry.created_at).split(", ")[1]}
                             </div>
-                          )}
+                            {entry.actor_label && (
+                              <div className="text-[10px] text-muted-foreground/70">
+                                {entry.actor_label}
+                              </div>
+                            )}
+                          </div>
+                          <button
+                            type="button"
+                            onClick={(e) => { e.stopPropagation(); setSelectedEntry(entry); }}
+                            className="rounded-md border border-transparent p-1.5 text-muted-foreground opacity-0 transition-all hover:border-primary/40 hover:text-primary group-hover:opacity-100"
+                            title="Pokaż szczegóły"
+                            aria-label="Pokaż szczegóły"
+                          >
+                            <Eye className="h-3.5 w-3.5" />
+                          </button>
                         </div>
                       </li>
                     );
@@ -522,6 +538,94 @@ export default function SlaAuditLogPage() {
           </div>
         )}
       </div>
+
+      <Dialog open={!!selectedEntry} onOpenChange={(open) => !open && setSelectedEntry(null)}>
+        <DialogContent className="max-w-2xl">
+          {selectedEntry && (
+            <>
+              <DialogHeader>
+                <DialogTitle className="flex items-center gap-2">
+                  {(() => {
+                    const Icon = EVENT_ICONS[selectedEntry.event_type] ?? Activity;
+                    return <Icon className="h-4 w-4 text-primary" />;
+                  })()}
+                  {EVENT_LABELS[selectedEntry.event_type] ?? selectedEntry.event_type}
+                </DialogTitle>
+                <DialogDescription className="font-mono text-xs">
+                  {formatDateTime(selectedEntry.created_at)}
+                </DialogDescription>
+              </DialogHeader>
+
+              <div className="space-y-3 text-sm">
+                <div className="grid grid-cols-3 gap-3 rounded-md border border-border bg-muted/30 p-3">
+                  <div>
+                    <div className="text-[10px] font-bold uppercase text-muted-foreground">Zgłoszenie</div>
+                    <div className="mt-0.5 font-mono text-xs">
+                      {selectedEntry.ticket_number ?? "—"}
+                    </div>
+                  </div>
+                  <div>
+                    <div className="text-[10px] font-bold uppercase text-muted-foreground">Firma</div>
+                    <div className="mt-0.5 truncate text-xs">{selectedEntry.company_name ?? "—"}</div>
+                  </div>
+                  <div>
+                    <div className="text-[10px] font-bold uppercase text-muted-foreground">Obiekt</div>
+                    <div className="mt-0.5 truncate text-xs">{selectedEntry.building_name ?? "—"}</div>
+                  </div>
+                  <div>
+                    <div className="text-[10px] font-bold uppercase text-muted-foreground">Autor</div>
+                    <div className="mt-0.5 truncate text-xs">{selectedEntry.actor_label ?? "system"}</div>
+                  </div>
+                  <div>
+                    <div className="text-[10px] font-bold uppercase text-muted-foreground">Typ zdarzenia</div>
+                    <div className="mt-0.5 font-mono text-xs">{selectedEntry.event_type}</div>
+                  </div>
+                  <div>
+                    <div className="text-[10px] font-bold uppercase text-muted-foreground">Event ID</div>
+                    <div className="mt-0.5 truncate font-mono text-[10px] text-muted-foreground">
+                      {selectedEntry.id}
+                    </div>
+                  </div>
+                </div>
+
+                <div>
+                  <div className="mb-1.5 text-[10px] font-bold uppercase text-muted-foreground">
+                    Sformatowany kontekst
+                  </div>
+                  <div className="rounded-md border border-border bg-card p-3">
+                    {renderPayload(selectedEntry.event_type, selectedEntry.payload) ?? (
+                      <span className="text-xs text-muted-foreground">Brak danych kontekstowych</span>
+                    )}
+                  </div>
+                </div>
+
+                <div>
+                  <div className="mb-1.5 text-[10px] font-bold uppercase text-muted-foreground">
+                    Pełny payload (JSON)
+                  </div>
+                  <pre className="max-h-60 overflow-auto rounded-md border border-border bg-muted/40 p-3 text-[11px] leading-relaxed">
+                    {selectedEntry.payload
+                      ? JSON.stringify(selectedEntry.payload, null, 2)
+                      : "null"}
+                  </pre>
+                </div>
+              </div>
+
+              <DialogFooter className="gap-2 sm:gap-2">
+                <Button variant="outline" onClick={() => setSelectedEntry(null)}>
+                  Zamknij
+                </Button>
+                <Button asChild>
+                  <Link to={`/sla/${selectedEntry.ticket_id}`}>
+                    <ExternalLink className="h-4 w-4" />
+                    Otwórz zgłoszenie
+                  </Link>
+                </Button>
+              </DialogFooter>
+            </>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
