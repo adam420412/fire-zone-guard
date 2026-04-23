@@ -3,7 +3,7 @@ import { useInfiniteQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useSlaTickets, STATUS_LABELS, PRIORITY_LABELS, type SlaTicket } from "@/hooks/useSlaTickets";
-import { Search, Filter, ShieldAlert, ArrowRight, Plus, Activity, Clock, Loader2 } from "lucide-react";
+import { Search, Filter, ShieldAlert, ArrowRight, Plus, Activity, Clock, Loader2, Download } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Link } from "react-router-dom";
 
