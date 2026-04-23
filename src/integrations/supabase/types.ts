@@ -1086,17 +1086,20 @@ export type Database = {
       recurring_events: {
         Row: {
           assigned_to: string | null
+          building_id: string | null
+          company_id: string | null
           completed_at: string | null
           created_at: string
           created_by: string | null
           description: string | null
-          due_date: string
+          due_date: string | null
           id: string
           interval_months: number | null
           last_done_date: string | null
           next_due_date: string | null
           notes: string | null
           recurrence_rule: string | null
+          recurrence_type: string | null
           related_id: string | null
           related_table: string | null
           reminder_days_before: number[]
@@ -1107,17 +1110,20 @@ export type Database = {
         }
         Insert: {
           assigned_to?: string | null
+          building_id?: string | null
+          company_id?: string | null
           completed_at?: string | null
           created_at?: string
           created_by?: string | null
           description?: string | null
-          due_date: string
+          due_date?: string | null
           id?: string
           interval_months?: number | null
           last_done_date?: string | null
           next_due_date?: string | null
           notes?: string | null
           recurrence_rule?: string | null
+          recurrence_type?: string | null
           related_id?: string | null
           related_table?: string | null
           reminder_days_before?: number[]
@@ -1128,17 +1134,20 @@ export type Database = {
         }
         Update: {
           assigned_to?: string | null
+          building_id?: string | null
+          company_id?: string | null
           completed_at?: string | null
           created_at?: string
           created_by?: string | null
           description?: string | null
-          due_date?: string
+          due_date?: string | null
           id?: string
           interval_months?: number | null
           last_done_date?: string | null
           next_due_date?: string | null
           notes?: string | null
           recurrence_rule?: string | null
+          recurrence_type?: string | null
           related_id?: string | null
           related_table?: string | null
           reminder_days_before?: number[]
@@ -1153,6 +1162,20 @@ export type Database = {
             columns: ["assigned_to"]
             isOneToOne: false
             referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "recurring_events_building_id_fkey"
+            columns: ["building_id"]
+            isOneToOne: false
+            referencedRelation: "buildings"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "recurring_events_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
             referencedColumns: ["id"]
           },
           {
@@ -2041,17 +2064,20 @@ export type Database = {
         Args: { p_done_date?: string; p_event_id: string }
         Returns: {
           assigned_to: string | null
+          building_id: string | null
+          company_id: string | null
           completed_at: string | null
           created_at: string
           created_by: string | null
           description: string | null
-          due_date: string
+          due_date: string | null
           id: string
           interval_months: number | null
           last_done_date: string | null
           next_due_date: string | null
           notes: string | null
           recurrence_rule: string | null
+          recurrence_type: string | null
           related_id: string | null
           related_table: string | null
           reminder_days_before: number[]
