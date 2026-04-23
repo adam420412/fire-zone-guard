@@ -308,7 +308,9 @@ export default function SlaAuditLogPage() {
 
       <div className="mb-4 grid grid-cols-3 gap-3">
         <div className="rounded-lg border border-border bg-card p-3">
-          <div className="text-[10px] font-bold uppercase text-muted-foreground">Wszystkich zdarzeń</div>
+          <div className="text-[10px] font-bold uppercase text-muted-foreground">
+            Wczytanych zdarzeń{hasNextPage && " (więcej dostępnych)"}
+          </div>
           <div className="mt-1 text-2xl font-bold">{events.length}</div>
         </div>
         <div className="rounded-lg border border-border bg-card p-3">
