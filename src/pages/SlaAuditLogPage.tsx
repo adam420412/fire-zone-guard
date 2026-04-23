@@ -162,15 +162,37 @@ export default function SlaAuditLogPage() {
   }, [timeline, search, eventFilter]);
 
   const groupedByDay = useMemo(() => {
-    const groups = new Map<string, TimelineEntry[]>();
+    // Group by calendar day (key = YYYY-MM-DD for stable sort) but keep a
+    // human label for rendering. Within each day, sort entries newest-first
+    // by created_at — consistent with the overall list order. Days themselves
+    // are also sorted newest-first.
+    const groups = new Map<string, { label: string; entries: TimelineEntry[] }>();
     filtered.forEach((entry) => {
-      const day = new Date(entry.created_at).toLocaleDateString("pl-PL", {
+      const d = new Date(entry.created_at);
+      const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+      const label = d.toLocaleDateString("pl-PL", {
         weekday: "long", day: "2-digit", month: "long", year: "numeric",
       });
-      if (!groups.has(day)) groups.set(day, []);
-      groups.get(day)!.push(entry);
+      let bucket = groups.get(key);
+      if (!bucket) {
+        bucket = { label, entries: [] };
+        groups.set(key, bucket);
+      }
+      bucket.entries.push(entry);
     });
-    return Array.from(groups.entries());
+    // Sort entries within each day newest → oldest, with id tiebreak for
+    // events sharing the exact same timestamp.
+    groups.forEach((bucket) => {
+      bucket.entries.sort((a, b) => {
+        const diff = new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+        if (diff !== 0) return diff;
+        return b.id.localeCompare(a.id);
+      });
+    });
+    // Sort day groups newest → oldest by their key.
+    return Array.from(groups.entries())
+      .sort(([a], [b]) => b.localeCompare(a))
+      .map(([, bucket]) => [bucket.label, bucket.entries] as const);
   }, [filtered]);
 
   const eventTypeOptions = useMemo(() => {
