@@ -22,6 +22,8 @@ interface TimelineEntry {
   ticket_id: string;
   ticket_number: string | null;
   building_name: string | null;
+  company_id: string | null;
+  company_name: string | null;
   event_type: string;
   actor_label: string | null;
   payload: Record<string, unknown> | null;
@@ -174,11 +176,24 @@ export default function SlaAuditLogPage() {
 
   const [search, setSearch] = useState("");
   const [eventFilter, setEventFilter] = useState<string>("all");
+  const [companyFilter, setCompanyFilter] = useState<string>("all");
 
   const ticketIndex = useMemo(() => {
     const map = new Map<string, SlaTicket>();
     tickets.forEach((t) => map.set(t.id, t));
     return map;
+  }, [tickets]);
+
+  // Build a sorted, deduped list of companies from currently-known tickets so
+  // the filter dropdown only shows companies the admin actually has tickets for.
+  const companyOptions = useMemo(() => {
+    const map = new Map<string, string>();
+    tickets.forEach((t) => {
+      if (t.company_id && t.company_name) map.set(t.company_id, t.company_name);
+    });
+    return Array.from(map.entries())
+      .map(([id, name]) => ({ id, name }))
+      .sort((a, b) => a.name.localeCompare(b.name, "pl"));
   }, [tickets]);
 
   const timeline = useMemo<TimelineEntry[]>(() => {
@@ -189,6 +204,8 @@ export default function SlaAuditLogPage() {
         ticket_id: e.ticket_id,
         ticket_number: t?.ticket_number ?? null,
         building_name: t?.building_name ?? null,
+        company_id: t?.company_id ?? null,
+        company_name: t?.company_name ?? null,
         event_type: e.event_type,
         actor_label: e.actor_label,
         payload: e.payload,
@@ -201,15 +218,22 @@ export default function SlaAuditLogPage() {
     const q = search.trim().toLowerCase();
     return timeline.filter((entry) => {
       if (eventFilter !== "all" && entry.event_type !== eventFilter) return false;
+      // Company filter — events whose ticket has no company match only "all".
+      // Note: events for tickets that haven't been loaded by useSlaTickets yet
+      // (e.g. very old, paginated out) will have null company_id and won't
+      // match a specific company filter. This is intentional — the alternative
+      // is to fetch ticket metadata per-event which would defeat pagination.
+      if (companyFilter !== "all" && entry.company_id !== companyFilter) return false;
       if (!q) return true;
       return (
         (entry.ticket_number ?? "").toLowerCase().includes(q) ||
         (entry.building_name ?? "").toLowerCase().includes(q) ||
+        (entry.company_name ?? "").toLowerCase().includes(q) ||
         (entry.actor_label ?? "").toLowerCase().includes(q) ||
         entry.event_type.toLowerCase().includes(q)
       );
     });
-  }, [timeline, search, eventFilter]);
+  }, [timeline, search, eventFilter, companyFilter]);
 
   const groupedByDay = useMemo(() => {
     const groups = new Map<string, { label: string; entries: TimelineEntry[] }>();
@@ -293,6 +317,17 @@ export default function SlaAuditLogPage() {
               className="w-64 bg-transparent text-sm outline-none placeholder:text-muted-foreground"
             />
           </div>
+          <select
+            value={companyFilter}
+            onChange={(e) => setCompanyFilter(e.target.value)}
+            className="rounded-md border border-border bg-card px-3 py-1.5 text-sm outline-none cursor-pointer max-w-[14rem]"
+            title="Filtruj po firmie"
+          >
+            <option value="all">Wszystkie firmy</option>
+            {companyOptions.map((c) => (
+              <option key={c.id} value={c.id}>{c.name}</option>
+            ))}
+          </select>
           <select
             value={eventFilter}
             onChange={(e) => setEventFilter(e.target.value)}
@@ -383,6 +418,11 @@ export default function SlaAuditLogPage() {
                               >
                                 {entry.ticket_number}
                               </Link>
+                            )}
+                            {entry.company_name && (
+                              <span className="text-xs text-muted-foreground">
+                                · {entry.company_name}
+                              </span>
                             )}
                             {entry.building_name && (
                               <span className="text-xs text-muted-foreground">
