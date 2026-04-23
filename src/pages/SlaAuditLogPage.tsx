@@ -288,6 +288,36 @@ export default function SlaAuditLogPage() {
   const isLoading = ticketsLoading || eventsLoading;
   const isAdmin = role === "super_admin" || role === "admin";
 
+  // CSV export of the currently filtered timeline. Excel-friendly: UTF-8 BOM,
+  // CRLF line endings, fields wrapped in quotes with internal quotes doubled.
+  const handleExportCsv = () => {
+    const headers = ["ticket_number", "building", "company", "event_type", "actor", "created_at", "payload"];
+    const escape = (v: unknown) => {
+      const s = v == null ? "" : typeof v === "string" ? v : JSON.stringify(v);
+      return `"${s.replace(/"/g, '""')}"`;
+    };
+    const rows = filtered.map((e) => [
+      e.ticket_number ?? "",
+      e.building_name ?? "",
+      e.company_name ?? "",
+      EVENT_LABELS[e.event_type] ?? e.event_type,
+      e.actor_label ?? "",
+      e.created_at,
+      e.payload ?? "",
+    ].map(escape).join(","));
+    const csv = "\uFEFF" + [headers.join(","), ...rows].join("\r\n");
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    const ts = new Date().toISOString().slice(0, 19).replace(/[:T]/g, "-");
+    a.download = `audyt-sla-${ts}.csv`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  };
+
   if (!isAdmin) {
     return (
       <div className="flex h-full flex-col items-center justify-center gap-3 text-center">
