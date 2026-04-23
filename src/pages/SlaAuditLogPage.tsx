@@ -411,6 +411,34 @@ export default function SlaAuditLogPage() {
                 </ul>
               </div>
             ))}
+
+            {/* Infinite-scroll sentinel + manual fallback. The IntersectionObserver
+                in the effect above triggers fetchNextPage when this element scrolls
+                near the viewport. The button is a fallback for keyboard / a11y. */}
+            {hasNextPage && (
+              <div ref={sentinelRef} className="flex justify-center py-4">
+                <button
+                  type="button"
+                  onClick={() => fetchNextPage()}
+                  disabled={isFetchingNextPage}
+                  className="inline-flex items-center gap-2 rounded-md border border-border bg-card px-4 py-2 text-xs font-medium text-muted-foreground transition-colors hover:border-primary/40 hover:text-foreground disabled:cursor-wait disabled:opacity-60"
+                >
+                  {isFetchingNextPage ? (
+                    <>
+                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                      Ładowanie starszych zdarzeń...
+                    </>
+                  ) : (
+                    "Załaduj starsze zdarzenia"
+                  )}
+                </button>
+              </div>
+            )}
+            {!hasNextPage && events.length > 0 && (
+              <div className="py-4 text-center text-[11px] text-muted-foreground/70">
+                Wczytano wszystkie zdarzenia ({events.length})
+              </div>
+            )}
           </div>
         )}
       </div>
