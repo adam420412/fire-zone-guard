@@ -10,7 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { toast } from "sonner";
-import { generateReportPDF } from "@/lib/pdfGenerator";
+import { generateProtocolPDF, detectProtocolType } from "@/lib/pdfProtocols";
 import { useAuth } from "@/hooks/useAuth";
 import { SignatureDialog } from "@/components/SignatureDialog";
 
@@ -68,31 +68,24 @@ export default function ProtocolDetailPage() {
     setIsSignatureOpen(false);
     if (!protocol) return;
 
-    const tableData = measurements?.map((m: any, index: number) => [
-      index + 1,
-      m.hydrant_number,
-      m.type,
-      m.dn_diameter,
-      m.static_pressure_mpa?.toString() || "-",
-      m.dynamic_pressure_mpa?.toString() || "-",
-      m.flow_rate_dm3s?.toString() || "-"
-    ]) || [];
-
-    generateReportPDF({
-      title: "PROTOKÓŁ Z BADAŃ",
-      subtitle: `Typ diagnozy: ${protocol.type}`,
-      filename: `Protokol_${protocol.type.replace(/\s+/g, '_')}_${protocol.performed_at}.pdf`,
-      metadata: [
-        { label: "Obiekt", value: protocol.building_name || "Brak" },
-        { label: "Data wykonania", value: new Date(protocol.performed_at).toLocaleDateString("pl-PL") },
-        { label: "Inspektor", value: protocol.inspector_name || "Brak" },
-        { label: "Rodzaj przeglądu", value: protocol.type }
-      ],
-      tableColumns: ["Lp.", "Oznak.", "Rodzaj", "Śr. DN", "Ciśn. statyczne MPa", "Ciśn. dynamiczne MPa", "Wydajność dm3/s"],
-      tableData,
-      notes: protocol.notes || "Brak uwag szczegółowych z oględzin.",
-      result: protocol.overall_result || "Brak klasyfikacji",
-      signatureDataUrl
+    // Per-type dispatcher: picks the right column layout (hydranty / gaśnice /
+    // SSP / oświetlenie / drzwi / klapy / DSO / oddymianie) based on
+    // protocol.type, falling back to a generic table for unknown types.
+    generateProtocolPDF({
+      protocolType: detectProtocolType(protocol.type),
+      protocol: {
+        building_name:        (protocol as any).building_name ?? null,
+        building_address:     (protocol as any).building_address ?? null,
+        inspector_name:       protocol.inspector_name ?? null,
+        performed_at:         protocol.performed_at ?? null,
+        next_inspection_due:  (protocol as any).next_inspection_due ?? null,
+        protocol_number:      (protocol as any).protocol_number ?? null,
+        type:                 protocol.type ?? null,
+        notes:                protocol.notes ?? null,
+        overall_result:       protocol.overall_result ?? null,
+      },
+      measurements: (measurements ?? []) as Record<string, unknown>[],
+      signatureDataUrl,
     });
   };
 

@@ -3,11 +3,17 @@ import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { Textarea } from "@/components/ui/textarea";
 import {
   BookOpen, Search, FileText, Download, ExternalLink,
   Scale, Shield, FlameKindling, Building2, AlertCircle,
+  Loader2, Quote, Upload,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useLibraryRag } from "@/hooks/useLibraryRag";
+import { useAuth } from "@/hooks/useAuth";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
 
 // Faza 4 — Biblioteka: prawo + wytyczne + szablony + AI Q&A
 type Category = "law" | "guidelines" | "templates" | "internal";
@@ -89,9 +95,46 @@ const SEED_DOCS: DocItem[] = [
 ];
 
 export default function LibraryPage() {
+  const { role } = useAuth();
+  const isAdmin = role === "admin" || role === "super_admin";
+
   const [search, setSearch] = useState("");
   const [activeCat, setActiveCat] = useState<Category | "all">("all");
   const [aiQuestion, setAiQuestion] = useState("");
+  const ragMutation = useLibraryRag();
+
+  // Admin ingest panel state
+  const [ingestDocId, setIngestDocId] = useState("");
+  const [ingestContent, setIngestContent] = useState("");
+  const [ingesting, setIngesting] = useState(false);
+
+  const askAi = () => {
+    const q = aiQuestion.trim();
+    if (!q || q.length < 3) return;
+    ragMutation.mutate(q);
+  };
+
+  const ingest = async () => {
+    if (!ingestDocId.trim() || !ingestContent.trim()) {
+      toast.error("Wybierz ID dokumentu i wklej treść.");
+      return;
+    }
+    try {
+      setIngesting(true);
+      const { data, error } = await supabase.functions.invoke("library-ingest", {
+        body: { op: "ingest_text", document_id: ingestDocId.trim(), content: ingestContent },
+      });
+      if (error) throw error;
+      const d = data as { ok?: boolean; chunks?: number; error?: string };
+      if (d?.error) throw new Error(d.error);
+      toast.success(`Zaindeksowano ${d?.chunks ?? 0} fragmentów.`);
+      setIngestContent("");
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Błąd ingest");
+    } finally {
+      setIngesting(false);
+    }
+  };
 
   const filtered = SEED_DOCS.filter((d) => {
     if (activeCat !== "all" && d.category !== activeCat) return false;
@@ -127,20 +170,103 @@ export default function LibraryPage() {
               <Input
                 value={aiQuestion}
                 onChange={(e) => setAiQuestion(e.target.value)}
+                onKeyDown={(e) => { if (e.key === "Enter" && !ragMutation.isPending) askAi(); }}
                 placeholder='np. "Co ile lat wymieniać proszek w gaśnicy GP-6?"'
                 className="bg-background"
+                disabled={ragMutation.isPending}
               />
-              <Button disabled className="gap-2">
-                <FlameKindling className="h-4 w-4" />
-                Zapytaj
+              <Button onClick={askAi} disabled={ragMutation.isPending || aiQuestion.trim().length < 3} className="gap-2">
+                {ragMutation.isPending ? (
+                  <><Loader2 className="h-4 w-4 animate-spin" /> Szukam...</>
+                ) : (
+                  <><FlameKindling className="h-4 w-4" /> Zapytaj</>
+                )}
               </Button>
             </div>
-            <p className="text-xs text-muted-foreground mt-2 italic">
-              ⚙️ Integracja z Edge Function (RAG nad bazą prawa) — w kolejnej iteracji.
-            </p>
+
+            {ragMutation.error && (
+              <div className="mt-3 rounded-md border border-critical/30 bg-critical/10 p-3 text-xs text-critical">
+                {ragMutation.error.message}
+              </div>
+            )}
+
+            {ragMutation.data && (
+              <div className="mt-4 space-y-3">
+                <div className="rounded-md border border-orange-500/30 bg-background p-3 text-sm whitespace-pre-wrap">
+                  {ragMutation.data.answer}
+                </div>
+                {ragMutation.data.citations.length > 0 && (
+                  <div className="space-y-1.5">
+                    <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                      Źródła
+                    </p>
+                    <ul className="space-y-1">
+                      {ragMutation.data.citations.map((c) => (
+                        <li key={c.index} className="flex items-start gap-2 text-xs text-muted-foreground">
+                          <Quote className="h-3 w-3 mt-0.5 flex-shrink-0 text-orange-500" />
+                          <span>
+                            <span className="font-mono mr-1">[{c.index}]</span>
+                            <span className="font-medium text-foreground">{c.doc_title}</span>
+                            {c.doc_source && <span className="ml-1">— {c.doc_source}</span>}
+                            <span className="ml-1 opacity-60">({Math.round(c.similarity * 100)}%)</span>
+                            {c.doc_url && (
+                              <a href={c.doc_url} target="_blank" rel="noreferrer" className="ml-1 underline">
+                                ↗
+                              </a>
+                            )}
+                          </span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {!ragMutation.data && !ragMutation.isPending && (
+              <p className="text-xs text-muted-foreground mt-2 italic">
+                Odpowiedź oparta o RAG nad biblioteką dokumentów (text-embedding-3-small + gpt-4o-mini).
+              </p>
+            )}
           </div>
         </div>
       </Card>
+
+      {/* INGEST PANEL — admin only */}
+      {isAdmin && (
+        <Card className="p-4 border-dashed">
+          <div className="flex items-start gap-2 mb-3">
+            <Upload className="h-4 w-4 text-muted-foreground mt-0.5" />
+            <div className="flex-1">
+              <p className="text-sm font-semibold">Indeksowanie dokumentu (admin)</p>
+              <p className="text-xs text-muted-foreground">
+                Wklej treść (np. fragmenty rozporządzenia) — zostanie pocięta na chunki i zembedowana.
+              </p>
+            </div>
+          </div>
+          <div className="grid gap-2">
+            <Input
+              value={ingestDocId}
+              onChange={(e) => setIngestDocId(e.target.value)}
+              placeholder="document_id (UUID z library_documents)"
+              className="font-mono text-xs"
+            />
+            <Textarea
+              value={ingestContent}
+              onChange={(e) => setIngestContent(e.target.value)}
+              rows={6}
+              placeholder="Wklej treść dokumentu (max ≈ 50 chunków, czyli ~50 000 znaków)..."
+              className="text-xs"
+            />
+            <div className="flex justify-end">
+              <Button onClick={ingest} disabled={ingesting} size="sm" className="gap-2">
+                {ingesting ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Upload className="h-3.5 w-3.5" />}
+                Zindeksuj
+              </Button>
+            </div>
+          </div>
+        </Card>
+      )}
 
       {/* SEARCH + CATEGORIES */}
       <Card className="p-4 space-y-3">
@@ -222,10 +348,11 @@ export default function LibraryPage() {
         <div className="flex items-start gap-3">
           <AlertCircle className="h-5 w-5 text-blue-500 flex-shrink-0 mt-0.5" />
           <div className="text-sm">
-            <p className="font-semibold text-blue-700 dark:text-blue-300">Scaffold Faza 4</p>
+            <p className="font-semibold text-blue-700 dark:text-blue-300">Biblioteka + RAG</p>
             <p className="text-muted-foreground mt-1">
-              Lista bazowa z aktami prawnymi i szablonami. AI Q&A nad bazą prawa
-              (RAG, embeddings) + upload własnych dokumentów + linkowanie do obiektów —
+              Lista bazowa pochodzi z {SEED_DOCS.length} pozycji curated. AI Q&A operuje nad
+              tabelą <code className="font-mono text-[10px]">library_doc_chunks</code>; admin może
+              indeksować nowe dokumenty z panelu powyżej. Linkowanie chunków do obiektów —
               w kolejnej iteracji.
             </p>
           </div>
