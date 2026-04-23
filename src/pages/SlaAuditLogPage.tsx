@@ -1,9 +1,9 @@
-import { useMemo, useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useMemo, useState, useEffect, useRef } from "react";
+import { useInfiniteQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useSlaTickets, STATUS_LABELS, PRIORITY_LABELS, type SlaTicket } from "@/hooks/useSlaTickets";
-import { Search, Filter, ShieldAlert, ArrowRight, Plus, Activity, Clock } from "lucide-react";
+import { Search, Filter, ShieldAlert, ArrowRight, Plus, Activity, Clock, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Link } from "react-router-dom";
 
@@ -28,21 +28,58 @@ interface TimelineEntry {
   created_at: string;
 }
 
-function useAllSlaEvents(limit = 1000) {
-  return useQuery({
-    queryKey: ["sla_ticket_events", "all", limit],
-    queryFn: async (): Promise<SlaEventRow[]> => {
-      // Order newest-first; tiebreak on id so events written in the same
-      // transaction (e.g. created + status_change from the same trigger)
-      // get a stable, deterministic order instead of bouncing around.
-      const { data, error } = await (supabase.from as any)("sla_ticket_events")
+const PAGE_SIZE = 100;
+
+interface PageCursor {
+  created_at: string;
+  id: string;
+}
+
+interface EventsPage {
+  rows: SlaEventRow[];
+  nextCursor: PageCursor | null;
+}
+
+/**
+ * Keyset pagination on (created_at DESC, id DESC).
+ *
+ * OFFSET is unsafe here because new events stream in at the top while the
+ * user scrolls. Instead, each page asks for rows strictly older than the
+ * last (created_at, id) tuple of the previous page. Stable across inserts
+ * and matches the deterministic order used by the timeline grouping.
+ *
+ * Filter expresses: created_at < cursor.created_at
+ *                OR (created_at = cursor.created_at AND id < cursor.id)
+ */
+function useAllSlaEvents() {
+  return useInfiniteQuery<EventsPage>({
+    queryKey: ["sla_ticket_events", "infinite"],
+    initialPageParam: null,
+    queryFn: async ({ pageParam }): Promise<EventsPage> => {
+      const cursor = pageParam as PageCursor | null;
+      let query = (supabase.from as any)("sla_ticket_events")
         .select("*")
         .order("created_at", { ascending: false })
         .order("id", { ascending: false })
-        .limit(limit);
+        .limit(PAGE_SIZE);
+
+      if (cursor) {
+        query = query.or(
+          `created_at.lt.${cursor.created_at},and(created_at.eq.${cursor.created_at},id.lt.${cursor.id})`,
+        );
+      }
+
+      const { data, error } = await query;
       if (error) throw error;
-      return (data ?? []) as SlaEventRow[];
+      const rows = (data ?? []) as SlaEventRow[];
+      const last = rows[rows.length - 1];
+      const nextCursor: PageCursor | null =
+        rows.length === PAGE_SIZE && last
+          ? { created_at: last.created_at, id: last.id }
+          : null;
+      return { rows, nextCursor };
     },
+    getNextPageParam: (lastPage) => lastPage.nextCursor,
   });
 }
 
@@ -120,7 +157,20 @@ function renderPayload(eventType: string, payload: Record<string, unknown> | nul
 export default function SlaAuditLogPage() {
   const { role } = useAuth();
   const { data: tickets = [], isLoading: ticketsLoading } = useSlaTickets();
-  const { data: events = [], isLoading: eventsLoading } = useAllSlaEvents();
+  const {
+    data: eventPages,
+    isLoading: eventsLoading,
+    fetchNextPage,
+    hasNextPage,
+    isFetchingNextPage,
+  } = useAllSlaEvents();
+
+  // Flatten all loaded pages into a single chronological array. Order is
+  // already DESC because each page is queried that way.
+  const events = useMemo<SlaEventRow[]>(
+    () => eventPages?.pages.flatMap((p) => p.rows) ?? [],
+    [eventPages],
+  );
 
   const [search, setSearch] = useState("");
   const [eventFilter, setEventFilter] = useState<string>("all");
@@ -162,10 +212,6 @@ export default function SlaAuditLogPage() {
   }, [timeline, search, eventFilter]);
 
   const groupedByDay = useMemo(() => {
-    // Group by calendar day (key = YYYY-MM-DD for stable sort) but keep a
-    // human label for rendering. Within each day, sort entries newest-first
-    // by created_at — consistent with the overall list order. Days themselves
-    // are also sorted newest-first.
     const groups = new Map<string, { label: string; entries: TimelineEntry[] }>();
     filtered.forEach((entry) => {
       const d = new Date(entry.created_at);
@@ -180,8 +226,6 @@ export default function SlaAuditLogPage() {
       }
       bucket.entries.push(entry);
     });
-    // Sort entries within each day newest → oldest, with id tiebreak for
-    // events sharing the exact same timestamp.
     groups.forEach((bucket) => {
       bucket.entries.sort((a, b) => {
         const diff = new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
@@ -189,7 +233,6 @@ export default function SlaAuditLogPage() {
         return b.id.localeCompare(a.id);
       });
     });
-    // Sort day groups newest → oldest by their key.
     return Array.from(groups.entries())
       .sort(([a], [b]) => b.localeCompare(a))
       .map(([, bucket]) => [bucket.label, bucket.entries] as const);
@@ -199,6 +242,24 @@ export default function SlaAuditLogPage() {
     const set = new Set(events.map((e) => e.event_type));
     return Array.from(set);
   }, [events]);
+
+  // Auto-load older pages when the sentinel scrolls into view. Re-creates the
+  // observer when fetch state changes so it doesn't double-fire mid-flight.
+  const sentinelRef = useRef<HTMLDivElement | null>(null);
+  useEffect(() => {
+    const node = sentinelRef.current;
+    if (!node || !hasNextPage || isFetchingNextPage) return;
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0]?.isIntersecting) {
+          fetchNextPage();
+        }
+      },
+      { rootMargin: "200px" },
+    );
+    observer.observe(node);
+    return () => observer.disconnect();
+  }, [hasNextPage, isFetchingNextPage, fetchNextPage, filtered.length]);
 
   const isLoading = ticketsLoading || eventsLoading;
   const isAdmin = role === "super_admin" || role === "admin";
@@ -247,7 +308,9 @@ export default function SlaAuditLogPage() {
 
       <div className="mb-4 grid grid-cols-3 gap-3">
         <div className="rounded-lg border border-border bg-card p-3">
-          <div className="text-[10px] font-bold uppercase text-muted-foreground">Wszystkich zdarzeń</div>
+          <div className="text-[10px] font-bold uppercase text-muted-foreground">
+            Wczytanych zdarzeń{hasNextPage && " (więcej dostępnych)"}
+          </div>
           <div className="mt-1 text-2xl font-bold">{events.length}</div>
         </div>
         <div className="rounded-lg border border-border bg-card p-3">
@@ -348,6 +411,34 @@ export default function SlaAuditLogPage() {
                 </ul>
               </div>
             ))}
+
+            {/* Infinite-scroll sentinel + manual fallback. The IntersectionObserver
+                in the effect above triggers fetchNextPage when this element scrolls
+                near the viewport. The button is a fallback for keyboard / a11y. */}
+            {hasNextPage && (
+              <div ref={sentinelRef} className="flex justify-center py-4">
+                <button
+                  type="button"
+                  onClick={() => fetchNextPage()}
+                  disabled={isFetchingNextPage}
+                  className="inline-flex items-center gap-2 rounded-md border border-border bg-card px-4 py-2 text-xs font-medium text-muted-foreground transition-colors hover:border-primary/40 hover:text-foreground disabled:cursor-wait disabled:opacity-60"
+                >
+                  {isFetchingNextPage ? (
+                    <>
+                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                      Ładowanie starszych zdarzeń...
+                    </>
+                  ) : (
+                    "Załaduj starsze zdarzenia"
+                  )}
+                </button>
+              </div>
+            )}
+            {!hasNextPage && events.length > 0 && (
+              <div className="py-4 text-center text-[11px] text-muted-foreground/70">
+                Wczytano wszystkie zdarzenia ({events.length})
+              </div>
+            )}
           </div>
         )}
       </div>
