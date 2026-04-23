@@ -1,9 +1,9 @@
-import { useMemo, useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useMemo, useState, useEffect, useRef } from "react";
+import { useInfiniteQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useSlaTickets, STATUS_LABELS, PRIORITY_LABELS, type SlaTicket } from "@/hooks/useSlaTickets";
-import { Search, Filter, ShieldAlert, ArrowRight, Plus, Activity, Clock } from "lucide-react";
+import { Search, Filter, ShieldAlert, ArrowRight, Plus, Activity, Clock, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Link } from "react-router-dom";
 
@@ -28,17 +28,58 @@ interface TimelineEntry {
   created_at: string;
 }
 
-function useAllSlaEvents(limit = 1000) {
-  return useQuery({
-    queryKey: ["sla_ticket_events", "all", limit],
-    queryFn: async (): Promise<SlaEventRow[]> => {
-      const { data, error } = await (supabase.from as any)("sla_ticket_events")
+const PAGE_SIZE = 100;
+
+interface PageCursor {
+  created_at: string;
+  id: string;
+}
+
+interface EventsPage {
+  rows: SlaEventRow[];
+  nextCursor: PageCursor | null;
+}
+
+/**
+ * Keyset pagination on (created_at DESC, id DESC).
+ *
+ * OFFSET is unsafe here because new events stream in at the top while the
+ * user scrolls. Instead, each page asks for rows strictly older than the
+ * last (created_at, id) tuple of the previous page. Stable across inserts
+ * and matches the deterministic order used by the timeline grouping.
+ *
+ * Filter expresses: created_at < cursor.created_at
+ *                OR (created_at = cursor.created_at AND id < cursor.id)
+ */
+function useAllSlaEvents() {
+  return useInfiniteQuery<EventsPage>({
+    queryKey: ["sla_ticket_events", "infinite"],
+    initialPageParam: null,
+    queryFn: async ({ pageParam }): Promise<EventsPage> => {
+      const cursor = pageParam as PageCursor | null;
+      let query = (supabase.from as any)("sla_ticket_events")
         .select("*")
         .order("created_at", { ascending: false })
-        .limit(limit);
+        .order("id", { ascending: false })
+        .limit(PAGE_SIZE);
+
+      if (cursor) {
+        query = query.or(
+          `created_at.lt.${cursor.created_at},and(created_at.eq.${cursor.created_at},id.lt.${cursor.id})`,
+        );
+      }
+
+      const { data, error } = await query;
       if (error) throw error;
-      return (data ?? []) as SlaEventRow[];
+      const rows = (data ?? []) as SlaEventRow[];
+      const last = rows[rows.length - 1];
+      const nextCursor: PageCursor | null =
+        rows.length === PAGE_SIZE && last
+          ? { created_at: last.created_at, id: last.id }
+          : null;
+      return { rows, nextCursor };
     },
+    getNextPageParam: (lastPage) => lastPage.nextCursor,
   });
 }
 
