@@ -318,6 +318,17 @@ export default function SlaAuditLogPage() {
             />
           </div>
           <select
+            value={companyFilter}
+            onChange={(e) => setCompanyFilter(e.target.value)}
+            className="rounded-md border border-border bg-card px-3 py-1.5 text-sm outline-none cursor-pointer max-w-[14rem]"
+            title="Filtruj po firmie"
+          >
+            <option value="all">Wszystkie firmy</option>
+            {companyOptions.map((c) => (
+              <option key={c.id} value={c.id}>{c.name}</option>
+            ))}
+          </select>
+          <select
             value={eventFilter}
             onChange={(e) => setEventFilter(e.target.value)}
             className="rounded-md border border-border bg-card px-3 py-1.5 text-sm outline-none cursor-pointer"
