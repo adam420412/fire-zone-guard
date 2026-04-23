@@ -377,12 +377,34 @@ function NotificationsTab() {
       return s ? { ...defaultNotifSettings, ...JSON.parse(s) } : defaultNotifSettings;
     } catch { return defaultNotifSettings; }
   });
+  const [dispatching, setDispatching] = useState(false);
 
   const toggle = (key: NotifKey) => setSettings((s: typeof defaultNotifSettings) => ({ ...s, [key]: !s[key] }));
 
   const save = () => {
     localStorage.setItem("fzg_notif_settings", JSON.stringify(settings));
     toast({ title: "✅ Ustawienia powiadomień zapisane!" });
+  };
+
+  const runDispatcher = async () => {
+    setDispatching(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("dispatch-notifications");
+      if (error) throw error;
+      const d: any = data ?? {};
+      toast({
+        title: "✅ Dispatcher uruchomiony",
+        description: `Przetworzono: ${d.processed ?? 0}, wysłano: ${d.sent ?? 0}, błędów: ${d.failed ?? 0}, pominięto: ${d.skipped ?? 0}`,
+      });
+    } catch (e: any) {
+      toast({
+        title: "❌ Błąd dispatchera",
+        description: e?.message ?? "Nie udało się uruchomić",
+        variant: "destructive",
+      });
+    } finally {
+      setDispatching(false);
+    }
   };
 
   const options: { key: NotifKey; label: string; desc: string }[] = [
@@ -423,6 +445,23 @@ function NotificationsTab() {
         <Save className="mr-2 h-4 w-4" />
         Zapisz ustawienia
       </Button>
+
+      <div className="rounded-xl border border-border bg-secondary/20 p-4 space-y-3">
+        <div>
+          <p className="text-sm font-semibold flex items-center gap-2">
+            <Send className="h-4 w-4 text-orange-500" />
+            Dispatcher powiadomień (admin)
+          </p>
+          <p className="text-xs text-muted-foreground mt-1">
+            Wymusza wysyłkę kolejki <code>notifications_outbox</code> przez Telegram. Normalnie
+            uruchamiane przez harmonogram serwerowy.
+          </p>
+        </div>
+        <Button onClick={runDispatcher} disabled={dispatching} variant="outline" size="sm">
+          {dispatching && <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" />}
+          Uruchom dispatcher teraz
+        </Button>
+      </div>
     </div>
   );
 }
