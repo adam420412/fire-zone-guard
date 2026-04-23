@@ -419,6 +419,11 @@ export default function SlaAuditLogPage() {
                                 {entry.ticket_number}
                               </Link>
                             )}
+                            {entry.company_name && (
+                              <span className="text-xs text-muted-foreground">
+                                · {entry.company_name}
+                              </span>
+                            )}
                             {entry.building_name && (
                               <span className="text-xs text-muted-foreground">
                                 · {entry.building_name}
