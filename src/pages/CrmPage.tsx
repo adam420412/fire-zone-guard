@@ -119,7 +119,18 @@ export default function CrmPage() {
                     </div>
                   </div>
                   {isSuperAdmin && (
-                    <Button variant="ghost" size="icon" className="h-7 w-7 opacity-0 group-hover:opacity-100 text-destructive" onClick={() => { deleteContact(contact.id); toast.success("Usunięto."); }}>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-7 w-7 opacity-0 group-hover:opacity-100 text-destructive"
+                      onClick={() => {
+                        if (!window.confirm(`Usunąć kontakt „${contact.name}"?`)) return;
+                        deleteContact(contact.id, {
+                          onSuccess: () => toast.success("Kontakt usunięty."),
+                          onError: (e: any) => toast.error(e?.message ?? "Nie udało się usunąć."),
+                        });
+                      }}
+                    >
                       <Trash2 className="h-3.5 w-3.5" />
                     </Button>
                   )}

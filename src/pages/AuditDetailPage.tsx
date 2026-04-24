@@ -1,6 +1,6 @@
 import { useState, useMemo } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { ChevronLeft, Save, Plus, Printer, Trash2, FileDown, FileText, Users, Shield, ClipboardCheck, Package, QrCode, MapPin } from "lucide-react";
+import { ChevronLeft, Plus, Printer, Trash2, FileDown, FileText, Users, Shield, ClipboardCheck, Package, QrCode, MapPin, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAudits, useAuditChecklists, useCreateChecklist, useDeleteChecklist, useUpdateChecklist, useBatchCreateChecklist, useProtocols, useDocuments, useUpdateBuilding } from "@/hooks/useSupabaseData";
 import { useBuildingDevices, useBuildingDetail } from "@/hooks/useBuildingData";
@@ -47,6 +47,7 @@ export default function AuditDetailPage() {
   const [qrDevice, setQrDevice] = useState<any>(null);
   
   const audit = audits?.find(a => a.id === id);
+  const auditsLoading = audits === undefined;
   const buildingId = audit ? (audit as any).building_id : null;
   
   // Get documents, devices and building detail for this building
@@ -150,7 +151,23 @@ export default function AuditDetailPage() {
     });
   };
 
-  if (!audit) return <div className="flex h-64 items-center justify-center"><p className="text-muted-foreground">Ładowanie...</p></div>;
+  if (auditsLoading) {
+    return (
+      <div className="flex h-64 items-center justify-center gap-2 text-sm text-muted-foreground">
+        <Loader2 className="h-4 w-4 animate-spin" /> Ładowanie audytu...
+      </div>
+    );
+  }
+  if (!audit) {
+    return (
+      <div className="space-y-4 p-6 text-center">
+        <p className="text-sm text-muted-foreground">Nie znaleziono audytu o tym identyfikatorze.</p>
+        <Button variant="outline" onClick={() => navigate("/audits")}>
+          <ChevronLeft className="mr-2 h-4 w-4" /> Wróć do listy audytów
+        </Button>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6 max-w-6xl mx-auto pb-10">
@@ -167,9 +184,10 @@ export default function AuditDetailPage() {
           <Button variant="outline" onClick={handleStartPDF}>
             <Printer className="mr-2 h-4 w-4" /> PDF
           </Button>
-          <Button>
-            <Save className="mr-2 h-4 w-4" /> Zakończ audyt
-          </Button>
+          {/* Iter 8 audit: usunięto martwy przycisk „Zakończ audyt" — proces
+              kończenia audytu odbywa się przez nowy moduł `/checklists` (run
+              z `useFinalizeRun`). Jeżeli wracamy do tego widoku, dorzucimy
+              tutaj proper status transition + auto-naprawy. */}
         </div>
       </div>
 

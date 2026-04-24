@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
-import { ChevronLeft, Save, Plus, Printer, Trash2, Sparkles, Loader2, Hammer, Wrench } from "lucide-react";
+import { ChevronLeft, Plus, Printer, Trash2, Sparkles, Loader2, Hammer, Wrench } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
@@ -46,6 +46,7 @@ export default function ProtocolDetailPage() {
   });
   
   const protocol = protocols?.find(p => p.id === id);
+  const protocolsLoading = protocols === undefined;
 
   const handleCreate = (e: React.FormEvent) => {
     e.preventDefault();
@@ -110,7 +111,23 @@ export default function ProtocolDetailPage() {
     });
   };
 
-  if (!protocol) return <div>Ładowanie...</div>;
+  if (protocolsLoading) {
+    return (
+      <div className="flex h-64 items-center justify-center gap-2 text-sm text-muted-foreground">
+        <Loader2 className="h-4 w-4 animate-spin" /> Ładowanie protokołu...
+      </div>
+    );
+  }
+  if (!protocol) {
+    return (
+      <div className="space-y-4 p-6 text-center">
+        <p className="text-sm text-muted-foreground">Nie znaleziono protokołu o tym identyfikatorze.</p>
+        <Button variant="outline" onClick={() => navigate("/protocols")}>
+          <ChevronLeft className="mr-2 h-4 w-4" /> Wróć do listy protokołów
+        </Button>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6 max-w-5xl mx-auto pb-10">
@@ -135,12 +152,9 @@ export default function ProtocolDetailPage() {
             <Printer className="mr-2 h-4 w-4" />
             Pobierz PDF
           </Button>
-          {isSuperAdmin && (
-            <Button>
-              <Save className="mr-2 h-4 w-4" />
-              Zapisz zmiany
-            </Button>
-          )}
+          {/* Iter 8 audit: usunięto martwy przycisk „Zapisz zmiany" — wszystkie pola
+              w tej karcie są readOnly, edycja danych protokołu odbywa się w
+              `ProtocolsPage` (modal). */}
         </div>
       </div>
 
