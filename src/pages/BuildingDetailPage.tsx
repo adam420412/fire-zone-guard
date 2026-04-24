@@ -10,10 +10,11 @@ import {
   useAddDevice,
   useCreateTaskFromTemplate,
 } from "@/hooks/useBuildingData";
-import { 
+import {
   useUpdateBuilding, useCompanies,
-  useDocuments, useUploadDocument, useDeleteDocument 
+  useDocuments, useUploadDocument, useDeleteDocument
 } from "@/hooks/useSupabaseData";
+import { useExtractPdfMetadata } from "@/hooks/useExtractPdfMetadata";
 import { safetyStatusConfig, priorityColors, statusColors, taskTypeLabels } from "@/lib/constants";
 import type { SafetyStatus, TaskPriority, TaskStatus, TaskType } from "@/lib/constants";
 import { cn } from "@/lib/utils";
@@ -27,7 +28,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   ArrowLeft, Building2, MapPin, Shield, Loader2, Plus,
   CheckCircle2, AlertTriangle, Clock, Wrench, ClipboardList,
-  ChevronDown, ChevronRight, Package, Edit, QrCode, Save, Printer, FileText, UploadCloud, FolderOpen, Trash2, Download, Hammer
+  ChevronDown, ChevronRight, Package, Edit, QrCode, Save, Printer, FileText, UploadCloud, FolderOpen, Trash2, Download, Hammer,
+  Sparkles
 } from "lucide-react";
 import CreateTaskDialog from "@/components/CreateTaskDialog";
 
@@ -146,6 +148,23 @@ export default function BuildingDetailPage() {
   const { data: documents, isLoading: docsLoading } = useDocuments(id || "");
   const uploadDoc = useUploadDocument();
   const deleteDoc = useDeleteDocument();
+  const extractMeta = useExtractPdfMetadata();
+  // Faza 4 — AI ekstrakcja metadanych z PDF: dialog z wynikiem.
+  const [extractTarget, setExtractTarget] = useState<{ id: string; name: string } | null>(null);
+
+  const runExtract = async (doc: { id: string; name: string }) => {
+    setExtractTarget({ id: doc.id, name: doc.name });
+    extractMeta.reset();
+    try {
+      await extractMeta.mutateAsync(doc.id);
+    } catch (err: any) {
+      toast({
+        title: "AI nie zdołało odczytać dokumentu",
+        description: err.message ?? String(err),
+        variant: "destructive",
+      });
+    }
+  };
 
   const [deviceForm, setDeviceForm] = useState({
     device_type_id: "", name: "", manufacturer: "", model: "",
@@ -525,13 +544,25 @@ export default function BuildingDetailPage() {
                         </div>
                       </div>
                       <div className="flex items-center gap-2">
-                        <button 
+                        <button
                           onClick={() => window.open(`${import.meta.env.VITE_SUPABASE_URL}/storage/v1/object/public/building-documents/${doc.file_path}`)}
                           className="p-2 hover:text-primary transition-colors hover:bg-secondary rounded-md"
                           title="Pobierz"
                         >
                           <Download className="h-4 w-4" />
                         </button>
+                        {isSuperAdmin && (doc.file_type?.includes("pdf") || doc.name?.toLowerCase().endsWith(".pdf")) && (
+                          <button
+                            onClick={() => runExtract(doc)}
+                            disabled={extractMeta.isPending && extractTarget?.id === doc.id}
+                            className="p-2 hover:text-orange-500 transition-colors hover:bg-secondary rounded-md disabled:opacity-50"
+                            title="Wyciągnij metadane (AI)"
+                          >
+                            {extractMeta.isPending && extractTarget?.id === doc.id
+                              ? <Loader2 className="h-4 w-4 animate-spin" />
+                              : <Sparkles className="h-4 w-4" />}
+                          </button>
+                        )}
                         {isSuperAdmin && (
                           <button 
                             onClick={async () => {
@@ -634,6 +665,76 @@ export default function BuildingDetailPage() {
         open={!!selectedTask}
         onOpenChange={(o) => !o && setSelectedTask(null)}
       />
+
+      {/* AI extract metadata dialog (Faza 4) */}
+      <Dialog open={!!extractTarget} onOpenChange={(o) => { if (!o) { setExtractTarget(null); extractMeta.reset(); } }}>
+        <DialogContent className="max-w-2xl bg-card border-border">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-card-foreground">
+              <Sparkles className="h-4 w-4 text-orange-500" />
+              AI: metadane dokumentu
+            </DialogTitle>
+            <DialogDescription>
+              {extractTarget?.name ?? "Dokument"} — analiza tekstu PDF przez gpt-4o-mini.
+            </DialogDescription>
+          </DialogHeader>
+
+          {extractMeta.isPending && (
+            <div className="flex items-center gap-2 text-sm text-muted-foreground py-6 justify-center">
+              <Loader2 className="h-4 w-4 animate-spin" /> Analiza w toku...
+            </div>
+          )}
+
+          {extractMeta.error && (
+            <div className="rounded-md border border-critical/30 bg-critical/10 p-3 text-xs text-critical">
+              {extractMeta.error.message}
+            </div>
+          )}
+
+          {extractMeta.data && (
+            <div className="space-y-3 text-sm">
+              <div className="rounded-md border border-border bg-secondary/40 p-3">
+                <p className="text-xs uppercase tracking-wider text-muted-foreground mb-1">Podsumowanie</p>
+                <p>{extractMeta.data.summary || "—"}</p>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="rounded-md border border-border p-3">
+                  <p className="text-xs uppercase tracking-wider text-muted-foreground">Następny przegląd</p>
+                  <p className="font-mono">{extractMeta.data.next_inspection_due ?? "—"}</p>
+                </div>
+                <div className="rounded-md border border-border p-3">
+                  <p className="text-xs uppercase tracking-wider text-muted-foreground">Inspektor</p>
+                  <p>{extractMeta.data.inspector ?? "—"}</p>
+                </div>
+              </div>
+              <div className="rounded-md border border-border p-3">
+                <p className="text-xs uppercase tracking-wider text-muted-foreground mb-2">
+                  Urządzenia ({extractMeta.data.devices.length})
+                </p>
+                {extractMeta.data.devices.length === 0 ? (
+                  <p className="text-xs text-muted-foreground">AI nie znalazło żadnych urządzeń.</p>
+                ) : (
+                  <ul className="space-y-1.5 text-xs">
+                    {extractMeta.data.devices.map((d, i) => (
+                      <li key={i} className="flex items-start gap-2">
+                        <span className="text-muted-foreground font-mono">×{d.quantity ?? 1}</span>
+                        <span>
+                          <span className="font-medium">{d.type}</span>
+                          {d.location && <span className="text-muted-foreground"> — {d.location}</span>}
+                          {d.notes && <span className="text-muted-foreground italic"> ({d.notes})</span>}
+                        </span>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+              <p className="text-[10px] uppercase tracking-wider text-muted-foreground">
+                Pewność modelu: <span className="font-bold">{extractMeta.data.confidence}</span> · zapis do bazy ręczny w kolejnej iteracji.
+              </p>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
 
       {/* Repair task dialog - pre-filled from device */}
       {repairDevice && (

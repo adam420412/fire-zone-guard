@@ -57,3 +57,10 @@ export const priorities: { value: TaskPriority; label: string }[] = [
   { value: "wysoki", label: "Wysoki" },
   { value: "krytyczny", label: "Krytyczny" },
 ];
+
+// Centralna numeracja serwisanta — używana w panelu klienta (mobile-first CTA)
+// jako "Zadzwoń do serwisanta" + ewentualne kanały IM. Zmienić na produkcji.
+export const SUPPORT_PHONE = "+48 600 000 000";
+export const SUPPORT_PHONE_TEL = "tel:+48600000000";
+export const SUPPORT_EMERGENCY_PHONE = "+48 998";
+export const SUPPORT_EMERGENCY_TEL = "tel:998";

@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { ChevronLeft, Save, Plus, Printer, Trash2 } from "lucide-react";
+import { ChevronLeft, Save, Plus, Printer, Trash2, Sparkles, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useProtocols, useHydrantMeasurements, useCreateHydrantMeasurement, useDeleteHydrantMeasurement } from "@/hooks/useSupabaseData";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -9,9 +9,11 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
 import { generateProtocolPDF, detectProtocolType } from "@/lib/pdfProtocols";
 import { useAuth } from "@/hooks/useAuth";
+import { useAiProtocolDraft } from "@/hooks/useAiProtocolDraft";
 import { SignatureDialog } from "@/components/SignatureDialog";
 
 export default function ProtocolDetailPage() {
@@ -26,6 +28,9 @@ export default function ProtocolDetailPage() {
 
   const [isAddOpen, setIsAddOpen] = useState(false);
   const [isSignatureOpen, setIsSignatureOpen] = useState(false);
+  // Faza 4 — AI draft of "uwagi szczegółowe" + suggested overall_result.
+  const [isDraftOpen, setIsDraftOpen] = useState(false);
+  const draftMut = useAiProtocolDraft();
   const [newHydrant, setNewHydrant] = useState({
     hydrant_number: "HZ-1",
     type: "nadziemny",
@@ -62,6 +67,17 @@ export default function ProtocolDetailPage() {
   const handleStartPDF = () => {
     if (!protocol) return;
     setIsSignatureOpen(true);
+  };
+
+  const handleAiDraft = async () => {
+    if (!id) return;
+    setIsDraftOpen(true);
+    draftMut.reset();
+    try {
+      await draftMut.mutateAsync(id);
+    } catch (err: any) {
+      toast.error(err?.message ?? "AI draft nie powiódł się");
+    }
   };
 
   const handleGeneratePDF = (signatureDataUrl: string) => {
@@ -102,6 +118,14 @@ export default function ProtocolDetailPage() {
           <p className="text-muted-foreground">{protocol.type} - {protocol.building_name}</p>
         </div>
         <div className="ml-auto flex gap-2">
+          {isSuperAdmin && (
+            <Button variant="outline" onClick={handleAiDraft} disabled={draftMut.isPending} className="gap-2">
+              {draftMut.isPending
+                ? <Loader2 className="h-4 w-4 animate-spin" />
+                : <Sparkles className="h-4 w-4 text-orange-500" />}
+              AI draft
+            </Button>
+          )}
           <Button variant="outline" onClick={handleStartPDF}>
             <Printer className="mr-2 h-4 w-4" />
             Pobierz PDF
@@ -270,11 +294,73 @@ export default function ProtocolDetailPage() {
         </DialogContent>
       </Dialog>
       
-      <SignatureDialog 
-        open={isSignatureOpen} 
-        onOpenChange={setIsSignatureOpen} 
-        onConfirm={handleGeneratePDF} 
-        title="Podpisz Protokół Serwisowy" 
+      {/* Faza 4 — AI draft dialog. Read-only preview; operator copy-paste'uje
+          „Uwagi" do wybranych pól lub bazy. Faktyczny zapis może iść w
+          następnej iteracji (mutacja na service_protocols.notes). */}
+      <Dialog open={isDraftOpen} onOpenChange={(o) => { if (!o) { setIsDraftOpen(false); draftMut.reset(); } }}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Sparkles className="h-4 w-4 text-orange-500" />
+              AI: draft protokołu
+            </DialogTitle>
+            <DialogDescription>
+              Wygenerowany przez gpt-4o-mini draft sekcji „Uwagi szczegółowe" + wynik końcowy.
+            </DialogDescription>
+          </DialogHeader>
+
+          {draftMut.isPending && (
+            <div className="flex items-center gap-2 text-sm text-muted-foreground py-6 justify-center">
+              <Loader2 className="h-4 w-4 animate-spin" /> Generowanie...
+            </div>
+          )}
+
+          {draftMut.error && (
+            <div className="rounded-md border border-critical/30 bg-critical/10 p-3 text-xs text-critical">
+              {draftMut.error.message}
+            </div>
+          )}
+
+          {draftMut.data && (
+            <div className="space-y-3">
+              <div>
+                <Label className="text-xs uppercase tracking-wider text-muted-foreground">Uwagi (notes)</Label>
+                <Textarea readOnly value={draftMut.data.notes} rows={6} className="mt-1 text-sm" />
+              </div>
+              <div className="flex items-center gap-3">
+                <Label className="text-xs uppercase tracking-wider text-muted-foreground">Wynik:</Label>
+                <span className="font-mono text-sm font-bold">{draftMut.data.overall_result}</span>
+              </div>
+              {draftMut.data.suggestions.length > 0 && (
+                <div>
+                  <Label className="text-xs uppercase tracking-wider text-muted-foreground">Zalecenia</Label>
+                  <ul className="mt-1 list-disc list-inside text-sm space-y-1">
+                    {draftMut.data.suggestions.map((s, i) => <li key={i}>{s}</li>)}
+                  </ul>
+                </div>
+              )}
+              <div className="flex justify-end gap-2 pt-2">
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={async () => {
+                    await navigator.clipboard.writeText(draftMut.data!.notes);
+                    toast.success("Skopiowano notatki do schowka.");
+                  }}
+                >
+                  Skopiuj uwagi
+                </Button>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      <SignatureDialog
+        open={isSignatureOpen}
+        onOpenChange={setIsSignatureOpen}
+        onConfirm={handleGeneratePDF}
+        title="Podpisz Protokół Serwisowy"
       />
     </div>
   );

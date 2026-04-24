@@ -1,9 +1,12 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
+import {
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+} from "@/components/ui/select";
 import {
   BookOpen, Search, FileText, Download, ExternalLink,
   Scale, Shield, FlameKindling, Building2, AlertCircle,
@@ -11,6 +14,8 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useLibraryRag } from "@/hooks/useLibraryRag";
+import { useLibraryDocuments } from "@/hooks/useLibraryDocuments";
+import { useBuildings } from "@/hooks/useSupabaseData";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -100,8 +105,18 @@ export default function LibraryPage() {
 
   const [search, setSearch] = useState("");
   const [activeCat, setActiveCat] = useState<Category | "all">("all");
+  const [buildingFilter, setBuildingFilter] = useState<string>("all"); // "all" | building UUID
   const [aiQuestion, setAiQuestion] = useState("");
   const ragMutation = useLibraryRag();
+
+  // Live library — falls back to SEED_DOCS if RPC missing or no rows yet
+  const buildingsQuery = useBuildings();
+  const libQuery = useLibraryDocuments({
+    q: search,
+    buildingId: buildingFilter === "all" ? null : buildingFilter,
+    category: activeCat === "all" ? null : activeCat,
+    limit: 100,
+  });
 
   // Admin ingest panel state
   const [ingestDocId, setIngestDocId] = useState("");
@@ -136,14 +151,32 @@ export default function LibraryPage() {
     }
   };
 
-  const filtered = SEED_DOCS.filter((d) => {
-    if (activeCat !== "all" && d.category !== activeCat) return false;
-    if (search.trim()) {
-      const q = search.toLowerCase();
-      return d.title.toLowerCase().includes(q) || d.description.toLowerCase().includes(q);
+  // Live library data takes priority; if empty AND no filters active, fall back
+  // to the curated SEED_DOCS so the UI never looks blank on a fresh install.
+  const liveDocs = libQuery.data ?? [];
+  const noLiveData = liveDocs.length === 0;
+  const usingSeed = noLiveData && !search.trim() && buildingFilter === "all";
+
+  const filtered = useMemo(() => {
+    if (!noLiveData) {
+      // Map live shape to DocItem shape (description nullable in DB)
+      return liveDocs.map<DocItem>((d) => ({
+        id: d.id,
+        title: d.title,
+        category: d.category,
+        description: d.description ?? "",
+        source: d.source ?? undefined,
+        url: d.url ?? undefined,
+        badge: d.badge ?? undefined,
+      }));
     }
-    return true;
-  });
+    if (!usingSeed) return [];
+    // Local seed filtering for fallback path
+    return SEED_DOCS.filter((d) => {
+      if (activeCat !== "all" && d.category !== activeCat) return false;
+      return true;
+    });
+  }, [liveDocs, noLiveData, usingSeed, activeCat]);
 
   return (
     <div className="p-4 md:p-6 space-y-5 max-w-6xl mx-auto">
@@ -268,16 +301,35 @@ export default function LibraryPage() {
         </Card>
       )}
 
-      {/* SEARCH + CATEGORIES */}
+      {/* SEARCH + CATEGORIES + BUILDING FILTER */}
       <Card className="p-4 space-y-3">
-        <div className="relative">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <Input
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder="Szukaj w bibliotece..."
-            className="pl-9"
-          />
+        <div className="grid gap-3 md:grid-cols-[1fr_240px]">
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Szukaj w bibliotece (FTS po tytule + opisie)..."
+              className="pl-9"
+            />
+            {libQuery.isFetching && (
+              <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground animate-spin" />
+            )}
+          </div>
+          <Select value={buildingFilter} onValueChange={setBuildingFilter}>
+            <SelectTrigger className="bg-background">
+              <Building2 className="h-4 w-4 mr-1 text-muted-foreground" />
+              <SelectValue placeholder="Wszystkie obiekty" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Wszystkie obiekty (+ globalne)</SelectItem>
+              {(buildingsQuery.data ?? []).map((b: any) => (
+                <SelectItem key={b.id} value={b.id}>
+                  {b.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </div>
         <div className="flex flex-wrap gap-2">
           {CATEGORIES.map((c) => {
@@ -296,6 +348,12 @@ export default function LibraryPage() {
             );
           })}
         </div>
+        {usingSeed && (
+          <p className="text-xs text-muted-foreground italic">
+            Pokazujemy listę startową ({SEED_DOCS.length} pozycji curated). Po wgraniu dokumentów
+            do <code className="font-mono text-[10px]">library_documents</code> tabela zastąpi seed.
+          </p>
+        )}
       </Card>
 
       {/* DOCS LIST */}
