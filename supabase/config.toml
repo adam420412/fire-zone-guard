@@ -5,3 +5,6 @@ verify_jwt = false
 
 [functions.dispatch-notifications]
 verify_jwt = false
+
+[functions.analyze-sla-photo]
+verify_jwt = false

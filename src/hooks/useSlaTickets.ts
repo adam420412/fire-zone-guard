@@ -35,6 +35,10 @@ export interface SlaTicket {
   ai_summary: string | null;
   ai_category: Record<string, unknown> | null;
   ai_draft_email: string | null;
+  // Iter 7 — wynik analyze-sla-photo
+  ai_severity_suggestion: "low" | "normal" | "high" | "critical" | null;
+  ai_analysis_at: string | null;
+  ai_analysis_error: string | null;
   status: SlaTicketStatus;
   diagnosis: string | null;
   assigned_to: string | null;

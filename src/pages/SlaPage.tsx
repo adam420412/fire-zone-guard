@@ -7,6 +7,7 @@ import {
   ArrowLeft, Search, Filter, Loader2, AlertTriangle, Phone, Truck, MapPin,
   CheckCircle2, Ban, Clock, Flame, FileText, Image as ImageIcon, Wrench,
   ClipboardList, FileSearch, User as UserIcon, Building2, Mail, PhoneCall,
+  Sparkles, RefreshCw,
 } from "lucide-react";
 import {
   useSlaTickets,
@@ -24,6 +25,7 @@ import {
   type SlaTicket,
 } from "@/hooks/useSlaTickets";
 import { useProfiles } from "@/hooks/useSupabaseData";
+import { useAnalyzeSlaPhoto } from "@/hooks/useAnalyzeSlaPhoto";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
@@ -245,6 +247,7 @@ function SlaDetail({ id }: { id: string }) {
   const { data: events } = useSlaTicketEvents(id);
   const { data: profiles } = useProfiles();
   const updateMut = useUpdateSlaTicket();
+  const analyzeMut = useAnalyzeSlaPhoto();
 
   const [diagnosis, setDiagnosis] = useState("");
   const [notes, setNotes] = useState("");
@@ -394,6 +397,131 @@ function SlaDetail({ id }: { id: string }) {
                   </button>
                 ))}
               </div>
+            </Card>
+          )}
+
+          {/* AI VISION (Iter 7) */}
+          {(ticket.ai_summary || ticket.ai_severity_suggestion ||
+            ticket.ai_analysis_at || (ticket.photo_urls && ticket.photo_urls.length > 0)) && (
+            <Card className="p-4 border-purple-500/30 bg-purple-500/5">
+              <div className="flex items-center justify-between gap-2 mb-3">
+                <div className="text-xs uppercase font-semibold tracking-wide flex items-center gap-1.5 text-purple-700 dark:text-purple-300">
+                  <Sparkles className="h-3.5 w-3.5" /> AI — analiza zdjęć
+                </div>
+                {ticket.photo_urls && ticket.photo_urls.length > 0 && (
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    className="h-7 gap-1 text-xs"
+                    onClick={async () => {
+                      try {
+                        await analyzeMut.mutateAsync({ ticket_id: ticket.id });
+                        toast.success("Analiza AI zakończona");
+                      } catch (e: any) {
+                        toast.error(e?.message ?? "Analiza AI nie powiodła się");
+                      }
+                    }}
+                    disabled={analyzeMut.isPending}
+                  >
+                    {analyzeMut.isPending
+                      ? <Loader2 className="h-3 w-3 animate-spin" />
+                      : <RefreshCw className="h-3 w-3" />}
+                    {ticket.ai_analysis_at ? "Powtórz analizę" : "Analizuj"}
+                  </Button>
+                )}
+              </div>
+
+              {ticket.ai_analysis_error && (
+                <div className="rounded-md border border-amber-500/40 bg-amber-500/10 px-3 py-2 mb-3 text-xs text-amber-700 dark:text-amber-300">
+                  Błąd analizy: {ticket.ai_analysis_error}
+                </div>
+              )}
+
+              {ticket.ai_summary ? (
+                <>
+                  <p className="text-sm text-card-foreground leading-relaxed mb-3">
+                    {ticket.ai_summary}
+                  </p>
+
+                  {/* Sugestia priorytetu vs aktualny */}
+                  {ticket.ai_severity_suggestion && (
+                    <div className="flex flex-wrap items-center gap-2 mb-3">
+                      <span className="text-xs text-muted-foreground">Sugestia priorytetu:</span>
+                      <Badge
+                        variant="outline"
+                        className={cn("text-xs",
+                          PRIORITY_BADGE[ticket.ai_severity_suggestion as SlaTicketPriority])}
+                      >
+                        {PRIORITY_LABELS[ticket.ai_severity_suggestion as SlaTicketPriority]}
+                      </Badge>
+                      {ticket.ai_severity_suggestion !== ticket.priority && (
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="h-6 text-xs"
+                          onClick={() => handlePriorityChange(
+                            ticket.ai_severity_suggestion as SlaTicketPriority,
+                          )}
+                        >
+                          Zastosuj
+                        </Button>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Strukturalne kategoryzacje */}
+                  {ticket.ai_category && (() => {
+                    const c = ticket.ai_category as Record<string, unknown>;
+                    const dev = typeof c.device_type === "string" ? c.device_type : null;
+                    const issue = typeof c.issue === "string" ? c.issue : null;
+                    const action = typeof c.recommended_action === "string"
+                      ? c.recommended_action : null;
+                    const damage = c.visible_damage === true;
+                    const conf = typeof c.confidence === "string" ? c.confidence : null;
+                    if (!dev && !issue && !action && !damage && !conf) return null;
+                    return (
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-1.5 text-xs">
+                        {dev && (
+                          <div><span className="text-muted-foreground">Urządzenie: </span>
+                            <span className="font-medium">{dev}</span></div>
+                        )}
+                        {issue && (
+                          <div><span className="text-muted-foreground">Problem: </span>
+                            <span className="font-medium">{issue}</span></div>
+                        )}
+                        {damage && (
+                          <div className="text-amber-700 dark:text-amber-300">
+                            <span className="font-medium">⚠ Widoczne uszkodzenie</span>
+                          </div>
+                        )}
+                        {conf && (
+                          <div><span className="text-muted-foreground">Pewność: </span>
+                            <span className="font-medium">{conf}</span></div>
+                        )}
+                        {action && (
+                          <div className="sm:col-span-2 mt-1 rounded bg-card p-2 border border-border">
+                            <span className="text-muted-foreground">Rekomendacja: </span>
+                            <span className="font-medium">{action}</span>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })()}
+
+                  {ticket.ai_analysis_at && (
+                    <p className="text-[10px] text-muted-foreground mt-3">
+                      Analiza wykonana: {format(parseISO(ticket.ai_analysis_at),
+                        "d MMM, HH:mm", { locale: pl })}
+                    </p>
+                  )}
+                </>
+              ) : (
+                <p className="text-xs text-muted-foreground">
+                  {ticket.photo_urls && ticket.photo_urls.length > 0
+                    ? "Brak analizy. Kliknij \"Analizuj\" żeby wywołać gpt-4o vision."
+                    : "Brak zdjęć do analizy."}
+                </p>
+              )}
             </Card>
           )}
 

@@ -18,6 +18,7 @@ import {
   Clock,
   Flame,
   Ban,
+  Sparkles,
 } from "lucide-react";
 import {
   useSlaTickets,
@@ -371,6 +372,30 @@ function ClientSlaDetail({ id }: { id: string }) {
               </button>
             ))}
           </div>
+        </Card>
+      )}
+
+      {/* AI VISION (Iter 7) — read-only dla klienta */}
+      {ticket.ai_summary && !isUnjustified && (
+        <Card className="p-4 border-purple-500/30 bg-purple-500/5">
+          <div className="text-xs uppercase font-semibold tracking-wide flex items-center gap-1.5 mb-2 text-purple-700 dark:text-purple-300">
+            <Sparkles className="h-3.5 w-3.5" /> Wstępna analiza AI
+          </div>
+          <p className="text-sm leading-relaxed">{ticket.ai_summary}</p>
+          {ticket.ai_category && (() => {
+            const c = ticket.ai_category as Record<string, unknown>;
+            const action = typeof c.recommended_action === "string" ? c.recommended_action : null;
+            if (!action) return null;
+            return (
+              <div className="mt-3 rounded-md bg-card border border-border p-2 text-xs">
+                <span className="text-muted-foreground">Wstępna rekomendacja: </span>
+                <span className="font-medium">{action}</span>
+              </div>
+            );
+          })()}
+          <p className="mt-2 text-[10px] text-muted-foreground">
+            Analiza automatyczna — ostateczna ocena po wizycie serwisanta.
+          </p>
         </Card>
       )}
 

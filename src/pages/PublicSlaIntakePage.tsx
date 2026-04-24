@@ -10,6 +10,7 @@ import {
   type SlaTicketType,
   type SlaTicketPriority,
 } from "@/hooks/useSlaTickets";
+import { useAnalyzeSlaPhoto } from "@/hooks/useAnalyzeSlaPhoto";
 import { cn } from "@/lib/utils";
 
 interface BuildingOption {
@@ -53,6 +54,7 @@ export default function PublicSlaIntakePage() {
   const [submitted, setSubmitted] = useState<{ number: string | null; id: string } | null>(null);
 
   const createTicket = useCreateSlaTicket();
+  const analyzePhoto = useAnalyzeSlaPhoto();
 
   useEffect(() => {
     let mounted = true;
@@ -134,6 +136,21 @@ export default function PublicSlaIntakePage() {
       });
 
       setSubmitted({ number: created.ticket_number, id: created.id });
+
+      // Iter 7 — fire-and-forget AI vision analiza zdjęć (max 4).
+      // Nie blokujemy UX — użytkownik widzi success natychmiast,
+      // operator zobaczy ai_summary po 5-15 sek.
+      if (photoUrls.length > 0 && created.id) {
+        analyzePhoto.mutate(
+          { ticket_id: created.id, photos: photoUrls.slice(0, 4) },
+          {
+            onError: (e) => {
+              // log only — nie pokazujemy zgłaszającemu
+              console.warn("analyze-sla-photo failed:", e?.message ?? e);
+            },
+          },
+        );
+      }
       // Cleanup local state
       photoPreviews.forEach((u) => URL.revokeObjectURL(u));
       setPhotos([]);
