@@ -1,8 +1,10 @@
 import { useState } from "react";
-import { useParams, useNavigate } from "react-router-dom";
-import { ChevronLeft, Save, Plus, Printer, Trash2, Sparkles, Loader2 } from "lucide-react";
+import { useParams, useNavigate, Link } from "react-router-dom";
+import { ChevronLeft, Save, Plus, Printer, Trash2, Sparkles, Loader2, Hammer, Wrench } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { useProtocols, useHydrantMeasurements, useCreateHydrantMeasurement, useDeleteHydrantMeasurement } from "@/hooks/useSupabaseData";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Badge } from "@/components/ui/badge";
+import { useProtocols, useHydrantMeasurements, useCreateHydrantMeasurement, useDeleteHydrantMeasurement, useToggleHydrantRepair } from "@/hooks/useSupabaseData";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -23,6 +25,9 @@ export default function ProtocolDetailPage() {
   const { data: measurements } = useHydrantMeasurements(id as string);
   const { mutate: createMeasurement } = useCreateHydrantMeasurement();
   const { mutate: deleteMeasurement } = useDeleteHydrantMeasurement();
+  const { mutate: toggleRepair, isPending: togglingRepair } = useToggleHydrantRepair();
+  const [repairDialogFor, setRepairDialogFor] = useState<any | null>(null);
+  const [repairNotes, setRepairNotes] = useState("");
   const { role } = useAuth();
   const isSuperAdmin = role === 'super_admin';
 
@@ -203,12 +208,13 @@ export default function ProtocolDetailPage() {
                   <TableHead>Ciśnienie stat. (MPa)</TableHead>
                   <TableHead>Ciśnienie dynam. (MPa)</TableHead>
                   <TableHead>Wydajność (dm³/s)</TableHead>
+                  <TableHead className="text-center">NAPRAWA</TableHead>
                   <TableHead className="w-[50px]"></TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {measurements.map((m: any, index: number) => (
-                  <TableRow key={m.id}>
+                  <TableRow key={m.id} className={m.repair_needed ? "bg-warning/5" : ""}>
                     <TableCell>{index + 1}</TableCell>
                     <TableCell className="font-medium">{m.hydrant_number}</TableCell>
                     <TableCell>{m.type}</TableCell>
@@ -216,6 +222,40 @@ export default function ProtocolDetailPage() {
                     <TableCell>{m.static_pressure_mpa || "-"}</TableCell>
                     <TableCell>{m.dynamic_pressure_mpa || "-"}</TableCell>
                     <TableCell>{m.flow_rate_dm3s || "-"}</TableCell>
+                    <TableCell className="text-center">
+                      {m.repair_needed ? (
+                        <div className="flex items-center justify-center gap-1.5">
+                          <Badge variant="destructive" className="gap-1">
+                            <Hammer className="h-3 w-3" />
+                            NAPRAWA
+                          </Badge>
+                          {m.repair_task_id && (
+                            <Link
+                              to="/repairs"
+                              title="Otwórz w Naprawach"
+                              className="text-[10px] text-primary hover:underline"
+                            >
+                              →
+                            </Link>
+                          )}
+                        </div>
+                      ) : (
+                        isSuperAdmin && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => {
+                              setRepairNotes("");
+                              setRepairDialogFor(m);
+                            }}
+                            className="text-warning hover:text-warning hover:bg-warning/10"
+                          >
+                            <Wrench className="h-4 w-4 mr-1" />
+                            Zaznacz
+                          </Button>
+                        )
+                      )}
+                    </TableCell>
                     <TableCell>
                       {isSuperAdmin && (
                         <Button variant="ghost" size="icon" onClick={() => deleteMeasurement({ id: m.id, protocol_id: id as string })}>
@@ -362,6 +402,64 @@ export default function ProtocolDetailPage() {
         onConfirm={handleGeneratePDF}
         title="Podpisz Protokół Serwisowy"
       />
+
+      {/* NAPRAWA flag dialog — Faza 5 */}
+      <Dialog open={!!repairDialogFor} onOpenChange={(o) => !o && setRepairDialogFor(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Hammer className="h-5 w-5 text-warning" />
+              Zaznacz NAPRAWĘ — {repairDialogFor?.hydrant_number}
+            </DialogTitle>
+            <DialogDescription>
+              Po potwierdzeniu, system automatycznie utworzy zadanie naprawcze w
+              <Link to="/repairs" className="text-primary hover:underline ml-1">Naprawach</Link>{" "}
+              (źródło: protokół serwisowy). Inspektor potwierdza, że urządzenie wymaga
+              wymiany lub serwisu warsztatowego.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3 py-3">
+            <Label htmlFor="repair_notes">Uwagi inspektora (trafią do opisu zadania)</Label>
+            <Textarea
+              id="repair_notes"
+              value={repairNotes}
+              onChange={(e) => setRepairNotes(e.target.value)}
+              placeholder="np. korpus skorodowany, brak ciśnienia, do wymiany wąż"
+              rows={4}
+            />
+          </div>
+          <DialogFooter>
+            <Button variant="ghost" onClick={() => setRepairDialogFor(null)} disabled={togglingRepair}>
+              Anuluj
+            </Button>
+            <Button
+              variant="default"
+              disabled={togglingRepair}
+              onClick={() => {
+                if (!repairDialogFor) return;
+                toggleRepair(
+                  {
+                    id: repairDialogFor.id,
+                    protocol_id: id as string,
+                    repair_needed: true,
+                    repair_notes: repairNotes || null,
+                  },
+                  {
+                    onSuccess: () => {
+                      toast.success("Zaznaczono NAPRAWĘ — zadanie utworzone w Naprawach.");
+                      setRepairDialogFor(null);
+                    },
+                    onError: (e: any) => toast.error(e?.message ?? "Błąd"),
+                  }
+                );
+              }}
+            >
+              {togglingRepair ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Hammer className="mr-2 h-4 w-4" />}
+              Potwierdź NAPRAWĘ
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

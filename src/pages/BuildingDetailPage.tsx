@@ -393,7 +393,23 @@ export default function BuildingDetailPage() {
           </div>
         </TabsContent>
 
-        <TabsContent value="devices" className="mt-0">
+        <TabsContent value="devices" className="mt-0 space-y-3">
+          <button
+            onClick={() => navigate(`/buildings/${id}/devices`)}
+            className="w-full flex items-center justify-between gap-3 rounded-xl border border-primary/40 bg-primary/5 hover:bg-primary/10 transition-colors px-5 py-3 text-left"
+          >
+            <div className="flex items-center gap-3">
+              <Sparkles className="h-5 w-5 text-primary" />
+              <div>
+                <p className="text-sm font-bold">Master checklist + silnik sugestii</p>
+                <p className="text-xs text-muted-foreground">
+                  9 kategorii ppoż. (G/H/SSP/PWP/Oś. awar./DSO/Drzwi/Klapy/Oddymianie) + propozycje zgodne z klasą i powierzchnią
+                </p>
+              </div>
+            </div>
+            <ChevronRight className="h-5 w-5 text-primary" />
+          </button>
+
           <div className="rounded-xl border border-border bg-card overflow-hidden">
             <div className="border-b border-border bg-secondary/30 px-5 py-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
               <div className="flex items-center gap-2">

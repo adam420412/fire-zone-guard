@@ -10,6 +10,7 @@ import Dashboard from "@/pages/Dashboard";
 import KanbanPage from "@/pages/KanbanPage";
 import BuildingsPage from "@/pages/BuildingsPage";
 import BuildingDetailPage from "@/pages/BuildingDetailPage";
+import BuildingDevicesPage from "@/pages/BuildingDevicesPage";
 import CompaniesPage from "@/pages/CompaniesPage";
 import CertificatesPage from "@/pages/CertificatesPage";
 import SettingsPage from "@/pages/SettingsPage";
@@ -93,6 +94,7 @@ function ProtectedRoutes() {
             <Route path="/reports" element={<ReportsPage />} />
             <Route path="/buildings" element={<BuildingsPage />} />
             <Route path="/buildings/:id" element={<BuildingDetailPage />} />
+            <Route path="/buildings/:id/devices" element={<BuildingDevicesPage />} />
             <Route path="/companies" element={<CompaniesPage />} />
             <Route path="/audits" element={<AuditsPage />} />
             <Route path="/audits/:id" element={<AuditDetailPage />} />

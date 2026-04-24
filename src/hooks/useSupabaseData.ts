@@ -573,6 +573,39 @@ export function useDeleteHydrantMeasurement() {
   });
 }
 
+// Faza 5 — flag NAPRAWA on a measurement.
+// DB trigger (handle_hydrant_repair_flag) auto-creates a tasks row tagged
+// source='service', source_id=measurement.id; this hook just flips the bit
+// and invalidates downstream queries so the Naprawy Kanban refreshes too.
+export function useToggleHydrantRepair() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ id, repair_needed, repair_notes }: {
+      id: string;
+      protocol_id: string;
+      repair_needed: boolean;
+      repair_notes?: string | null;
+    }) => {
+      const { data, error } = await supabase
+        .from("hydrant_measurements")
+        .update({
+          repair_needed,
+          repair_notes: repair_notes ?? null,
+        })
+        .eq("id", id)
+        .select()
+        .single();
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: (_, req) => {
+      qc.invalidateQueries({ queryKey: ["hydrant_measurements", req.protocol_id] });
+      qc.invalidateQueries({ queryKey: ["tasks"] });
+      qc.invalidateQueries({ queryKey: ["repairs"] });
+    },
+  });
+}
+
 // ==== AUDITS (V2) ====
 export function useAudits() {
   return useQuery({
