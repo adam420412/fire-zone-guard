@@ -19,6 +19,12 @@ export default defineConfig(({ mode }) => ({
     VitePWA({
       registerType: 'autoUpdate',
       includeAssets: ['favicon.ico', 'apple-touch-icon.png', 'mask-icon.svg'],
+      // Bundle grew past default 2 MiB after iter3+iter4 (RAG client, PDF
+      // generator, AI hooks). Lift workbox's precache cap to 5 MiB so the
+      // service worker still picks up the main JS chunk.
+      workbox: {
+        maximumFileSizeToCacheInBytes: 5 * 1024 * 1024,
+      },
       manifest: {
         name: 'Fire Zone Guard',
         short_name: 'FireZone',
