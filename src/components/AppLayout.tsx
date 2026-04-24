@@ -3,7 +3,7 @@ import {
   LayoutDashboard, KanbanSquare, Building2, Briefcase,
   Shield, Settings, Flame, ChevronLeft, ChevronRight,
   User, LogOut, Menu, X, ClipboardCheck, FileText, Users, UsersRound, Search, Command, BarChart2, CalendarDays, Factory, Contact, DollarSign,
-  Siren, Wrench, CalendarClock, BookOpen, BarChart3, History, Gauge
+  Siren, Wrench, CalendarClock, BookOpen, BarChart3, History, Gauge, ListChecks
 } from "lucide-react";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { useState, useEffect } from "react";
@@ -23,6 +23,7 @@ const adminNavItems = [
   { icon: Building2, label: "Obiekty", path: "/buildings" },
   { icon: Briefcase, label: "Firmy", path: "/companies" },
   { icon: ClipboardCheck, label: "Audyty PPOŻ", path: "/audits" },
+  { icon: ListChecks, label: "Checklisty", path: "/checklists" },
   { icon: FileText, label: "Protokoły", path: "/protocols" },
   { icon: Shield, label: "Certyfikaty", path: "/certificates" },
   { icon: CalendarClock, label: "Terminarz", path: "/office-tasks" },

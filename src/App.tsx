@@ -19,6 +19,8 @@ import ClientSlaPage from "@/pages/ClientSlaPage";
 import AuthPage from "@/pages/AuthPage";
 import AuditsPage from "@/pages/AuditsPage";
 import AuditDetailPage from "@/pages/AuditDetailPage";
+import ChecklistsPage from "@/pages/ChecklistsPage";
+import ChecklistRunPage from "@/pages/ChecklistRunPage";
 import ProtocolsPage from "@/pages/ProtocolsPage";
 import ProtocolDetailPage from "@/pages/ProtocolDetailPage";
 import MeetingsPage from "@/pages/MeetingsPage";
@@ -98,6 +100,8 @@ function ProtectedRoutes() {
             <Route path="/companies" element={<CompaniesPage />} />
             <Route path="/audits" element={<AuditsPage />} />
             <Route path="/audits/:id" element={<AuditDetailPage />} />
+            <Route path="/checklists" element={<ChecklistsPage />} />
+            <Route path="/checklists/runs/:id" element={<ChecklistRunPage />} />
             <Route path="/protocols" element={<ProtocolsPage />} />
             <Route path="/protocols/:id" element={<ProtocolDetailPage />} />
             <Route path="/certificates" element={<CertificatesPage />} />
