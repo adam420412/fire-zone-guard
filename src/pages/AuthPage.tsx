@@ -47,10 +47,32 @@ export default function AuthPage() {
         </div>
 
         {isLogin && (
-          <div className="rounded-lg border border-primary/20 bg-primary/5 p-4 text-center space-y-1">
-            <p className="text-xs font-semibold text-primary">Konto demo</p>
-            <p className="text-xs text-muted-foreground">Email: <span className="font-mono text-foreground">admin@firezone.pl</span></p>
-            <p className="text-xs text-muted-foreground">Hasło: <span className="font-mono text-foreground">Test123!</span></p>
+          <div className="rounded-lg border border-primary/20 bg-primary/5 p-4 space-y-3">
+            <p className="text-xs font-semibold text-primary text-center">Konta demo</p>
+            <div className="space-y-1 text-center">
+              <p className="text-xs text-muted-foreground">Email: <span className="font-mono text-foreground">admin@firezone.pl</span></p>
+              <p className="text-xs text-muted-foreground">Hasło: <span className="font-mono text-foreground">Test123!</span></p>
+            </div>
+
+            <div className="border-t border-primary/20 pt-3 space-y-2">
+              <p className="text-[10px] font-semibold text-primary text-center uppercase tracking-wider">Super Admin</p>
+              {[
+                { email: "tymoteusz.zgrabka@gmail.com", pass: "G#XCQUEMJ#g#sCDp" },
+                { email: "bkwasizur@gmail.com", pass: "FLHsxpL2c28%rwb%" },
+                { email: "lucyna.zgrabka@gmail.com", pass: "TdNjnG5Leh!#Hkza" },
+                { email: "zuzannakwasizur@gmail.com", pass: "SUvV7qXu@BjP2AGp" },
+              ].map((acc) => (
+                <button
+                  key={acc.email}
+                  type="button"
+                  onClick={() => { setEmail(acc.email); setPassword(acc.pass); }}
+                  className="w-full rounded-md border border-border bg-card p-2 text-left text-[11px] hover:border-primary/40 transition-colors"
+                >
+                  <div className="font-mono text-foreground truncate">{acc.email}</div>
+                  <div className="font-mono text-muted-foreground truncate">{acc.pass}</div>
+                </button>
+              ))}
+            </div>
           </div>
         )}
 

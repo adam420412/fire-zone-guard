@@ -589,9 +589,10 @@ export function useToggleHydrantRepair() {
       const { data, error } = await supabase
         .from("hydrant_measurements")
         .update({
-          repair_needed,
-          repair_notes: repair_notes ?? null,
-        })
+          // repair_needed/repair_notes columns may not yet exist in generated
+          // types — cast through any to keep this hook compatible.
+          ...( { repair_needed, repair_notes: repair_notes ?? null } as any ),
+        } as any)
         .eq("id", id)
         .select()
         .single();

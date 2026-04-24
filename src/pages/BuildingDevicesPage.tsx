@@ -49,7 +49,8 @@ import { cn } from "@/lib/utils";
 export default function BuildingDevicesPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const { isSuperAdmin } = useAuth();
+  const { role } = useAuth();
+  const isSuperAdmin = role === "super_admin";
   const { toast } = useToast();
 
   const buildingQ = useBuildingDetail(id ?? "");
