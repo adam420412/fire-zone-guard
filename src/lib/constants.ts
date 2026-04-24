@@ -192,6 +192,41 @@ export const RULE_CODE_TO_CATEGORY: Record<string, string> = DEVICE_CATEGORIES.r
   {} as Record<string, string>
 );
 
+// =============================================================================
+// Iter 6 — Kategorie dokumentów per obiekt
+// (per spec PDF str. 7: IBP, plany ewakuacyjne, dokumentacja projektowa,
+//  protokoły archiwalne, DTR dla BOZ, certyfikaty, umowy)
+// =============================================================================
+export type BuildingDocumentCategory =
+  | "IBP"
+  | "plan_ewakuacji"
+  | "dokumentacja_projektowa"
+  | "protokol_archive"
+  | "DTR"
+  | "certyfikat"
+  | "umowa"
+  | "inne";
+
+export const BUILDING_DOCUMENT_CATEGORIES: { value: BuildingDocumentCategory; label: string; description: string }[] = [
+  { value: "IBP",                      label: "IBP",                       description: "Instrukcja Bezpieczeństwa Pożarowego" },
+  { value: "plan_ewakuacji",           label: "Plan ewakuacji",            description: "Plany ewakuacyjne pięter / strefy ZL" },
+  { value: "dokumentacja_projektowa",  label: "Dokumentacja projektowa",   description: "Rzuty, projekty wykonawcze, schematy SAP/SUG" },
+  { value: "protokol_archive",         label: "Protokół archiwalny",       description: "Protokoły z lat poprzednich (audyty/serwisy)" },
+  { value: "DTR",                      label: "DTR",                       description: "Dokumentacja Techniczno-Ruchowa BOZ / urządzeń" },
+  { value: "certyfikat",               label: "Certyfikat",                description: "Certyfikaty CNBOP, świadectwa odbioru" },
+  { value: "umowa",                    label: "Umowa",                     description: "Umowy serwisowe, najmu, ubezpieczenia" },
+  { value: "inne",                     label: "Inne",                      description: "Pozostała dokumentacja techniczna" },
+];
+
+export const BUILDING_DOCUMENT_CATEGORY_LABELS: Record<BuildingDocumentCategory, string> =
+  BUILDING_DOCUMENT_CATEGORIES.reduce(
+    (acc, c) => {
+      acc[c.value] = c.label;
+      return acc;
+    },
+    {} as Record<BuildingDocumentCategory, string>,
+  );
+
 // Helper: oblicz proponowaną liczbę urządzeń z formuły reguły
 // Obsługa najczęstszych wzorów: "1 / 100 m²", "1 / 1000 m²", "cały budynek".
 export function suggestQuantityFromFormula(formula: string | null, area: number | null): number | null {

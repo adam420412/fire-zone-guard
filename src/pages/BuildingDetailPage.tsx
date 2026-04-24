@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import {
@@ -9,6 +9,11 @@ import {
   useDeviceTypes,
   useAddDevice,
   useCreateTaskFromTemplate,
+  useBuildingContacts,
+  useCreateBuildingContact,
+  useUpdateBuildingContact,
+  useDeleteBuildingContact,
+  type BuildingContact,
 } from "@/hooks/useBuildingData";
 import {
   useUpdateBuilding, useCompanies,
@@ -28,9 +33,14 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   ArrowLeft, Building2, MapPin, Shield, Loader2, Plus,
   CheckCircle2, AlertTriangle, Clock, Wrench, ClipboardList,
-  ChevronDown, ChevronRight, Package, Edit, QrCode, Save, Printer, FileText, UploadCloud, FolderOpen, Trash2, Download, Hammer,
-  Sparkles
+  ChevronRight, Package, Edit, QrCode, Save, Printer, FileText, UploadCloud, FolderOpen, Trash2, Download, Hammer,
+  Sparkles, Users, Mail, Phone, Star, Siren, Tag,
+  ChevronDown
 } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { Textarea } from "@/components/ui/textarea";
+import { Button } from "@/components/ui/button";
+import { BUILDING_DOCUMENT_CATEGORIES, BUILDING_DOCUMENT_CATEGORY_LABELS, type BuildingDocumentCategory } from "@/lib/constants";
 import CreateTaskDialog from "@/components/CreateTaskDialog";
 
 function EditBuildingDialog({ building, open, onOpenChange }: { building: any, open: boolean, onOpenChange: (o: boolean) => void }) {
@@ -124,6 +134,277 @@ function QRCodeDialog({ device, open, onOpenChange }: { device: any, open: boole
   );
 }
 
+// =============================================================================
+// Iter 6 — Książka adresowa per obiekt (kontakty + osoby funkcyjne)
+// Spec PDF str. 6: pełna lista osób z @ + tel + zakres odpowiedzialności.
+// Główny kontakt + kontakt awaryjny mają specjalne flagi (max 1 each).
+// =============================================================================
+function ContactFormDialog({
+  buildingId,
+  contact,
+  open,
+  onOpenChange,
+}: {
+  buildingId: string;
+  contact: BuildingContact | null;
+  open: boolean;
+  onOpenChange: (o: boolean) => void;
+}) {
+  const isEdit = !!contact;
+  const create = useCreateBuildingContact();
+  const update = useUpdateBuildingContact();
+  const { toast } = useToast();
+
+  const [form, setForm] = useState({
+    full_name: "",
+    role: "",
+    responsibility: "",
+    email: "",
+    phone: "",
+    is_primary: false,
+    is_emergency: false,
+    notes: "",
+  });
+
+  // Reset form whenever dialog opens with a (different) contact
+  useEffect(() => {
+    if (open) {
+      if (contact) {
+        setForm({
+          full_name: contact.full_name,
+          role: contact.role,
+          responsibility: contact.responsibility ?? "",
+          email: contact.email ?? "",
+          phone: contact.phone ?? "",
+          is_primary: contact.is_primary,
+          is_emergency: contact.is_emergency,
+          notes: contact.notes ?? "",
+        });
+      } else {
+        setForm({ full_name: "", role: "", responsibility: "", email: "", phone: "", is_primary: false, is_emergency: false, notes: "" });
+      }
+    }
+  }, [open, contact]);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!form.full_name.trim() || !form.role.trim()) {
+      toast({ title: "Imię i rola są wymagane", variant: "destructive" });
+      return;
+    }
+    try {
+      if (isEdit && contact) {
+        await update.mutateAsync({ id: contact.id, building_id: buildingId, updates: form });
+        toast({ title: "Zaktualizowano kontakt" });
+      } else {
+        await create.mutateAsync({ building_id: buildingId, ...form });
+        toast({ title: "Dodano kontakt" });
+      }
+      onOpenChange(false);
+    } catch (err: any) {
+      toast({ title: "Błąd", description: err.message, variant: "destructive" });
+    }
+  };
+
+  const isPending = create.isPending || update.isPending;
+  const inputCls = "w-full rounded-md border border-border bg-secondary px-3 py-2 text-sm text-foreground outline-none focus:border-primary";
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-lg bg-card border-border">
+        <DialogHeader>
+          <DialogTitle>{isEdit ? "Edytuj kontakt" : "Nowy kontakt"}</DialogTitle>
+          <DialogDescription>
+            Osoba funkcyjna / odpowiedzialna za bezpieczeństwo obiektu (zarządca, BHP, konserwator…).
+          </DialogDescription>
+        </DialogHeader>
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="text-xs font-bold uppercase text-muted-foreground tracking-wider block mb-1.5">Imię i nazwisko *</label>
+              <input value={form.full_name} onChange={(e) => setForm((f) => ({ ...f, full_name: e.target.value }))} className={inputCls} required />
+            </div>
+            <div>
+              <label className="text-xs font-bold uppercase text-muted-foreground tracking-wider block mb-1.5">Rola *</label>
+              <input value={form.role} onChange={(e) => setForm((f) => ({ ...f, role: e.target.value }))} className={inputCls} placeholder="np. Inspektor BHP, Zarządca" required />
+            </div>
+          </div>
+          <div>
+            <label className="text-xs font-bold uppercase text-muted-foreground tracking-wider block mb-1.5">Zakres odpowiedzialności</label>
+            <Textarea
+              value={form.responsibility}
+              onChange={(e) => setForm((f) => ({ ...f, responsibility: e.target.value }))}
+              placeholder="Za co konkretnie odpowiada w obiekcie"
+              rows={2}
+              className="bg-secondary"
+            />
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="text-xs font-bold uppercase text-muted-foreground tracking-wider block mb-1.5">Email</label>
+              <input type="email" value={form.email} onChange={(e) => setForm((f) => ({ ...f, email: e.target.value }))} className={inputCls} placeholder="kontakt@przyklad.pl" />
+            </div>
+            <div>
+              <label className="text-xs font-bold uppercase text-muted-foreground tracking-wider block mb-1.5">Telefon</label>
+              <input value={form.phone} onChange={(e) => setForm((f) => ({ ...f, phone: e.target.value }))} className={inputCls} placeholder="+48 600 000 000" />
+            </div>
+          </div>
+          <div className="grid grid-cols-2 gap-3 pt-1">
+            <label className="flex items-center gap-2 rounded-md border border-border bg-secondary/40 px-3 py-2 cursor-pointer hover:border-primary/50">
+              <input
+                type="checkbox"
+                checked={form.is_primary}
+                onChange={(e) => setForm((f) => ({ ...f, is_primary: e.target.checked }))}
+                className="h-4 w-4 rounded border-border"
+              />
+              <Star className="h-4 w-4 text-yellow-500" />
+              <span className="text-xs font-bold">Główny kontakt</span>
+            </label>
+            <label className="flex items-center gap-2 rounded-md border border-border bg-secondary/40 px-3 py-2 cursor-pointer hover:border-primary/50">
+              <input
+                type="checkbox"
+                checked={form.is_emergency}
+                onChange={(e) => setForm((f) => ({ ...f, is_emergency: e.target.checked }))}
+                className="h-4 w-4 rounded border-border"
+              />
+              <Siren className="h-4 w-4 text-critical" />
+              <span className="text-xs font-bold">Awaryjny 24/7</span>
+            </label>
+          </div>
+          <div>
+            <label className="text-xs font-bold uppercase text-muted-foreground tracking-wider block mb-1.5">Notatka</label>
+            <Textarea
+              value={form.notes}
+              onChange={(e) => setForm((f) => ({ ...f, notes: e.target.value }))}
+              rows={2}
+              className="bg-secondary"
+            />
+          </div>
+          <DialogFooter>
+            <Button type="submit" disabled={isPending}>
+              {isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4 mr-2" />}
+              {isEdit ? "Zapisz" : "Dodaj"}
+            </Button>
+          </DialogFooter>
+        </form>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function ContactsTab({ buildingId, isSuperAdmin }: { buildingId: string; isSuperAdmin: boolean }) {
+  const { data: contacts, isLoading } = useBuildingContacts(buildingId);
+  const deleteContact = useDeleteBuildingContact();
+  const { toast } = useToast();
+  const [editing, setEditing] = useState<BuildingContact | null>(null);
+  const [showAdd, setShowAdd] = useState(false);
+
+  const handleDelete = async (c: BuildingContact) => {
+    if (!confirm(`Usunąć kontakt: ${c.full_name}?`)) return;
+    try {
+      await deleteContact.mutateAsync({ id: c.id, building_id: buildingId });
+      toast({ title: "Kontakt usunięty" });
+    } catch (err: any) {
+      toast({ title: "Błąd", description: err.message, variant: "destructive" });
+    }
+  };
+
+  return (
+    <div className="rounded-xl border border-border bg-card overflow-hidden">
+      <div className="border-b border-border bg-secondary/30 px-5 py-4 flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <Users className="h-5 w-5 text-primary" />
+          <h3 className="text-sm font-bold uppercase tracking-tight">Książka adresowa obiektu</h3>
+        </div>
+        {isSuperAdmin && (
+          <Button onClick={() => { setEditing(null); setShowAdd(true); }} size="sm">
+            <Plus className="h-4 w-4 mr-2" /> Dodaj kontakt
+          </Button>
+        )}
+      </div>
+
+      <div className="p-4">
+        {isLoading ? (
+          <div className="py-12 flex justify-center"><Loader2 className="h-6 w-6 animate-spin text-primary" /></div>
+        ) : (contacts ?? []).length === 0 ? (
+          <div className="py-12 flex flex-col items-center justify-center text-muted-foreground opacity-60 text-center">
+            <Users className="h-10 w-10 mb-3" />
+            <p className="text-sm font-semibold mb-1">Brak osób funkcyjnych</p>
+            <p className="text-xs max-w-sm">
+              Dodaj zarządcę, inspektora BHP, konserwatora i kontakty awaryjne.
+              Spec PDF wymaga książki adresowej z @ + tel. + zakres odpowiedzialności.
+            </p>
+          </div>
+        ) : (
+          <div className="grid gap-3 sm:grid-cols-2">
+            {(contacts ?? []).map((c) => (
+              <div key={c.id} className="rounded-lg border border-border bg-muted/10 p-4 flex flex-col gap-2 hover:border-primary/40 transition-colors">
+                <div className="flex items-start justify-between gap-2">
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <p className="text-sm font-bold text-card-foreground">{c.full_name}</p>
+                      {c.is_primary && (
+                        <Badge className="gap-1 bg-yellow-500/15 text-yellow-600 border-yellow-500/30 hover:bg-yellow-500/20" variant="outline">
+                          <Star className="h-3 w-3" /> główny
+                        </Badge>
+                      )}
+                      {c.is_emergency && (
+                        <Badge className="gap-1 bg-critical/15 text-critical border-critical/30 hover:bg-critical/20" variant="outline">
+                          <Siren className="h-3 w-3" /> 24/7
+                        </Badge>
+                      )}
+                    </div>
+                    <p className="text-xs text-muted-foreground mt-0.5">{c.role}</p>
+                  </div>
+                  {isSuperAdmin && (
+                    <div className="flex items-center gap-1">
+                      <button onClick={() => { setEditing(c); setShowAdd(true); }} className="p-1.5 rounded-md hover:bg-secondary text-muted-foreground hover:text-primary transition-colors">
+                        <Edit className="h-3.5 w-3.5" />
+                      </button>
+                      <button onClick={() => handleDelete(c)} className="p-1.5 rounded-md hover:bg-secondary text-muted-foreground hover:text-critical transition-colors">
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </button>
+                    </div>
+                  )}
+                </div>
+
+                {c.responsibility && (
+                  <p className="text-xs text-muted-foreground italic leading-relaxed">{c.responsibility}</p>
+                )}
+
+                <div className="flex flex-col gap-1.5 pt-1.5 border-t border-border/40 text-xs">
+                  {c.email && (
+                    <a href={`mailto:${c.email}`} className="flex items-center gap-2 text-muted-foreground hover:text-primary transition-colors">
+                      <Mail className="h-3.5 w-3.5" />
+                      <span className="font-mono truncate">{c.email}</span>
+                    </a>
+                  )}
+                  {c.phone && (
+                    <a href={`tel:${c.phone.replace(/\s+/g, "")}`} className="flex items-center gap-2 text-muted-foreground hover:text-primary transition-colors">
+                      <Phone className="h-3.5 w-3.5" />
+                      <span className="font-mono">{c.phone}</span>
+                    </a>
+                  )}
+                  {c.notes && (
+                    <p className="text-[11px] text-muted-foreground/80 italic mt-1">{c.notes}</p>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      <ContactFormDialog
+        buildingId={buildingId}
+        contact={editing}
+        open={showAdd}
+        onOpenChange={(o) => { setShowAdd(o); if (!o) setEditing(null); }}
+      />
+    </div>
+  );
+}
+
 export default function BuildingDetailPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
@@ -170,6 +451,13 @@ export default function BuildingDetailPage() {
     device_type_id: "", name: "", manufacturer: "", model: "",
     serial_number: "", location_in_building: "",
   });
+
+  // Iter 6 — kategoryzacja dokumentów: aktywny filtr + wybór kategorii uploadu
+  const [docFilter, setDocFilter] = useState<BuildingDocumentCategory | null>(null);
+  const [uploadCategory, setUploadCategory] = useState<BuildingDocumentCategory>("inne");
+  const filteredDocuments = (documents ?? []).filter(
+    (d: any) => docFilter === null || (d.category ?? "inne") === docFilter
+  );
 
   if (loadingBuilding) {
     return (
@@ -297,7 +585,7 @@ export default function BuildingDetailPage() {
       </div>
 
       <Tabs defaultValue="tasks" className="w-full">
-        <TabsList className="grid w-full sm:w-[500px] grid-cols-3 mb-6 bg-secondary p-1 rounded-xl">
+        <TabsList className="grid w-full sm:w-[680px] grid-cols-4 mb-6 bg-secondary p-1 rounded-xl">
           <TabsTrigger value="tasks" className="rounded-lg data-[state=active]:bg-card data-[state=active]:shadow-sm text-xs font-semibold py-2">
             Zadania operacyjne
           </TabsTrigger>
@@ -306,6 +594,9 @@ export default function BuildingDetailPage() {
           </TabsTrigger>
           <TabsTrigger value="documents" className="rounded-lg data-[state=active]:bg-card data-[state=active]:shadow-sm text-xs font-semibold py-2">
             Dokumentacja
+          </TabsTrigger>
+          <TabsTrigger value="contacts" className="rounded-lg data-[state=active]:bg-card data-[state=active]:shadow-sm text-xs font-semibold py-2">
+            Kontakty
           </TabsTrigger>
         </TabsList>
 
@@ -501,58 +792,126 @@ export default function BuildingDetailPage() {
 
         <TabsContent value="documents" className="mt-0">
           <div className="rounded-xl border border-border bg-card overflow-hidden">
-            <div className="border-b border-border bg-secondary/30 px-5 py-4 flex items-center justify-between">
+            <div className="border-b border-border bg-secondary/30 px-5 py-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
               <div className="flex items-center gap-2">
                 <FolderOpen className="h-5 w-5 text-primary" />
                 <h3 className="text-sm font-bold uppercase tracking-tight">Dokumentacja Techniczna</h3>
               </div>
               {isSuperAdmin && (
-                <div className="relative">
-                  <input
-                    type="file"
-                    id="doc-upload"
-                    className="hidden"
-                    onChange={async (e) => {
-                      const file = e.target.files?.[0];
-                      if (file) {
-                        try {
-                          await uploadDoc.mutateAsync({
-                            buildingId: id || "",
-                            file,
-                            name: file.name
-                          });
-                          toast({ title: "Dokument wgrany pomyślnie" });
-                        } catch (err: any) {
-                          toast({ title: "Błąd wgrywania", description: err.message, variant: "destructive" });
+                <div className="flex items-center gap-2">
+                  <Select value={uploadCategory} onValueChange={(v) => setUploadCategory(v as BuildingDocumentCategory)}>
+                    <SelectTrigger className="w-[180px] h-9 text-xs">
+                      <Tag className="h-3.5 w-3.5 mr-1.5 shrink-0" />
+                      <SelectValue placeholder="Kategoria…" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {BUILDING_DOCUMENT_CATEGORIES.map((c) => (
+                        <SelectItem key={c.value} value={c.value}>{c.label}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <div className="relative">
+                    <input
+                      type="file"
+                      id="doc-upload"
+                      className="hidden"
+                      onChange={async (e) => {
+                        const file = e.target.files?.[0];
+                        if (file) {
+                          try {
+                            await uploadDoc.mutateAsync({
+                              buildingId: id || "",
+                              file,
+                              name: file.name,
+                              category: uploadCategory,
+                            });
+                            toast({ title: "Dokument wgrany pomyślnie", description: `Kategoria: ${BUILDING_DOCUMENT_CATEGORY_LABELS[uploadCategory]}` });
+                            // reset input so same file can be re-selected later
+                            e.target.value = "";
+                          } catch (err: any) {
+                            toast({ title: "Błąd wgrywania", description: err.message, variant: "destructive" });
+                          }
                         }
-                      }
-                    }}
-                  />
-                  <label 
-                    htmlFor="doc-upload"
-                    className="flex items-center gap-2 rounded-md bg-primary px-4 py-2 text-xs font-bold text-primary-foreground hover:opacity-90 transition-opacity cursor-pointer"
-                  >
-                    {uploadDoc.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <UploadCloud className="h-4 w-4" />} 
-                    Wgraj plik
-                  </label>
+                      }}
+                    />
+                    <label
+                      htmlFor="doc-upload"
+                      className="flex items-center gap-2 rounded-md bg-primary px-4 py-2 text-xs font-bold text-primary-foreground hover:opacity-90 transition-opacity cursor-pointer"
+                    >
+                      {uploadDoc.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <UploadCloud className="h-4 w-4" />}
+                      Wgraj plik
+                    </label>
+                  </div>
                 </div>
               )}
             </div>
 
+            {/* Iter 6 — chip filter row by category */}
+            {(documents ?? []).length > 0 && (
+              <div className="px-5 py-3 border-b border-border flex flex-wrap items-center gap-2">
+                <button
+                  onClick={() => setDocFilter(null)}
+                  className={cn(
+                    "rounded-full px-3 py-1 text-[11px] font-bold uppercase tracking-wider transition-colors",
+                    docFilter === null ? "bg-primary text-primary-foreground" : "bg-secondary text-muted-foreground hover:text-foreground"
+                  )}
+                >
+                  Wszystkie ({documents?.length ?? 0})
+                </button>
+                {BUILDING_DOCUMENT_CATEGORIES.map((cat) => {
+                  const count = (documents ?? []).filter((d: any) => (d.category ?? "inne") === cat.value).length;
+                  if (count === 0) return null;
+                  return (
+                    <button
+                      key={cat.value}
+                      onClick={() => setDocFilter(cat.value)}
+                      className={cn(
+                        "rounded-full px-3 py-1 text-[11px] font-bold uppercase tracking-wider transition-colors",
+                        docFilter === cat.value ? "bg-primary text-primary-foreground" : "bg-secondary text-muted-foreground hover:text-foreground"
+                      )}
+                    >
+                      {cat.label} ({count})
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+
             <div className="p-0">
               {docsLoading ? (
                 <div className="p-12 flex justify-center"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>
-              ) : documents && documents.length > 0 ? (
+              ) : filteredDocuments && filteredDocuments.length > 0 ? (
                 <div className="divide-y divide-border">
-                  {documents.map((doc: any) => (
+                  {filteredDocuments.map((doc: any) => (
                     <div key={doc.id} className="flex items-center justify-between p-4 hover:bg-secondary/20 transition-colors">
                       <div className="flex items-center gap-4">
                         <div className="bg-secondary p-2 rounded-lg text-muted-foreground">
                           <FileText className="h-5 w-5" />
                         </div>
                         <div>
-                          <p className="text-sm font-bold text-card-foreground">{doc.name}</p>
-                          <p className="text-[10px] text-muted-foreground flex items-center gap-2">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <p className="text-sm font-bold text-card-foreground">{doc.name}</p>
+                            {doc.category && (
+                              <Badge variant="outline" className="text-[10px] py-0 px-1.5 gap-1">
+                                <Tag className="h-2.5 w-2.5" />
+                                {BUILDING_DOCUMENT_CATEGORY_LABELS[doc.category as BuildingDocumentCategory] ?? doc.category}
+                              </Badge>
+                            )}
+                            {doc.valid_until && (
+                              <Badge
+                                variant="outline"
+                                className={cn(
+                                  "text-[10px] py-0 px-1.5",
+                                  new Date(doc.valid_until) < new Date()
+                                    ? "border-critical/30 text-critical bg-critical/10"
+                                    : "border-success/30 text-success bg-success/10"
+                                )}
+                              >
+                                ważny do: {new Date(doc.valid_until).toLocaleDateString("pl-PL")}
+                              </Badge>
+                            )}
+                          </div>
+                          <p className="text-[10px] text-muted-foreground flex items-center gap-2 mt-0.5">
                             <span>{(doc.file_size / 1024 / 1024).toFixed(2)} MB</span>
                             <span className="h-1 w-1 bg-muted-foreground rounded-full" />
                             <span>Wgrano: {new Date(doc.created_at).toLocaleDateString("pl-PL")} przez {doc.userName}</span>
@@ -606,12 +965,22 @@ export default function BuildingDetailPage() {
                   <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-secondary mb-4">
                     <FileText className="h-8 w-8 text-muted-foreground" />
                   </div>
-                  <h4 className="text-base font-bold text-card-foreground mb-1">Brak wgranych dokumentów</h4>
-                  <p className="text-sm text-muted-foreground max-w-sm mb-6">W tej sekcji znajdować będą się rzuty pięter oraz plany systemów PPOŻ dla budynku.</p>
+                  <h4 className="text-base font-bold text-card-foreground mb-1">
+                    {docFilter ? "Brak dokumentów w tej kategorii" : "Brak wgranych dokumentów"}
+                  </h4>
+                  <p className="text-sm text-muted-foreground max-w-sm mb-6">
+                    {docFilter
+                      ? "Zmień filtr lub wgraj pierwszy dokument w tej kategorii."
+                      : "Wymagane dokumenty: IBP, plany ewakuacyjne, dokumentacja projektowa, DTR dla BOZ, protokoły archiwalne."}
+                  </p>
                 </div>
               )}
             </div>
           </div>
+        </TabsContent>
+
+        <TabsContent value="contacts" className="mt-0">
+          <ContactsTab buildingId={id ?? ""} isSuperAdmin={isSuperAdmin} />
         </TabsContent>
       </Tabs>
 

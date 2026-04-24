@@ -1080,14 +1080,20 @@ export function useDocuments(buildingId: string) {
 export function useUploadDocument() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async ({ 
-      buildingId, 
-      file, 
-      name 
-    }: { 
-      buildingId: string; 
-      file: File; 
+    mutationFn: async ({
+      buildingId,
+      file,
+      name,
+      category,
+      validUntil,
+      notes,
+    }: {
+      buildingId: string;
+      file: File;
       name: string;
+      category?: string | null;
+      validUntil?: string | null;
+      notes?: string | null;
     }) => {
       const fileExt = file.name.split('.').pop();
       const filePath = `${buildingId}/${crypto.randomUUID()}.${fileExt}`;
@@ -1096,24 +1102,43 @@ export function useUploadDocument() {
       const { error: uploadError } = await supabase.storage
         .from('building-documents')
         .upload(filePath, file);
-      
+
       if (uploadError) throw uploadError;
 
       // 2. Save metadata to DB
       const { data: { user } } = await supabase.auth.getUser();
-      const { data, error: dbError } = await supabase
-        .from('building_documents')
-        .insert([{
-          building_id: buildingId,
-          user_id: user?.id,
-          name: name,
-          file_path: filePath,
-          file_type: file.type,
-          file_size: file.size
-        }])
-        .select()
-        .single();
-      
+      // Iter 6 — `category`, `valid_until` i `notes` mogą jeszcze nie istnieć
+      // jeśli migracja nie została wdrożona; zapis robimy z try/catch i
+      // ponownie próbujemy bez tych pól.
+      const insertWithMeta = async (extra: Record<string, any>) =>
+        await supabase
+          .from('building_documents')
+          .insert([{
+            building_id: buildingId,
+            user_id: user?.id,
+            name: name,
+            file_path: filePath,
+            file_type: file.type,
+            file_size: file.size,
+            ...extra,
+          }] as any)
+          .select()
+          .single();
+
+      const meta: Record<string, any> = {};
+      if (category) meta.category = category;
+      if (validUntil) meta.valid_until = validUntil;
+      if (notes) meta.notes = notes;
+
+      let { data, error: dbError } = await insertWithMeta(meta);
+
+      // 42703 = column does not exist — retry bez pól iter6
+      if (dbError && (dbError.code === "42703" || /column .* does not exist/i.test(dbError.message))) {
+        const retry = await insertWithMeta({});
+        data = retry.data;
+        dbError = retry.error;
+      }
+
       if (dbError) throw dbError;
       return data;
     },

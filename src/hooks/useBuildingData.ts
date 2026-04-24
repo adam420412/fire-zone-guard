@@ -256,6 +256,131 @@ export function useBulkAddDevices() {
   });
 }
 
+// ---- BUILDING CONTACTS (Iter 6 — Książka adresowa per obiekt) ----
+// Per spec PDF (str. 6): "Książka adresowa, osoby funkcyjne (z @ i tel
+// + odpowiedzialność)". Tabela `building_contacts` wprowadzona w
+// migracji 20260424180000_iter6_contacts_docs_seed.sql.
+export interface BuildingContact {
+  id: string;
+  building_id: string;
+  full_name: string;
+  role: string;
+  responsibility: string | null;
+  email: string | null;
+  phone: string | null;
+  is_primary: boolean;
+  is_emergency: boolean;
+  notes: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export function useBuildingContacts(buildingId: string) {
+  return useQuery<BuildingContact[], Error>({
+    queryKey: ["building_contacts", buildingId],
+    queryFn: async () => {
+      const { data, error } = await (supabase as any)
+        .from("building_contacts")
+        .select("*")
+        .eq("building_id", buildingId)
+        .order("is_primary", { ascending: false })
+        .order("is_emergency", { ascending: false })
+        .order("full_name");
+      if (error) {
+        // graceful fallback if migration not applied yet
+        if (error.code === "42P01") return [];
+        throw error;
+      }
+      return (data ?? []) as BuildingContact[];
+    },
+    enabled: !!buildingId,
+  });
+}
+
+export interface CreateBuildingContactInput {
+  building_id: string;
+  full_name: string;
+  role: string;
+  responsibility?: string | null;
+  email?: string | null;
+  phone?: string | null;
+  is_primary?: boolean;
+  is_emergency?: boolean;
+  notes?: string | null;
+}
+
+export function useCreateBuildingContact() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (input: CreateBuildingContactInput) => {
+      const { data, error } = await (supabase as any)
+        .from("building_contacts")
+        .insert({
+          building_id: input.building_id,
+          full_name: input.full_name.trim(),
+          role: input.role.trim(),
+          responsibility: input.responsibility?.trim() || null,
+          email: input.email?.trim() || null,
+          phone: input.phone?.trim() || null,
+          is_primary: !!input.is_primary,
+          is_emergency: !!input.is_emergency,
+          notes: input.notes?.trim() || null,
+        })
+        .select()
+        .single();
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: (_, vars) => {
+      qc.invalidateQueries({ queryKey: ["building_contacts", vars.building_id] });
+    },
+  });
+}
+
+export function useUpdateBuildingContact() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ id, building_id, updates }: { id: string; building_id: string; updates: Partial<CreateBuildingContactInput> }) => {
+      const allowed: Record<string, any> = {};
+      const keys = ["full_name", "role", "responsibility", "email", "phone", "is_primary", "is_emergency", "notes"] as const;
+      for (const k of keys) {
+        if (k in updates) {
+          const v = (updates as any)[k];
+          allowed[k] = typeof v === "string" ? v.trim() || null : v;
+        }
+      }
+      const { data, error } = await (supabase as any)
+        .from("building_contacts")
+        .update(allowed)
+        .eq("id", id)
+        .select()
+        .single();
+      if (error) throw error;
+      return { data, building_id };
+    },
+    onSuccess: (res) => {
+      qc.invalidateQueries({ queryKey: ["building_contacts", res.building_id] });
+    },
+  });
+}
+
+export function useDeleteBuildingContact() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ id, building_id }: { id: string; building_id: string }) => {
+      const { error } = await (supabase as any)
+        .from("building_contacts")
+        .delete()
+        .eq("id", id);
+      if (error) throw error;
+      return { id, building_id };
+    },
+    onSuccess: (res) => {
+      qc.invalidateQueries({ queryKey: ["building_contacts", res.building_id] });
+    },
+  });
+}
+
 // ---- DEVICE SERVICES ----
 export function useDeviceServices(deviceId: string) {
   return useQuery({
