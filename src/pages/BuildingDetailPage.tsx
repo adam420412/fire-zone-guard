@@ -1148,6 +1148,10 @@ export default function BuildingDetailPage() {
           </div>
         </TabsContent>
 
+        <TabsContent value="trainings" className="mt-0">
+          <BuildingTrainingsTab buildingId={id ?? ""} companyId={building?.company_id ?? null} />
+        </TabsContent>
+
         <TabsContent value="contacts" className="mt-0">
           <ContactsTab buildingId={id ?? ""} isSuperAdmin={isSuperAdmin} />
         </TabsContent>
