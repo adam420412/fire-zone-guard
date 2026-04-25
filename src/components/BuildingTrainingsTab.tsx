@@ -47,6 +47,7 @@ export default function BuildingTrainingsTab({ buildingId, companyId }: Props) {
   const [createOpen, setCreateOpen] = useState(false);
   const [editing, setEditing] = useState<BuildingTraining | null>(null);
   const [expanded, setExpanded] = useState<string | null>(null);
+  const [historyFor, setHistoryFor] = useState<BuildingTraining | null>(null);
   const deleteTraining = useDeleteTraining();
   const { toast } = useToast();
 
