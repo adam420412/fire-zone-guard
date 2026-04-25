@@ -132,7 +132,7 @@ export default function BuildingTrainingsTab({ buildingId, companyId }: Props) {
         </div>
       )}
 
-      <TrainingDialog
+      <TrainingAttendanceMatrix buildingId={buildingId} />
         open={createOpen || !!editing}
         onClose={() => { setCreateOpen(false); setEditing(null); }}
         buildingId={buildingId}
