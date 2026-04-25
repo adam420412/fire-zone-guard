@@ -24,7 +24,10 @@ import { useToast } from "@/hooks/use-toast";
 import { GraduationCap, Plus, Calendar, Users, Trash2, Edit, UserPlus, CheckCircle2, ChevronDown, ChevronRight, Loader2, PenLine, Download } from "lucide-react";
 import { format } from "date-fns";
 import { pl } from "date-fns/locale";
-import { generateAndDownloadCertificate, uploadSignature } from "@/lib/trainingCertificates";
+import {
+  generateAndDownloadCertificate, uploadSignature,
+  generateCertificateBlob, uploadCertificatePdf,
+} from "@/lib/trainingCertificates";
 
 interface Props {
   buildingId: string;
