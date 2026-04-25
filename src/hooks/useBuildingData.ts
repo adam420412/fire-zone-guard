@@ -97,6 +97,45 @@ export function useAddDevice() {
   });
 }
 
+// ---- Iter 9: edit / delete device (super_admin) ---------------------------
+export function useUpdateDevice() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ id, building_id, updates }: { id: string; building_id?: string; updates: any }) => {
+      const { error } = await supabase.from("devices").update(updates).eq("id", id);
+      if (error) throw error;
+      return { id, building_id };
+    },
+    onSuccess: (res) => {
+      if (res?.building_id) {
+        qc.invalidateQueries({ queryKey: ["devices", res.building_id] });
+        qc.invalidateQueries({ queryKey: ["building_device_summary", res.building_id] });
+      } else {
+        qc.invalidateQueries({ queryKey: ["devices"] });
+      }
+    },
+  });
+}
+
+export function useDeleteDevice() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ id, building_id }: { id: string; building_id?: string }) => {
+      const { error } = await supabase.from("devices").delete().eq("id", id);
+      if (error) throw error;
+      return { id, building_id };
+    },
+    onSuccess: (res) => {
+      if (res?.building_id) {
+        qc.invalidateQueries({ queryKey: ["devices", res.building_id] });
+        qc.invalidateQueries({ queryKey: ["building_device_summary", res.building_id] });
+      } else {
+        qc.invalidateQueries({ queryKey: ["devices"] });
+      }
+    },
+  });
+}
+
 // ---- TASK TEMPLATES ----
 export function useTaskTemplates(buildingId?: string) {
   return useQuery({

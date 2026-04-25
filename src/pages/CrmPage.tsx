@@ -1,5 +1,5 @@
-import { useState, useMemo } from "react";
-import { useContacts, useCreateContact, useDeleteContact } from "@/hooks/useCrmData";
+import { useState, useMemo, useEffect } from "react";
+import { useContacts, useCreateContact, useUpdateContact, useDeleteContact } from "@/hooks/useCrmData";
 import { useCompanies } from "@/hooks/useSupabaseData";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
@@ -9,7 +9,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
-import { Plus, User, Phone, Mail, Building2, Loader2, Trash2, Search } from "lucide-react";
+import { Plus, User, Phone, Mail, Building2, Loader2, Trash2, Search, Pencil, Save } from "lucide-react";
 
 // ---- Add Contact Dialog ----
 function AddContactDialog({ open, onOpenChange }: { open: boolean; onOpenChange: (o: boolean) => void }) {
@@ -58,6 +58,71 @@ function AddContactDialog({ open, onOpenChange }: { open: boolean; onOpenChange:
   );
 }
 
+// ---- Edit Contact Dialog (super_admin) ----
+function EditContactDialog({
+  open, onOpenChange, contact,
+}: { open: boolean; onOpenChange: (o: boolean) => void; contact: any | null }) {
+  const { data: companies } = useCompanies();
+  const { mutate: updateContact, isPending } = useUpdateContact();
+  const [form, setForm] = useState({ name: "", email: "", phone: "", position: "", company_id: "" });
+
+  useEffect(() => {
+    if (!contact) return;
+    setForm({
+      name: contact.name ?? "",
+      email: contact.email ?? "",
+      phone: contact.phone ?? "",
+      position: contact.position ?? "",
+      company_id: contact.company_id ?? "",
+    });
+  }, [contact?.id]);
+
+  if (!contact) return null;
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!form.name.trim() || !form.company_id) { toast.error("Uzupełnij nazwę i firmę."); return; }
+    updateContact({ id: contact.id, updates: form }, {
+      onSuccess: () => { toast.success("Kontakt zaktualizowany."); onOpenChange(false); },
+      onError: (err: any) => toast.error("Błąd: " + err.message),
+    });
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-md">
+        <form onSubmit={handleSubmit}>
+          <DialogHeader>
+            <DialogTitle>Edytuj kontakt — {contact.name}</DialogTitle>
+            <DialogDescription>Zmień dane osoby kontaktowej.</DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            <div className="space-y-2"><Label>Firma *</Label>
+              <Select value={form.company_id} onValueChange={v => setForm({ ...form, company_id: v })}>
+                <SelectTrigger><SelectValue placeholder="Wybierz firmę..." /></SelectTrigger>
+                <SelectContent>{companies?.map((c: any) => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}</SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2"><Label>Imię i nazwisko *</Label><Input value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} required /></div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2"><Label>Stanowisko</Label><Input value={form.position} onChange={e => setForm({ ...form, position: e.target.value })} /></div>
+              <div className="space-y-2"><Label>Telefon</Label><Input value={form.phone} onChange={e => setForm({ ...form, phone: e.target.value })} /></div>
+            </div>
+            <div className="space-y-2"><Label>Email</Label><Input type="email" value={form.email} onChange={e => setForm({ ...form, email: e.target.value })} /></div>
+          </div>
+          <DialogFooter>
+            <Button type="button" variant="ghost" onClick={() => onOpenChange(false)}>Anuluj</Button>
+            <Button type="submit" disabled={isPending}>
+              {isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
+              Zapisz
+            </Button>
+          </DialogFooter>
+        </form>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 // ---- Main CRM Page (Contacts only) ----
 export default function CrmPage() {
   const { role } = useAuth();
@@ -65,6 +130,8 @@ export default function CrmPage() {
   const { mutate: deleteContact } = useDeleteContact();
 
   const [addContactOpen, setAddContactOpen] = useState(false);
+  const [editContact, setEditContact] = useState<any | null>(null);
+  const [editOpen, setEditOpen] = useState(false);
   const [search, setSearch] = useState("");
 
   const filteredContacts = useMemo(() => {
@@ -119,20 +186,32 @@ export default function CrmPage() {
                     </div>
                   </div>
                   {isSuperAdmin && (
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="h-7 w-7 opacity-0 group-hover:opacity-100 text-destructive"
-                      onClick={() => {
-                        if (!window.confirm(`Usunąć kontakt „${contact.name}"?`)) return;
-                        deleteContact(contact.id, {
-                          onSuccess: () => toast.success("Kontakt usunięty."),
-                          onError: (e: any) => toast.error(e?.message ?? "Nie udało się usunąć."),
-                        });
-                      }}
-                    >
-                      <Trash2 className="h-3.5 w-3.5" />
-                    </Button>
+                    <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-7 w-7"
+                        onClick={() => { setEditContact(contact); setEditOpen(true); }}
+                        title="Edytuj kontakt"
+                      >
+                        <Pencil className="h-3.5 w-3.5 text-muted-foreground hover:text-foreground" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-7 w-7 text-destructive"
+                        onClick={() => {
+                          if (!window.confirm(`Usunąć kontakt „${contact.name}"?`)) return;
+                          deleteContact(contact.id, {
+                            onSuccess: () => toast.success("Kontakt usunięty."),
+                            onError: (e: any) => toast.error(e?.message ?? "Nie udało się usunąć."),
+                          });
+                        }}
+                        title="Usuń kontakt"
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </Button>
+                    </div>
                   )}
                 </div>
                 <div className="space-y-1.5 text-xs">
@@ -149,6 +228,7 @@ export default function CrmPage() {
       )}
 
       <AddContactDialog open={addContactOpen} onOpenChange={setAddContactOpen} />
+      <EditContactDialog open={editOpen} onOpenChange={setEditOpen} contact={editContact} />
     </div>
   );
 }

@@ -1,8 +1,8 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/useAuth";
-import { Factory, Plus, Loader2, Save, Phone, Mail, MapPin, Award, Search } from "lucide-react";
+import { Factory, Plus, Loader2, Save, Phone, Mail, MapPin, Award, Search, Pencil, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
@@ -47,6 +47,31 @@ function useCreateManufacturer() {
       return data;
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ["manufacturers"] }),
+  });
+}
+
+function useUpdateManufacturer() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ id, updates }: { id: string; updates: any }) => {
+      const { error } = await supabase.from("manufacturers").update(updates).eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["manufacturers"] }),
+  });
+}
+
+function useDeleteManufacturer() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase.from("manufacturers").delete().eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["manufacturers"] });
+      qc.invalidateQueries({ queryKey: ["manufacturer_device_counts"] });
+    },
   });
 }
 
@@ -129,12 +154,121 @@ function CreateManufacturerDialog({ open, onOpenChange }: { open: boolean; onOpe
   );
 }
 
+// Edit Dialog (super_admin)
+function EditManufacturerDialog({
+  open, onOpenChange, m,
+}: { open: boolean; onOpenChange: (o: boolean) => void; m: any | null }) {
+  const { mutate: update, isPending: saving } = useUpdateManufacturer();
+  const { mutate: del, isPending: deleting } = useDeleteManufacturer();
+  const [form, setForm] = useState({ name: "", nip: "", phone: "", email: "", address: "", specialization: "", certificate_info: "", notes: "" });
+  const set = (key: string, val: string) => setForm(f => ({ ...f, [key]: val }));
+
+  useEffect(() => {
+    if (!m) return;
+    setForm({
+      name: m.name ?? "",
+      nip: m.nip ?? "",
+      phone: m.phone ?? "",
+      email: m.email ?? "",
+      address: m.address ?? "",
+      specialization: m.specialization ?? "",
+      certificate_info: m.certificate_info ?? "",
+      notes: m.notes ?? "",
+    });
+  }, [m?.id]);
+
+  if (!m) return null;
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!form.name.trim()) { toast.error("Podaj nazwę producenta."); return; }
+    update({ id: m.id, updates: form }, {
+      onSuccess: () => { toast.success("Producent zaktualizowany."); onOpenChange(false); },
+      onError: (err: any) => toast.error("Błąd: " + err.message),
+    });
+  };
+
+  const handleDelete = () => {
+    if (!window.confirm(`Usunąć producenta „${m.name}"?`)) return;
+    del(m.id, {
+      onSuccess: () => { toast.success("Producent usunięty."); onOpenChange(false); },
+      onError: (err: any) => toast.error("Błąd: " + err.message),
+    });
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-lg">
+        <form onSubmit={handleSubmit}>
+          <DialogHeader>
+            <DialogTitle>Edytuj producenta — {m.name}</DialogTitle>
+            <DialogDescription>Zmień dane kontaktowe lub uprawnienia.</DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-3 py-4">
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1.5">
+                <Label>Nazwa firmy *</Label>
+                <Input value={form.name} onChange={e => set("name", e.target.value)} required />
+              </div>
+              <div className="space-y-1.5">
+                <Label>NIP</Label>
+                <Input value={form.nip} onChange={e => set("nip", e.target.value)} />
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1.5">
+                <Label>Telefon</Label>
+                <Input value={form.phone} onChange={e => set("phone", e.target.value)} />
+              </div>
+              <div className="space-y-1.5">
+                <Label>Email</Label>
+                <Input type="email" value={form.email} onChange={e => set("email", e.target.value)} />
+              </div>
+            </div>
+            <div className="space-y-1.5">
+              <Label>Adres</Label>
+              <Input value={form.address} onChange={e => set("address", e.target.value)} />
+            </div>
+            <div className="space-y-1.5">
+              <Label>Specjalizacja</Label>
+              <Input value={form.specialization} onChange={e => set("specialization", e.target.value)} />
+            </div>
+            <div className="space-y-1.5">
+              <Label>Certyfikaty / Uprawnienia</Label>
+              <Textarea value={form.certificate_info} onChange={e => set("certificate_info", e.target.value)} rows={2} />
+            </div>
+            <div className="space-y-1.5">
+              <Label>Notatki</Label>
+              <Textarea value={form.notes} onChange={e => set("notes", e.target.value)} rows={2} />
+            </div>
+          </div>
+          <DialogFooter className="flex-row sm:justify-between">
+            <Button type="button" variant="ghost" className="text-destructive" onClick={handleDelete} disabled={deleting || saving}>
+              {deleting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Trash2 className="mr-2 h-4 w-4" />}
+              Usuń
+            </Button>
+            <div className="flex gap-2">
+              <Button type="button" variant="ghost" onClick={() => onOpenChange(false)}>Anuluj</Button>
+              <Button type="submit" disabled={saving || deleting}>
+                {saving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
+                Zapisz
+              </Button>
+            </div>
+          </DialogFooter>
+        </form>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 // Main Page
 export default function ManufacturersPage() {
   const { data: manufacturers, isLoading } = useManufacturers();
   const { data: deviceCounts } = useManufacturerDeviceCounts();
   const { role } = useAuth();
   const [createOpen, setCreateOpen] = useState(false);
+  const [editTarget, setEditTarget] = useState<any | null>(null);
+  const [editOpen, setEditOpen] = useState(false);
   const [search, setSearch] = useState("");
 
   const filtered = (manufacturers ?? []).filter((m: any) =>
@@ -176,10 +310,22 @@ export default function ManufacturersPage() {
       </div>
 
       <CreateManufacturerDialog open={createOpen} onOpenChange={setCreateOpen} />
+      <EditManufacturerDialog open={editOpen} onOpenChange={setEditOpen} m={editTarget} />
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {filtered.map((m: any) => (
-          <div key={m.id} className="rounded-lg border border-border bg-card p-5 card-hover">
+          <div key={m.id} className="rounded-lg border border-border bg-card p-5 card-hover group relative">
+            {role === "super_admin" && (
+              <Button
+                variant="ghost"
+                size="icon"
+                className="absolute top-2 right-2 h-7 w-7 opacity-0 group-hover:opacity-100 transition-opacity"
+                onClick={() => { setEditTarget(m); setEditOpen(true); }}
+                title="Edytuj producenta"
+              >
+                <Pencil className="h-3.5 w-3.5 text-muted-foreground hover:text-foreground" />
+              </Button>
+            )}
             <div className="flex items-start gap-3">
               <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-secondary">
                 <Factory className="h-5 w-5 text-secondary-foreground" />

@@ -8,6 +8,8 @@ import {
   useTaskTemplates,
   useDeviceTypes,
   useAddDevice,
+  useUpdateDevice,
+  useDeleteDevice,
   useCreateTaskFromTemplate,
   useBuildingContacts,
   useCreateBuildingContact,
@@ -129,6 +131,152 @@ function QRCodeDialog({ device, open, onOpenChange }: { device: any, open: boole
         <button onClick={() => window.print()} className="w-full flex items-center justify-center gap-2 rounded-lg bg-gray-900 px-4 py-2.5 text-sm font-bold text-white hover:bg-black transition-colors">
           <Printer className="h-4 w-4" /> Drukuj Etykietę
         </button>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+// ---- Iter 9: edit/delete device (super_admin) ----
+function EditDeviceDialog({
+  device, buildingId, open, onOpenChange,
+}: { device: any | null; buildingId: string; open: boolean; onOpenChange: (o: boolean) => void }) {
+  const { data: deviceTypes } = useDeviceTypes();
+  const updateDevice = useUpdateDevice();
+  const deleteDevice = useDeleteDevice();
+  const { toast } = useToast();
+
+  const [form, setForm] = useState({
+    device_type_id: "",
+    name: "",
+    manufacturer: "",
+    model: "",
+    serial_number: "",
+    location_in_building: "",
+    installed_at: "",
+    next_service_date: "",
+  });
+
+  useEffect(() => {
+    if (!device) return;
+    setForm({
+      device_type_id: device.device_type_id ?? "",
+      name: device.name ?? "",
+      manufacturer: device.manufacturer ?? "",
+      model: device.model ?? "",
+      serial_number: device.serial_number ?? "",
+      location_in_building: device.location_in_building ?? "",
+      installed_at: device.installed_at ? String(device.installed_at).slice(0, 10) : "",
+      next_service_date: device.next_service_date ? String(device.next_service_date).slice(0, 10) : "",
+    });
+  }, [device?.id]);
+
+  if (!device) return null;
+
+  const handleSave = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!form.name.trim()) { toast({ title: "Nazwa urządzenia jest wymagana", variant: "destructive" }); return; }
+    try {
+      await updateDevice.mutateAsync({
+        id: device.id,
+        building_id: buildingId,
+        updates: {
+          device_type_id: form.device_type_id || null,
+          name: form.name.trim(),
+          manufacturer: form.manufacturer.trim() || null,
+          model: form.model.trim() || null,
+          serial_number: form.serial_number.trim() || null,
+          location_in_building: form.location_in_building.trim() || null,
+          installed_at: form.installed_at || null,
+          next_service_date: form.next_service_date || null,
+        },
+      });
+      toast({ title: "Urządzenie zaktualizowane" });
+      onOpenChange(false);
+    } catch (err: any) {
+      toast({ title: "Błąd zapisu", description: err?.message ?? "", variant: "destructive" });
+    }
+  };
+
+  const handleDelete = async () => {
+    if (!window.confirm(`Usunąć urządzenie „${device.name}"? Operacja nieodwracalna.`)) return;
+    try {
+      await deleteDevice.mutateAsync({ id: device.id, building_id: buildingId });
+      toast({ title: "Urządzenie usunięte" });
+      onOpenChange(false);
+    } catch (err: any) {
+      toast({ title: "Błąd", description: err?.message ?? "", variant: "destructive" });
+    }
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-lg">
+        <form onSubmit={handleSave}>
+          <DialogHeader>
+            <DialogTitle>Edytuj urządzenie — {device.name}</DialogTitle>
+            <DialogDescription>Zmień typ, lokalizację, daty serwisu lub numer seryjny.</DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-3 py-4">
+            <div className="space-y-1.5">
+              <Label>Typ urządzenia</Label>
+              <Select value={form.device_type_id} onValueChange={v => setForm({ ...form, device_type_id: v })}>
+                <SelectTrigger><SelectValue placeholder="Wybierz typ..." /></SelectTrigger>
+                <SelectContent>
+                  {(deviceTypes ?? []).map((dt: any) => (
+                    <SelectItem key={dt.id} value={dt.id}>{dt.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-1.5">
+              <Label>Nazwa *</Label>
+              <Input value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} required />
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1.5">
+                <Label>Producent</Label>
+                <Input value={form.manufacturer} onChange={e => setForm({ ...form, manufacturer: e.target.value })} />
+              </div>
+              <div className="space-y-1.5">
+                <Label>Model</Label>
+                <Input value={form.model} onChange={e => setForm({ ...form, model: e.target.value })} />
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1.5">
+                <Label>Nr seryjny</Label>
+                <Input value={form.serial_number} onChange={e => setForm({ ...form, serial_number: e.target.value })} />
+              </div>
+              <div className="space-y-1.5">
+                <Label>Lokalizacja</Label>
+                <Input value={form.location_in_building} onChange={e => setForm({ ...form, location_in_building: e.target.value })} placeholder="np. piętro 2, sala 204" />
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1.5">
+                <Label>Data instalacji</Label>
+                <Input type="date" value={form.installed_at} onChange={e => setForm({ ...form, installed_at: e.target.value })} />
+              </div>
+              <div className="space-y-1.5">
+                <Label>Następny serwis</Label>
+                <Input type="date" value={form.next_service_date} onChange={e => setForm({ ...form, next_service_date: e.target.value })} />
+              </div>
+            </div>
+          </div>
+          <DialogFooter className="flex-row sm:justify-between">
+            <Button type="button" variant="ghost" className="text-destructive" onClick={handleDelete} disabled={deleteDevice.isPending || updateDevice.isPending}>
+              {deleteDevice.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Trash2 className="mr-2 h-4 w-4" />}
+              Usuń
+            </Button>
+            <div className="flex gap-2">
+              <Button type="button" variant="ghost" onClick={() => onOpenChange(false)}>Anuluj</Button>
+              <Button type="submit" disabled={updateDevice.isPending || deleteDevice.isPending}>
+                {updateDevice.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
+                Zapisz
+              </Button>
+            </div>
+          </DialogFooter>
+        </form>
       </DialogContent>
     </Dialog>
   );
@@ -425,6 +573,8 @@ export default function BuildingDetailPage() {
   const [showEditBuilding, setShowEditBuilding] = useState(false);
   const [qrDevice, setQrDevice] = useState<any>(null);
   const [repairDevice, setRepairDevice] = useState<any>(null);
+  const [editDeviceTarget, setEditDeviceTarget] = useState<any>(null);
+  const [editDeviceOpen, setEditDeviceOpen] = useState(false);
   
   const { data: documents, isLoading: docsLoading } = useDocuments(id || "");
   const uploadDoc = useUploadDocument();
@@ -563,6 +713,12 @@ export default function BuildingDetailPage() {
 
       <EditBuildingDialog building={building} open={showEditBuilding} onOpenChange={setShowEditBuilding} />
       <QRCodeDialog device={qrDevice} open={!!qrDevice} onOpenChange={(o) => !o && setQrDevice(null)} />
+      <EditDeviceDialog
+        device={editDeviceTarget}
+        buildingId={id ?? ""}
+        open={editDeviceOpen}
+        onOpenChange={(o) => { setEditDeviceOpen(o); if (!o) setEditDeviceTarget(null); }}
+      />
 
       {/* Summary stats */}
       <div className="grid grid-cols-2 gap-3 xl:grid-cols-4">
@@ -763,14 +919,23 @@ export default function BuildingDetailPage() {
                             </td>
                             <td className="px-5 py-4 text-right">
                               <div className="flex items-center justify-end gap-1">
-                                <button 
+                                {isSuperAdmin && (
+                                  <button
+                                    onClick={() => { setEditDeviceTarget(device); setEditDeviceOpen(true); }}
+                                    className="inline-flex items-center justify-center p-2 hover:bg-secondary rounded-lg text-muted-foreground hover:text-primary transition-colors"
+                                    title="Edytuj urządzenie"
+                                  >
+                                    <Edit className="h-4 w-4" />
+                                  </button>
+                                )}
+                                <button
                                   onClick={() => setRepairDevice(device)}
                                   className="inline-flex items-center justify-center p-2 hover:bg-warning/10 rounded-lg text-muted-foreground hover:text-warning transition-colors"
                                   title="Zgłoś naprawę — utwórz zadanie serwisowe"
                                 >
                                   <Hammer className="h-4 w-4" />
                                 </button>
-                                <button 
+                                <button
                                   onClick={() => setQrDevice(device)}
                                   className="inline-flex items-center justify-center p-2 hover:bg-secondary rounded-lg text-muted-foreground hover:text-primary transition-colors"
                                   title="Karta i Kod QR"

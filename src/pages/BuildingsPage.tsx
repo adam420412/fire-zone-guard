@@ -1,11 +1,11 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import { useBuildings, useCompanies, useCreateBuilding } from "@/hooks/useSupabaseData";
+import { useBuildings, useCompanies, useCreateBuilding, useUpdateBuilding, useDeleteBuilding } from "@/hooks/useSupabaseData";
 import { useAuth } from "@/hooks/useAuth";
-import { safetyStatusConfig } from "@/lib/constants";
+import { safetyStatusConfig, BUILDING_CLASSES } from "@/lib/constants";
 import type { SafetyStatus } from "@/lib/constants";
 import { cn } from "@/lib/utils";
-import { Building2, MapPin, Clock, Shield, FileCheck, Loader2, ChevronRight, Plus, Save, Download } from "lucide-react";
+import { Building2, MapPin, Clock, Shield, FileCheck, Loader2, ChevronRight, Plus, Save, Download, Pencil, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
@@ -95,6 +95,149 @@ function CreateBuildingDialog({ open, onOpenChange }: { open: boolean, onOpenCha
   );
 }
 
+// ---- Edit Building Dialog (super_admin) ----
+function EditBuildingDialog({
+  open, onOpenChange, building,
+}: { open: boolean; onOpenChange: (o: boolean) => void; building: any | null }) {
+  const { data: companies } = useCompanies();
+  const { mutate: updateBuilding, isPending: saving } = useUpdateBuilding();
+  const { mutate: deleteBuilding, isPending: deleting } = useDeleteBuilding();
+
+  const [name, setName] = useState("");
+  const [address, setAddress] = useState("");
+  const [city, setCity] = useState("");
+  const [companyId, setCompanyId] = useState("");
+  const [ibpDate, setIbpDate] = useState("");
+  const [buildingClass, setBuildingClass] = useState<string>("");
+  const [areaTotal, setAreaTotal] = useState<string>("");
+  const [mapColor, setMapColor] = useState<string>("");
+
+  // Re-sync form when a different building is selected
+  useEffect(() => {
+    if (!building) return;
+    setName(building.name ?? "");
+    setAddress(building.address ?? "");
+    setCity(building.city ?? "");
+    setCompanyId(building.company_id ?? "");
+    setIbpDate(building.ibp_valid_until ? String(building.ibp_valid_until).slice(0, 10) : "");
+    setBuildingClass(building.building_class ?? "");
+    setAreaTotal(building.area_total != null ? String(building.area_total) : "");
+    setMapColor(building.map_color ?? "");
+  }, [building?.id]);
+
+  if (!building) return null;
+
+  const handleSave = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!name.trim()) { toast.error("Podaj nazwę obiektu."); return; }
+    if (!companyId)   { toast.error("Wybierz firmę.");      return; }
+
+    updateBuilding({
+      id: building.id,
+      updates: {
+        name: name.trim(),
+        address: address.trim() || null,
+        city: city.trim() || null,
+        company_id: companyId,
+        ibp_valid_until: ibpDate || null,
+        building_class: buildingClass || null,
+        area_total: areaTotal ? Number(areaTotal) : null,
+        map_color: mapColor.trim() || null,
+      },
+    }, {
+      onSuccess: () => { toast.success("Obiekt zaktualizowany."); onOpenChange(false); },
+      onError: (err: any) => toast.error("Błąd zapisu: " + err.message),
+    });
+  };
+
+  const handleDelete = () => {
+    if (!window.confirm(`Usunąć obiekt „${building.name}"? Operacja nieodwracalna.`)) return;
+    deleteBuilding(building.id, {
+      onSuccess: () => { toast.success("Obiekt usunięty."); onOpenChange(false); },
+      onError: (err: any) => toast.error("Błąd: " + err.message),
+    });
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-lg">
+        <form onSubmit={handleSave}>
+          <DialogHeader>
+            <DialogTitle>Edytuj obiekt — {building.name}</DialogTitle>
+            <DialogDescription>Wszystkie pola edytowalne dla super_admina (mapa, klasa, powierzchnia, IBP).</DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-3 py-4">
+            <div className="space-y-1.5">
+              <Label>Nazwa obiektu *</Label>
+              <Input value={name} onChange={e => setName(e.target.value)} required />
+            </div>
+            <div className="space-y-1.5">
+              <Label>Firma / Kontrahent *</Label>
+              <Select value={companyId} onValueChange={setCompanyId}>
+                <SelectTrigger><SelectValue placeholder="Wybierz firmę..." /></SelectTrigger>
+                <SelectContent>
+                  {companies?.map(c => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1.5">
+                <Label>Adres</Label>
+                <Input value={address} onChange={e => setAddress(e.target.value)} placeholder="ul. ..." />
+              </div>
+              <div className="space-y-1.5">
+                <Label>Miasto</Label>
+                <Input value={city} onChange={e => setCity(e.target.value)} placeholder="Warszawa" />
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1.5">
+                <Label>Klasa zagrożenia ludzi</Label>
+                <Select value={buildingClass} onValueChange={setBuildingClass}>
+                  <SelectTrigger><SelectValue placeholder="—" /></SelectTrigger>
+                  <SelectContent>
+                    {BUILDING_CLASSES.map(c => <SelectItem key={c.value} value={c.value}>{c.label}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-1.5">
+                <Label>Powierzchnia (m²)</Label>
+                <Input type="number" min="0" value={areaTotal} onChange={e => setAreaTotal(e.target.value)} placeholder="np. 1500" />
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1.5">
+                <Label>Ważność IBP</Label>
+                <Input type="date" value={ibpDate} onChange={e => setIbpDate(e.target.value)} />
+              </div>
+              <div className="space-y-1.5">
+                <Label>Kolor pinu na mapie</Label>
+                <div className="flex gap-2">
+                  <Input type="color" value={mapColor || "#3b82f6"} onChange={e => setMapColor(e.target.value)} className="w-12 h-9 p-1" />
+                  <Input value={mapColor} onChange={e => setMapColor(e.target.value)} placeholder="#hex (puste = wg statusu)" className="flex-1" />
+                </div>
+              </div>
+            </div>
+          </div>
+          <DialogFooter className="flex-row sm:justify-between">
+            <Button type="button" variant="ghost" className="text-destructive" onClick={handleDelete} disabled={deleting || saving}>
+              {deleting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Trash2 className="mr-2 h-4 w-4" />}
+              Usuń obiekt
+            </Button>
+            <div className="flex gap-2">
+              <Button type="button" variant="ghost" onClick={() => onOpenChange(false)}>Anuluj</Button>
+              <Button type="submit" disabled={saving || deleting}>
+                {saving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
+                Zapisz zmiany
+              </Button>
+            </div>
+          </DialogFooter>
+        </form>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 export default function BuildingsPage() {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
@@ -103,6 +246,14 @@ export default function BuildingsPage() {
   const { data: companies } = useCompanies();
   const { role } = useAuth();
   const [isCreateOpen, setIsCreateOpen] = useState(false);
+  const [editBuilding, setEditBuilding] = useState<any | null>(null);
+  const [isEditOpen, setIsEditOpen] = useState(false);
+
+  const handleEdit = (e: React.MouseEvent, building: any) => {
+    e.stopPropagation();
+    setEditBuilding(building);
+    setIsEditOpen(true);
+  };
 
   const filteredBuildings = companyFilter
     ? (buildings ?? []).filter((b: any) => b.company_id === companyFilter)
@@ -178,6 +329,7 @@ export default function BuildingsPage() {
       </div>
 
       <CreateBuildingDialog open={isCreateOpen} onOpenChange={setIsCreateOpen} />
+      <EditBuildingDialog open={isEditOpen} onOpenChange={setIsEditOpen} building={editBuilding} />
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {filteredBuildings.map((building: any) => {
@@ -198,7 +350,20 @@ export default function BuildingsPage() {
                     <p className="text-xs text-muted-foreground line-clamp-1">{building.companyName}</p>
                   </div>
                 </div>
-                <StatusIcon className={cn("h-5 w-5 shrink-0", statusConf.color)} />
+                <div className="flex items-center gap-1 shrink-0">
+                  {role === "super_admin" && (
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-7 w-7 opacity-0 group-hover:opacity-100 transition-opacity"
+                      onClick={(e) => handleEdit(e, building)}
+                      title="Edytuj obiekt"
+                    >
+                      <Pencil className="h-3.5 w-3.5 text-muted-foreground hover:text-foreground" />
+                    </Button>
+                  )}
+                  <StatusIcon className={cn("h-5 w-5", statusConf.color)} />
+                </div>
               </div>
 
               <div className="mt-4 flex items-center gap-1.5 text-xs text-muted-foreground">
