@@ -182,6 +182,21 @@ function ParticipantsSection({
     return () => { active = false; };
   }, [buildingId]);
 
+  // Certyfikaty (numer + pdf_url) dla tego szkolenia
+  type CertRow = { id: string; participant_id: string; certificate_number: string;
+                   training_date: string; pdf_url: string | null; issued_at: string };
+  const [certs, setCerts] = useState<Record<string, CertRow>>({});
+  const refreshCerts = async () => {
+    const { data } = await supabase
+      .from("training_certificates" as any)
+      .select("id, participant_id, certificate_number, training_date, pdf_url, issued_at")
+      .eq("training_id", trainingId);
+    const map: Record<string, CertRow> = {};
+    ((data ?? []) as any[]).forEach((c) => { map[c.participant_id] = c as CertRow; });
+    setCerts(map);
+  };
+  useEffect(() => { refreshCerts(); /* eslint-disable-next-line */ }, [trainingId, participants.length]);
+
   const isCompleted = training.status === "zakonczone";
   const addedEmpIds = new Set(participants.map((p) => p.employee_id).filter(Boolean) as string[]);
   const availableEmployees = employees.filter((e) => !addedEmpIds.has(e.id));
