@@ -199,6 +199,194 @@ export type Database = {
           },
         ]
       }
+      building_training_participants: {
+        Row: {
+          attendance_status: Database["public"]["Enums"]["training_attendance_status"]
+          certificate_url: string | null
+          created_at: string
+          employee_id: string | null
+          guest_email: string | null
+          guest_name: string | null
+          guest_phone: string | null
+          id: string
+          notes: string | null
+          passed: boolean | null
+          score: number | null
+          signature_url: string | null
+          signed_at: string | null
+          training_id: string
+          user_id: string | null
+        }
+        Insert: {
+          attendance_status?: Database["public"]["Enums"]["training_attendance_status"]
+          certificate_url?: string | null
+          created_at?: string
+          employee_id?: string | null
+          guest_email?: string | null
+          guest_name?: string | null
+          guest_phone?: string | null
+          id?: string
+          notes?: string | null
+          passed?: boolean | null
+          score?: number | null
+          signature_url?: string | null
+          signed_at?: string | null
+          training_id: string
+          user_id?: string | null
+        }
+        Update: {
+          attendance_status?: Database["public"]["Enums"]["training_attendance_status"]
+          certificate_url?: string | null
+          created_at?: string
+          employee_id?: string | null
+          guest_email?: string | null
+          guest_name?: string | null
+          guest_phone?: string | null
+          id?: string
+          notes?: string | null
+          passed?: boolean | null
+          score?: number | null
+          signature_url?: string | null
+          signed_at?: string | null
+          training_id?: string
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "building_training_participants_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: false
+            referencedRelation: "employee_development_plans"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "building_training_participants_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: false
+            referencedRelation: "employees_with_details"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "building_training_participants_training_id_fkey"
+            columns: ["training_id"]
+            isOneToOne: false
+            referencedRelation: "building_trainings"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "building_training_participants_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      building_trainings: {
+        Row: {
+          building_id: string
+          certificate_url: string | null
+          company_id: string | null
+          completed_at: string | null
+          created_at: string
+          created_by: string | null
+          description: string | null
+          duration_minutes: number | null
+          id: string
+          next_due_date: string | null
+          notes: string | null
+          protocol_url: string | null
+          recurrence_months: number | null
+          scheduled_at: string
+          status: Database["public"]["Enums"]["building_training_status"]
+          title: string
+          trainer_name: string | null
+          trainer_user_id: string | null
+          type: Database["public"]["Enums"]["building_training_type"]
+          updated_at: string
+        }
+        Insert: {
+          building_id: string
+          certificate_url?: string | null
+          company_id?: string | null
+          completed_at?: string | null
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          duration_minutes?: number | null
+          id?: string
+          next_due_date?: string | null
+          notes?: string | null
+          protocol_url?: string | null
+          recurrence_months?: number | null
+          scheduled_at: string
+          status?: Database["public"]["Enums"]["building_training_status"]
+          title: string
+          trainer_name?: string | null
+          trainer_user_id?: string | null
+          type?: Database["public"]["Enums"]["building_training_type"]
+          updated_at?: string
+        }
+        Update: {
+          building_id?: string
+          certificate_url?: string | null
+          company_id?: string | null
+          completed_at?: string | null
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          duration_minutes?: number | null
+          id?: string
+          next_due_date?: string | null
+          notes?: string | null
+          protocol_url?: string | null
+          recurrence_months?: number | null
+          scheduled_at?: string
+          status?: Database["public"]["Enums"]["building_training_status"]
+          title?: string
+          trainer_name?: string | null
+          trainer_user_id?: string | null
+          type?: Database["public"]["Enums"]["building_training_type"]
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "building_trainings_building_id_fkey"
+            columns: ["building_id"]
+            isOneToOne: false
+            referencedRelation: "building_cost_summary"
+            referencedColumns: ["building_id"]
+          },
+          {
+            foreignKeyName: "building_trainings_building_id_fkey"
+            columns: ["building_id"]
+            isOneToOne: false
+            referencedRelation: "buildings"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "building_trainings_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "building_trainings_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "building_trainings_trainer_user_id_fkey"
+            columns: ["trainer_user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       buildings: {
         Row: {
           address: string
@@ -2254,6 +2442,17 @@ export type Database = {
     }
     Enums: {
       app_role: "super_admin" | "admin" | "employee" | "client"
+      building_training_status:
+        | "zaplanowane"
+        | "w_trakcie"
+        | "zakonczone"
+        | "odwolane"
+      building_training_type:
+        | "ogolne_ppoz"
+        | "obslugowo_uzytkowe"
+        | "probna_ewakuacja"
+        | "medyczne"
+        | "inne"
       safety_status: "bezpieczny" | "ostrzeżenie" | "krytyczny"
       task_priority: "niski" | "średni" | "wysoki" | "krytyczny"
       task_status:
@@ -2272,6 +2471,11 @@ export type Database = {
         | "przebudowa"
         | "audyt"
         | "porada"
+      training_attendance_status:
+        | "zaplanowany"
+        | "obecny"
+        | "nieobecny"
+        | "usprawiedliwiony"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -2400,6 +2604,19 @@ export const Constants = {
   public: {
     Enums: {
       app_role: ["super_admin", "admin", "employee", "client"],
+      building_training_status: [
+        "zaplanowane",
+        "w_trakcie",
+        "zakonczone",
+        "odwolane",
+      ],
+      building_training_type: [
+        "ogolne_ppoz",
+        "obslugowo_uzytkowe",
+        "probna_ewakuacja",
+        "medyczne",
+        "inne",
+      ],
       safety_status: ["bezpieczny", "ostrzeżenie", "krytyczny"],
       task_priority: ["niski", "średni", "wysoki", "krytyczny"],
       task_status: [
@@ -2419,6 +2636,12 @@ export const Constants = {
         "przebudowa",
         "audyt",
         "porada",
+      ],
+      training_attendance_status: [
+        "zaplanowany",
+        "obecny",
+        "nieobecny",
+        "usprawiedliwiony",
       ],
     },
   },

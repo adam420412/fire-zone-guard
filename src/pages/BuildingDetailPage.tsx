@@ -44,6 +44,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { BUILDING_DOCUMENT_CATEGORIES, BUILDING_DOCUMENT_CATEGORY_LABELS, type BuildingDocumentCategory } from "@/lib/constants";
 import CreateTaskDialog from "@/components/CreateTaskDialog";
+import BuildingTrainingsTab from "@/components/BuildingTrainingsTab";
 
 function EditBuildingDialog({ building, open, onOpenChange }: { building: any, open: boolean, onOpenChange: (o: boolean) => void }) {
   const { data: companies } = useCompanies();
@@ -741,7 +742,7 @@ export default function BuildingDetailPage() {
       </div>
 
       <Tabs defaultValue="tasks" className="w-full">
-        <TabsList className="grid w-full sm:w-[680px] grid-cols-4 mb-6 bg-secondary p-1 rounded-xl">
+        <TabsList className="grid w-full sm:w-[850px] grid-cols-5 mb-6 bg-secondary p-1 rounded-xl">
           <TabsTrigger value="tasks" className="rounded-lg data-[state=active]:bg-card data-[state=active]:shadow-sm text-xs font-semibold py-2">
             Zadania operacyjne
           </TabsTrigger>
@@ -750,6 +751,9 @@ export default function BuildingDetailPage() {
           </TabsTrigger>
           <TabsTrigger value="documents" className="rounded-lg data-[state=active]:bg-card data-[state=active]:shadow-sm text-xs font-semibold py-2">
             Dokumentacja
+          </TabsTrigger>
+          <TabsTrigger value="trainings" className="rounded-lg data-[state=active]:bg-card data-[state=active]:shadow-sm text-xs font-semibold py-2">
+            Szkolenia
           </TabsTrigger>
           <TabsTrigger value="contacts" className="rounded-lg data-[state=active]:bg-card data-[state=active]:shadow-sm text-xs font-semibold py-2">
             Kontakty
@@ -1142,6 +1146,10 @@ export default function BuildingDetailPage() {
               )}
             </div>
           </div>
+        </TabsContent>
+
+        <TabsContent value="trainings" className="mt-0">
+          <BuildingTrainingsTab buildingId={id ?? ""} companyId={building?.company_id ?? null} />
         </TabsContent>
 
         <TabsContent value="contacts" className="mt-0">
