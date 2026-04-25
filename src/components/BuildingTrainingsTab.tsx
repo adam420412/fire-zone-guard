@@ -2,15 +2,17 @@
 // BuildingTrainingsTab — szkolenia PPOŻ przypisane do obiektu z uczestnikami.
 // Używana w BuildingDetailPage jako zakładka "Szkolenia".
 // =============================================================================
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   useBuildingTrainings, useTrainingParticipants, useCreateTraining, useUpdateTraining,
   useDeleteTraining, useAddParticipant, useUpdateParticipant, useRemoveParticipant,
   useCompanyEmployees,
   TRAINING_TYPE_LABELS, TRAINING_STATUS_LABELS, ATTENDANCE_LABELS,
-  type BuildingTraining,
+  type BuildingTraining, type TrainingParticipant,
 } from "@/hooks/useBuildingTrainings";
 import TrainingAttendanceMatrix from "@/components/TrainingAttendanceMatrix";
+import { SignatureDialog } from "@/components/SignatureDialog";
+import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
@@ -19,9 +21,10 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
-import { GraduationCap, Plus, Calendar, Users, Trash2, Edit, UserPlus, CheckCircle2, XCircle, ChevronDown, ChevronRight, Loader2 } from "lucide-react";
+import { GraduationCap, Plus, Calendar, Users, Trash2, Edit, UserPlus, CheckCircle2, ChevronDown, ChevronRight, Loader2, PenLine, Download } from "lucide-react";
 import { format } from "date-fns";
 import { pl } from "date-fns/locale";
+import { generateAndDownloadCertificate, uploadSignature } from "@/lib/trainingCertificates";
 
 interface Props {
   buildingId: string;
