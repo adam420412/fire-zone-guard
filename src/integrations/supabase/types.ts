@@ -301,6 +301,8 @@ export type Database = {
           status: Database["public"]["Enums"]["building_training_status"]
           title: string
           trainer_name: string | null
+          trainer_signature_url: string | null
+          trainer_signed_at: string | null
           trainer_user_id: string | null
           type: Database["public"]["Enums"]["building_training_type"]
           updated_at: string
@@ -323,6 +325,8 @@ export type Database = {
           status?: Database["public"]["Enums"]["building_training_status"]
           title: string
           trainer_name?: string | null
+          trainer_signature_url?: string | null
+          trainer_signed_at?: string | null
           trainer_user_id?: string | null
           type?: Database["public"]["Enums"]["building_training_type"]
           updated_at?: string
@@ -345,6 +349,8 @@ export type Database = {
           status?: Database["public"]["Enums"]["building_training_status"]
           title?: string
           trainer_name?: string | null
+          trainer_signature_url?: string | null
+          trainer_signed_at?: string | null
           trainer_user_id?: string | null
           type?: Database["public"]["Enums"]["building_training_type"]
           updated_at?: string
