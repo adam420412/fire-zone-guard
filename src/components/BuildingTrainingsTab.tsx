@@ -145,6 +145,13 @@ export default function BuildingTrainingsTab({ buildingId, companyId }: Props) {
 
       <TrainingAttendanceMatrix buildingId={buildingId} />
 
+      <TrainingHistoryDialog
+        open={!!historyFor}
+        onClose={() => setHistoryFor(null)}
+        trainingId={historyFor?.id ?? null}
+        trainingTitle={historyFor?.title}
+      />
+
       <TrainingDialog
         open={createOpen || !!editing}
         onClose={() => { setCreateOpen(false); setEditing(null); }}
