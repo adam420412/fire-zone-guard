@@ -118,6 +118,9 @@ export default function BuildingTrainingsTab({ buildingId, companyId }: Props) {
                   {TRAINING_STATUS_LABELS[t.status]}
                 </Badge>
                 <div className="flex gap-1">
+                  <Button size="icon" variant="ghost" onClick={() => setHistoryFor(t)} aria-label="Historia zmian" title="Historia zmian">
+                    <History className="h-4 w-4" />
+                  </Button>
                   <Button size="icon" variant="ghost" onClick={() => setEditing(t)} aria-label="Edytuj">
                     <Edit className="h-4 w-4" />
                   </Button>
