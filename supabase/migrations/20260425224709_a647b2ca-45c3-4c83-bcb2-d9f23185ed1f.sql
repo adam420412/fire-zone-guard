@@ -1,0 +1,1 @@
+DROP POLICY IF EXISTS tal_system_insert ON public.training_audit_log;
