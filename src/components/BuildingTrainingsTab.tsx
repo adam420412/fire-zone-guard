@@ -254,27 +254,82 @@ function ParticipantsSection({
     }
   };
 
-  // Pobierz certyfikat
-  const handleDownloadCertificate = async (p: TrainingParticipant) => {
+  // Wygeneruj i (opcjonalnie) wyslij certyfikat do storage; pobiera z DB numer.
+  // Trigger w bazie tworzy rekord przy oznaczeniu obecny/usprawiedliwiony.
+  const ensureCertificate = async (
+    p: TrainingParticipant,
+    opts: { autoDownload?: boolean; silent?: boolean } = {},
+  ) => {
+    const { autoDownload = true, silent = false } = opts;
     setBusyCertId(p.id);
     try {
-      await generateAndDownloadCertificate({
+      // 1. Pobierz lub poczekaj na rekord certyfikatu
+      let cert = certs[p.id];
+      if (!cert) {
+        // krotkie 3-prob. czekanie na trigger DB
+        for (let i = 0; i < 3 && !cert; i++) {
+          const { data } = await supabase
+            .from("training_certificates" as any)
+            .select("id, participant_id, certificate_number, training_date, pdf_url, issued_at")
+            .eq("training_id", trainingId)
+            .eq("participant_id", p.id)
+            .maybeSingle();
+          if (data) { cert = data as any; break; }
+          await new Promise((r) => setTimeout(r, 350));
+        }
+      }
+      if (!cert) {
+        if (!silent) toast({ title: "Brak certyfikatu", description: "Oznacz uczestnika jako obecny lub usprawiedliwiony.", variant: "destructive" });
+        return;
+      }
+
+      // 2. Wygeneruj PDF z numerem z DB i data szkolenia
+      const certData = {
         participantName: participantName(p),
         trainingTitle: training.title,
         trainingType: TRAINING_TYPE_LABELS[training.type] ?? String(training.type),
         buildingName: building?.name ?? "—",
         buildingAddress: building?.address ?? null,
-        performedAt: training.completed_at ?? training.scheduled_at,
+        performedAt: cert.training_date,
         durationMinutes: training.duration_minutes,
         trainerName: training.trainer_name,
         trainerSignatureUrl: training.trainer_signature_url,
         participantSignatureUrl: p.signature_url,
-        certificateNumber: `${training.id.slice(0, 8).toUpperCase()}-${p.id.slice(0, 4).toUpperCase()}`,
-      });
+        certificateNumber: cert.certificate_number,
+      };
+
+      // 3. Jezeli brak pdf_url → wygeneruj, wyslij, zapisz
+      if (!cert.pdf_url) {
+        const { blob } = await generateCertificateBlob(certData);
+        const pdfUrl = await uploadCertificatePdf(cert.id, blob);
+        await supabase.from("training_certificates" as any)
+          .update({ pdf_url: pdfUrl }).eq("id", cert.id);
+        cert = { ...cert, pdf_url: pdfUrl };
+        setCerts((m) => ({ ...m, [p.id]: cert! }));
+      }
+
+      // 4. Pobierz lokalnie (na zyczenie)
+      if (autoDownload) {
+        await generateAndDownloadCertificate(certData);
+        if (!silent) toast({ title: `Certyfikat ${cert.certificate_number} wystawiony` });
+      } else if (!silent) {
+        toast({ title: `Certyfikat ${cert.certificate_number} zapisany` });
+      }
     } catch (e: any) {
       toast({ title: "Błąd generowania certyfikatu", description: e.message, variant: "destructive" });
     } finally {
       setBusyCertId(null);
+    }
+  };
+
+  // Po zmianie statusu na obecny/usprawiedliwiony — od razu wystawiamy certyfikat.
+  const handleAttendanceChange = async (p: TrainingParticipant, v: string) => {
+    await updateParticipant.mutateAsync({ id: p.id, updates: { attendance_status: v as any } });
+    if (v === "obecny" || v === "usprawiedliwiony") {
+      await new Promise((r) => setTimeout(r, 300)); // daj triggerowi szanse
+      await refreshCerts();
+      // wyslij PDF do storage bez auto-pobierania
+      await ensureCertificate({ ...p, attendance_status: v as any }, { autoDownload: false });
     }
   };
 
