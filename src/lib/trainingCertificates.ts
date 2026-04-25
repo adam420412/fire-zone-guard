@@ -40,8 +40,8 @@ export interface CertificateData {
   certificateNumber?: string;
 }
 
-// ----- Generuj i pobierz PDF -------------------------------------------------
-export async function generateAndDownloadCertificate(d: CertificateData) {
+// ----- Buduj dokument PDF (bez zapisu) ---------------------------------------
+async function buildCertificateDoc(d: CertificateData): Promise<{ doc: jsPDF; fileName: string }> {
   const doc = new jsPDF({ orientation: "landscape", unit: "mm", format: "a4" });
   const w = doc.internal.pageSize.getWidth();
   const h = doc.internal.pageSize.getHeight();
@@ -69,7 +69,6 @@ export async function generateAndDownloadCertificate(d: CertificateData) {
     doc.text(`Nr: ${d.certificateNumber}`, w / 2, 46, { align: "center" });
   }
 
-  // Imie i nazwisko
   doc.setFont("helvetica", "normal");
   doc.setFontSize(12);
   doc.setTextColor(40, 40, 40);
@@ -79,11 +78,9 @@ export async function generateAndDownloadCertificate(d: CertificateData) {
   doc.setFontSize(22);
   doc.text(stripDiacritics(d.participantName), w / 2, 72, { align: "center" });
 
-  // Opis
   doc.setFont("helvetica", "normal");
   doc.setFontSize(12);
-  const desc1 = "ukonczyl(a) szkolenie w zakresie:";
-  doc.text(desc1, w / 2, 84, { align: "center" });
+  doc.text("ukonczyl(a) szkolenie w zakresie:", w / 2, 84, { align: "center" });
 
   doc.setFont("helvetica", "bold");
   doc.setFontSize(14);
@@ -93,7 +90,6 @@ export async function generateAndDownloadCertificate(d: CertificateData) {
   doc.setFontSize(11);
   doc.text(stripDiacritics(`Typ: ${d.trainingType}`), w / 2, 100, { align: "center" });
 
-  // Miejsce / data
   const placeLine = stripDiacritics(
     `Miejsce: ${d.buildingName}${d.buildingAddress ? `, ${d.buildingAddress}` : ""}`,
   );
@@ -109,7 +105,6 @@ export async function generateAndDownloadCertificate(d: CertificateData) {
   const trainerX = w / 4;
   const partX = (w * 3) / 4;
 
-  // Podpis trenera
   if (d.trainerSignatureUrl) {
     try {
       const img = await urlToDataUrl(d.trainerSignatureUrl);
@@ -125,7 +120,6 @@ export async function generateAndDownloadCertificate(d: CertificateData) {
   doc.setTextColor(120, 120, 120);
   doc.text("Podpis prowadzacego", trainerX, lineY + 10, { align: "center" });
 
-  // Podpis uczestnika
   doc.setTextColor(40, 40, 40);
   if (d.participantSignatureUrl) {
     try {
@@ -151,8 +145,36 @@ export async function generateAndDownloadCertificate(d: CertificateData) {
   );
 
   const safe = (s: string) => s.replace(/[^a-z0-9]+/gi, "_").slice(0, 60);
-  doc.save(`certyfikat_${safe(d.participantName)}_${safe(d.trainingTitle)}.pdf`);
+  const fileName =
+    `certyfikat_${d.certificateNumber ? safe(d.certificateNumber) + "_" : ""}` +
+    `${safe(d.participantName)}.pdf`;
+  return { doc, fileName };
 }
+
+// ----- Generuj i pobierz PDF -------------------------------------------------
+export async function generateAndDownloadCertificate(d: CertificateData) {
+  const { doc, fileName } = await buildCertificateDoc(d);
+  doc.save(fileName);
+}
+
+// ----- Generuj jako Blob (do uploadu) ----------------------------------------
+export async function generateCertificateBlob(d: CertificateData): Promise<{ blob: Blob; fileName: string }> {
+  const { doc, fileName } = await buildCertificateDoc(d);
+  const blob = doc.output("blob");
+  return { blob, fileName };
+}
+
+// ----- Upload PDF certyfikatu do storage -------------------------------------
+export async function uploadCertificatePdf(certificateId: string, blob: Blob): Promise<string> {
+  const path = `certificates/${certificateId}.pdf`;
+  const { error } = await supabase.storage
+    .from(BUCKET)
+    .upload(path, blob, { contentType: "application/pdf", upsert: true });
+  if (error) throw error;
+  const { data } = supabase.storage.from(BUCKET).getPublicUrl(path);
+  return data.publicUrl;
+}
+
 
 // jsPDF z domyslna czcionka nie wspiera polskich znakow → odsuwamy diakrytyki.
 function stripDiacritics(s: string): string {
