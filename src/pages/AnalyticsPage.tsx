@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react";
 import { useCompaniesWithStats, useTasks, useBuildings, useProtocols } from "@/hooks/useSupabaseData";
+import { useBuildingCostSummary, useMtbfByDeviceType } from "@/hooks/useAdminData";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import {
@@ -12,7 +13,7 @@ import { pl } from "date-fns/locale";
 import { cn } from "@/lib/utils";
 import {
   TrendingUp, Shield, Building2, AlertTriangle,
-  Award, Activity, ChevronDown, Download, Wrench
+  Award, Activity, ChevronDown, Download, Wrench, DollarSign, Timer
 } from "lucide-react";
 import { StatCardsSkeleton } from "@/components/PageSkeleton";
 
@@ -41,6 +42,9 @@ export default function AnalyticsPage() {
   const { data: tasks } = useTasks();
   const { data: buildings } = useBuildings();
   const { data: protocols } = useProtocols();
+  // Iter 9: real-cost + MTBF (per device-type) z view + measurements aggregation.
+  const { data: buildingCosts } = useBuildingCostSummary();
+  const { data: mtbfRows } = useMtbfByDeviceType();
   const [selectedMonths, setSelectedMonths] = useState(6);
 
   const allTasks = (tasks ?? []) as any[];
@@ -399,6 +403,82 @@ export default function AnalyticsPage() {
               <Area type="monotone" dataKey="Przychód" stroke="hsl(28 100% 50%)" fill="url(#costGrad)" strokeWidth={3} />
             </AreaChart>
           </ResponsiveContainer>
+        </div>
+      </div>
+
+      {/* Iter 9 — Real costs per building + MTBF per device type */}
+      <div className="grid gap-6 lg:grid-cols-2">
+        {/* TOP 10 obiektów po koszcie napraw 12 mc */}
+        <div className="rounded-xl border border-border bg-card p-5">
+          <h3 className="mb-4 text-sm font-semibold flex items-center gap-2">
+            <DollarSign className="h-4 w-4 text-primary" /> TOP koszty napraw — 12 mies. (PLN)
+          </h3>
+          {(() => {
+            const top = (buildingCosts ?? [])
+              .filter((r: any) => Number(r.cost_12m) > 0)
+              .sort((a: any, b: any) => Number(b.cost_12m) - Number(a.cost_12m))
+              .slice(0, 10);
+            if (top.length === 0) {
+              return (
+                <div className="py-10 text-center text-xs text-muted-foreground italic">
+                  Brak rzeczywistych kosztów. Uzupełnij <code>tasks.cost_actual</code> przy zamykaniu zadań.
+                </div>
+              );
+            }
+            const data = top.map((r: any) => ({
+              name: r.building_name?.slice(0, 22) ?? "—",
+              Koszt: Math.round(Number(r.cost_12m)),
+            }));
+            return (
+              <ResponsiveContainer width="100%" height={280}>
+                <BarChart data={data} layout="vertical" margin={{ left: 30, right: 20 }}>
+                  <CartesianGrid strokeDasharray="3 3" horizontal vertical={false} stroke={CHART_BORDER} />
+                  <XAxis type="number" tick={{ fill: CHART_MUTED, fontSize: 11 }} axisLine={false} tickLine={false} tickFormatter={v => `${v} zł`} />
+                  <YAxis dataKey="name" type="category" width={130} tick={{ fill: CHART_MUTED, fontSize: 11 }} axisLine={false} tickLine={false} />
+                  <Tooltip {...tooltipStyle} formatter={(v: number) => [`${v.toLocaleString("pl")} PLN`, "Koszt 12mc"]} />
+                  <Bar dataKey="Koszt" fill="hsl(28 100% 50%)" radius={[0, 4, 4, 0]} maxBarSize={20} />
+                </BarChart>
+              </ResponsiveContainer>
+            );
+          })()}
+        </div>
+
+        {/* MTBF (proxy z hydrant_measurements.repair_needed=true) */}
+        <div className="rounded-xl border border-border bg-card p-5">
+          <h3 className="mb-4 text-sm font-semibold flex items-center gap-2">
+            <Timer className="h-4 w-4 text-primary" /> MTBF — średni czas między awariami (dni)
+          </h3>
+          {(mtbfRows ?? []).length === 0 ? (
+            <div className="py-10 text-center text-xs text-muted-foreground italic">
+              Brak rejestrów napraw — MTBF wyliczy się po pierwszych zaznaczeniach NAPRAWA.
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {(mtbfRows ?? []).slice(0, 8).map((r: any) => (
+                <div key={r.device_type} className="space-y-1">
+                  <div className="flex items-center justify-between text-xs">
+                    <span className="font-medium">{r.device_type}</span>
+                    <span className="text-muted-foreground">
+                      <strong className="text-card-foreground">{r.mtbf_days ?? "—"}</strong> dni
+                      <span className="ml-2 text-[10px]">({r.failure_count} awarii)</span>
+                    </span>
+                  </div>
+                  <div className="h-1.5 rounded-full bg-secondary overflow-hidden">
+                    <div
+                      className={cn(
+                        "h-full rounded-full",
+                        (r.mtbf_days ?? 0) > 365 ? "bg-success" : (r.mtbf_days ?? 0) > 180 ? "bg-warning" : "bg-critical"
+                      )}
+                      style={{ width: `${Math.min(100, ((r.mtbf_days ?? 0) / 365) * 100)}%` }}
+                    />
+                  </div>
+                </div>
+              ))}
+              <div className="text-[10px] text-muted-foreground pt-2 border-t border-border">
+                MTBF liczony jako średnia liczba dni między kolejnymi zaznaczeniami NAPRAWA per typ urządzenia.
+              </div>
+            </div>
+          )}
         </div>
       </div>
 

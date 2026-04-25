@@ -14,6 +14,9 @@ import BuildingDevicesPage from "@/pages/BuildingDevicesPage";
 import CompaniesPage from "@/pages/CompaniesPage";
 import CertificatesPage from "@/pages/CertificatesPage";
 import SettingsPage from "@/pages/SettingsPage";
+import AdminPage from "@/pages/AdminPage";
+import BulkImportPage from "@/pages/BulkImportPage";
+import MapPage from "@/pages/MapPage";
 import ClientPanel from "@/pages/ClientPanel";
 import ClientSlaPage from "@/pages/ClientSlaPage";
 import AuthPage from "@/pages/AuthPage";
@@ -113,6 +116,9 @@ function ProtectedRoutes() {
             <Route path="/crm" element={<CrmPage />} />
             <Route path="/finance" element={<FinancePage />} />
             <Route path="/settings" element={<SettingsPage />} />
+            <Route path="/admin" element={<AdminPage />} />
+            <Route path="/admin/import" element={<BulkImportPage />} />
+            <Route path="/map" element={<MapPage />} />
             <Route path="*" element={<NotFound />} />
           </>
         )}

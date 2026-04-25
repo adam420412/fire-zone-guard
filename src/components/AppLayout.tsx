@@ -3,7 +3,8 @@ import {
   LayoutDashboard, KanbanSquare, Building2, Briefcase,
   Shield, Settings, Flame, ChevronLeft, ChevronRight,
   User, LogOut, Menu, X, ClipboardCheck, FileText, Users, UsersRound, Search, Command, BarChart2, CalendarDays, Factory, Contact, DollarSign,
-  Siren, Wrench, CalendarClock, BookOpen, BarChart3, History, Gauge, ListChecks
+  Siren, Wrench, CalendarClock, BookOpen, BarChart3, History, Gauge, ListChecks,
+  Map, Sliders
 } from "lucide-react";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { useState, useEffect } from "react";
@@ -21,6 +22,7 @@ const adminNavItems = [
   { icon: Wrench, label: "Naprawy", path: "/repairs" },
   { icon: KanbanSquare, label: "Kanban", path: "/kanban" },
   { icon: Building2, label: "Obiekty", path: "/buildings" },
+  { icon: Map, label: "Mapa obiektów", path: "/map" },
   { icon: Briefcase, label: "Firmy", path: "/companies" },
   { icon: ClipboardCheck, label: "Audyty PPOŻ", path: "/audits" },
   { icon: ListChecks, label: "Checklisty", path: "/checklists" },
@@ -37,6 +39,10 @@ const adminNavItems = [
   { icon: Contact, label: "CRM", path: "/crm" },
   { icon: DollarSign, label: "Finanse", path: "/finance" },
   { icon: Settings, label: "Ustawienia", path: "/settings" },
+];
+
+const superAdminNavItems = [
+  { icon: Sliders, label: "Panel admina", path: "/admin" },
 ];
 
 const clientNavItems = [
@@ -64,7 +70,11 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     if (!isMobile) setMobileOpen(false);
   }, [isMobile]);
 
-  const navItems = role === "client" ? clientNavItems : adminNavItems;
+  const navItems = role === "client"
+    ? clientNavItems
+    : role === "super_admin"
+      ? [...adminNavItems, ...superAdminNavItems]
+      : adminNavItems;
 
   const sidebarContent = (
     <>

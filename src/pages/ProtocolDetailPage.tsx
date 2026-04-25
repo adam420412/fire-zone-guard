@@ -1,6 +1,8 @@
 import { useState } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
-import { ChevronLeft, Plus, Printer, Trash2, Sparkles, Loader2, Hammer, Wrench } from "lucide-react";
+import { ChevronLeft, Plus, Printer, Trash2, Sparkles, Loader2, Hammer, Wrench, PenLine, CheckCircle2 } from "lucide-react";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
@@ -18,6 +20,55 @@ import { useAuth } from "@/hooks/useAuth";
 import { useAiProtocolDraft } from "@/hooks/useAiProtocolDraft";
 import { SignatureDialog } from "@/components/SignatureDialog";
 
+// ---- Iter 9: persist e-signature in storage + service_protocols row ----
+function dataUrlToBlob(dataUrl: string): Blob {
+  const [meta, b64] = dataUrl.split(",");
+  const mime = /data:(.*?);base64/.exec(meta)?.[1] ?? "image/png";
+  const bin = atob(b64);
+  const arr = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) arr[i] = bin.charCodeAt(i);
+  return new Blob([arr], { type: mime });
+}
+
+function useSaveProtocolSignature() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (params: {
+      protocolId: string;
+      role: "inspector" | "client";
+      dataUrl: string;
+      signerName?: string;
+    }) => {
+      const blob = dataUrlToBlob(params.dataUrl);
+      const fname = `${params.protocolId}/${params.role}-${crypto.randomUUID()}.png`;
+      const { error: upErr } = await supabase.storage
+        .from("protocol-signatures")
+        .upload(fname, blob, { contentType: "image/png", upsert: false });
+      if (upErr) throw upErr;
+      const { data: pub } = supabase.storage.from("protocol-signatures").getPublicUrl(fname);
+      const url = pub.publicUrl;
+
+      const updates: Record<string, any> =
+        params.role === "inspector"
+          ? { inspector_signature_url: url, inspector_signed_at: new Date().toISOString() }
+          : {
+              client_signature_url: url,
+              client_signed_at: new Date().toISOString(),
+              client_signer_name: params.signerName ?? null,
+            };
+      const { error: dbErr } = await supabase
+        .from("service_protocols")
+        .update(updates as any)
+        .eq("id", params.protocolId);
+      if (dbErr) throw dbErr;
+      return url;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["service_protocols"] });
+    },
+  });
+}
+
 export default function ProtocolDetailPage() {
   const { id } = useParams();
   const navigate = useNavigate();
@@ -33,6 +84,10 @@ export default function ProtocolDetailPage() {
 
   const [isAddOpen, setIsAddOpen] = useState(false);
   const [isSignatureOpen, setIsSignatureOpen] = useState(false);
+  // Iter 9: persistent dual e-signatures (inspector + client) on the protocol
+  const saveSig = useSaveProtocolSignature();
+  const [sigDialog, setSigDialog] = useState<{ open: boolean; role: "inspector" | "client" }>({ open: false, role: "inspector" });
+  const [clientSignerName, setClientSignerName] = useState("");
   // Faza 4 — AI draft of "uwagi szczegółowe" + suggested overall_result.
   const [isDraftOpen, setIsDraftOpen] = useState(false);
   const draftMut = useAiProtocolDraft();
@@ -194,6 +249,88 @@ export default function ProtocolDetailPage() {
           </CardContent>
         </Card>
       </div>
+
+      {/* Iter 9 — E-podpisy protokołu (inspector + klient) */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <PenLine className="h-5 w-5 text-primary" />
+            E-podpisy protokołu
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="grid sm:grid-cols-2 gap-4">
+            {/* Inspector signature */}
+            <div className="rounded-md border p-3 space-y-2">
+              <div className="flex items-center justify-between">
+                <Label className="text-xs uppercase tracking-wider text-muted-foreground">Inspektor</Label>
+                {(protocol as any).inspector_signed_at && <CheckCircle2 className="h-4 w-4 text-success" />}
+              </div>
+              {(protocol as any).inspector_signature_url ? (
+                <>
+                  <img src={(protocol as any).inspector_signature_url} alt="Podpis inspektora" className="h-24 bg-white rounded border object-contain w-full" />
+                  <div className="text-[10px] text-muted-foreground">
+                    Podpisano: {new Date((protocol as any).inspector_signed_at).toLocaleString("pl")}
+                  </div>
+                </>
+              ) : (
+                <div className="h-24 rounded border-2 border-dashed flex items-center justify-center text-xs text-muted-foreground">
+                  Brak podpisu
+                </div>
+              )}
+              {isSuperAdmin && (
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="w-full"
+                  onClick={() => setSigDialog({ open: true, role: "inspector" })}
+                  disabled={saveSig.isPending}
+                >
+                  {(protocol as any).inspector_signature_url ? "Złóż ponownie" : "Złóż podpis inspektora"}
+                </Button>
+              )}
+            </div>
+
+            {/* Client signature */}
+            <div className="rounded-md border p-3 space-y-2">
+              <div className="flex items-center justify-between">
+                <Label className="text-xs uppercase tracking-wider text-muted-foreground">Klient</Label>
+                {(protocol as any).client_signed_at && <CheckCircle2 className="h-4 w-4 text-success" />}
+              </div>
+              {(protocol as any).client_signature_url ? (
+                <>
+                  <img src={(protocol as any).client_signature_url} alt="Podpis klienta" className="h-24 bg-white rounded border object-contain w-full" />
+                  <div className="text-[10px] text-muted-foreground">
+                    {(protocol as any).client_signer_name && <>Podpisał(a): <strong>{(protocol as any).client_signer_name}</strong> · </>}
+                    {new Date((protocol as any).client_signed_at).toLocaleString("pl")}
+                  </div>
+                </>
+              ) : (
+                <div className="h-24 rounded border-2 border-dashed flex items-center justify-center text-xs text-muted-foreground">
+                  Brak podpisu
+                </div>
+              )}
+              <div className="space-y-2">
+                <Input
+                  value={clientSignerName}
+                  onChange={(e) => setClientSignerName(e.target.value)}
+                  placeholder="Imię i nazwisko osoby podpisującej"
+                  className="h-8 text-xs"
+                />
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="w-full"
+                  onClick={() => setSigDialog({ open: true, role: "client" })}
+                  disabled={saveSig.isPending || !clientSignerName.trim()}
+                >
+                  {(protocol as any).client_signature_url ? "Złóż ponownie" : "Złóż podpis klienta"}
+                </Button>
+              </div>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
 
       <Card>
         <CardHeader className="flex flex-row items-center justify-between">
@@ -415,6 +552,32 @@ export default function ProtocolDetailPage() {
         onOpenChange={setIsSignatureOpen}
         onConfirm={handleGeneratePDF}
         title="Podpisz Protokół Serwisowy"
+      />
+
+      {/* Iter 9 — persistent dual signatures (saved to storage + DB) */}
+      <SignatureDialog
+        open={sigDialog.open}
+        onOpenChange={(o) => setSigDialog((s) => ({ ...s, open: o }))}
+        title={sigDialog.role === "inspector" ? "Podpis kontrolera" : `Podpis klienta — ${clientSignerName}`}
+        onConfirm={(dataUrl) => {
+          if (!id) return;
+          saveSig.mutate(
+            {
+              protocolId: id,
+              role: sigDialog.role,
+              dataUrl,
+              signerName: sigDialog.role === "client" ? clientSignerName : undefined,
+            },
+            {
+              onSuccess: () => {
+                toast.success("Podpis zapisany.");
+                setSigDialog({ open: false, role: sigDialog.role });
+                if (sigDialog.role === "client") setClientSignerName("");
+              },
+              onError: (e: any) => toast.error(e?.message ?? "Błąd zapisu podpisu"),
+            }
+          );
+        }}
       />
 
       {/* NAPRAWA flag dialog — Faza 5 */}
