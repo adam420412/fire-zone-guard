@@ -21,7 +21,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
-import { GraduationCap, Plus, Calendar, Users, Trash2, Edit, UserPlus, CheckCircle2, ChevronDown, ChevronRight, Loader2, PenLine, Download } from "lucide-react";
+import { GraduationCap, Plus, Calendar, Users, Trash2, Edit, UserPlus, CheckCircle2, ChevronDown, ChevronRight, Loader2, PenLine, Download, History } from "lucide-react";
+import { TrainingHistoryDialog } from "@/components/TrainingHistoryDialog";
 import { format } from "date-fns";
 import { pl } from "date-fns/locale";
 import {
@@ -46,6 +47,7 @@ export default function BuildingTrainingsTab({ buildingId, companyId }: Props) {
   const [createOpen, setCreateOpen] = useState(false);
   const [editing, setEditing] = useState<BuildingTraining | null>(null);
   const [expanded, setExpanded] = useState<string | null>(null);
+  const [historyFor, setHistoryFor] = useState<BuildingTraining | null>(null);
   const deleteTraining = useDeleteTraining();
   const { toast } = useToast();
 
@@ -116,6 +118,9 @@ export default function BuildingTrainingsTab({ buildingId, companyId }: Props) {
                   {TRAINING_STATUS_LABELS[t.status]}
                 </Badge>
                 <div className="flex gap-1">
+                  <Button size="icon" variant="ghost" onClick={() => setHistoryFor(t)} aria-label="Historia zmian" title="Historia zmian">
+                    <History className="h-4 w-4" />
+                  </Button>
                   <Button size="icon" variant="ghost" onClick={() => setEditing(t)} aria-label="Edytuj">
                     <Edit className="h-4 w-4" />
                   </Button>
@@ -139,6 +144,13 @@ export default function BuildingTrainingsTab({ buildingId, companyId }: Props) {
       )}
 
       <TrainingAttendanceMatrix buildingId={buildingId} />
+
+      <TrainingHistoryDialog
+        open={!!historyFor}
+        onClose={() => setHistoryFor(null)}
+        trainingId={historyFor?.id ?? null}
+        trainingTitle={historyFor?.title}
+      />
 
       <TrainingDialog
         open={createOpen || !!editing}
