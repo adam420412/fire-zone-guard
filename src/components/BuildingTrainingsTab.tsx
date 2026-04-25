@@ -377,19 +377,27 @@ function ParticipantsSection({
           {participants.map((p) => {
             const name = participantName(p);
             const email = p.employee?.email ?? p.profile?.email ?? p.guest_email ?? "";
+            const cert = certs[p.id];
             const canCertificate =
-              isCompleted && (p.attendance_status === "obecny" || p.passed === true);
+              !!cert ||
+              p.attendance_status === "obecny" ||
+              p.attendance_status === "usprawiedliwiony";
             return (
               <div key={p.id} className="flex items-center gap-2 bg-card border border-border rounded-md px-3 py-2 text-sm flex-wrap">
                 <div className="flex-1 min-w-[160px]">
                   <div className="truncate font-medium">{name}</div>
-                  {email && <div className="text-xs text-muted-foreground truncate">{email}</div>}
+                  <div className="text-xs text-muted-foreground truncate flex items-center gap-2">
+                    {email && <span>{email}</span>}
+                    {cert && (
+                      <Badge variant="secondary" className="text-[10px] py-0 px-1.5">
+                        {cert.certificate_number}
+                      </Badge>
+                    )}
+                  </div>
                 </div>
                 <Select
                   value={p.attendance_status}
-                  onValueChange={(v) =>
-                    updateParticipant.mutate({ id: p.id, updates: { attendance_status: v as any } })
-                  }
+                  onValueChange={(v) => handleAttendanceChange(p, v)}
                 >
                   <SelectTrigger className="h-8 w-[150px] text-xs">
                     <SelectValue />
@@ -426,21 +434,26 @@ function ParticipantsSection({
                 )}
 
                 {/* Certyfikat */}
-                {isCompleted && (
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    className="h-8"
-                    disabled={!canCertificate || busyCertId === p.id}
-                    onClick={() => handleDownloadCertificate(p)}
-                    title={!canCertificate ? "Wymagana obecność lub zaliczenie" : "Pobierz certyfikat PDF"}
-                  >
-                    {busyCertId === p.id
-                      ? <Loader2 className="h-3.5 w-3.5 mr-1 animate-spin" />
-                      : <Download className="h-3.5 w-3.5 mr-1" />}
-                    Certyfikat
-                  </Button>
-                )}
+                <Button
+                  size="sm"
+                  variant={cert ? "default" : "outline"}
+                  className="h-8"
+                  disabled={!canCertificate || busyCertId === p.id}
+                  onClick={() => ensureCertificate(p, { autoDownload: true })}
+                  title={
+                    cert
+                      ? `Pobierz certyfikat ${cert.certificate_number}`
+                      : !canCertificate
+                        ? "Wymagana obecność lub usprawiedliwienie"
+                        : "Wygeneruj i pobierz certyfikat PDF"
+                  }
+                >
+                  {busyCertId === p.id
+                    ? <Loader2 className="h-3.5 w-3.5 mr-1 animate-spin" />
+                    : <Download className="h-3.5 w-3.5 mr-1" />}
+                  {cert ? "Pobierz" : "Certyfikat"}
+                </Button>
+
 
                 <Button
                   size="icon" variant="ghost" className="h-8 w-8"
