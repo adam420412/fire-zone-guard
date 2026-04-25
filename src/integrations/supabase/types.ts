@@ -2210,6 +2210,45 @@ export type Database = {
         }
         Relationships: []
       }
+      training_audit_log: {
+        Row: {
+          action: string
+          changed_by: string | null
+          changed_by_name: string | null
+          created_at: string
+          field_name: string | null
+          id: string
+          new_value: string | null
+          old_value: string | null
+          participant_id: string | null
+          training_id: string
+        }
+        Insert: {
+          action: string
+          changed_by?: string | null
+          changed_by_name?: string | null
+          created_at?: string
+          field_name?: string | null
+          id?: string
+          new_value?: string | null
+          old_value?: string | null
+          participant_id?: string | null
+          training_id: string
+        }
+        Update: {
+          action?: string
+          changed_by?: string | null
+          changed_by_name?: string | null
+          created_at?: string
+          field_name?: string | null
+          id?: string
+          new_value?: string | null
+          old_value?: string | null
+          participant_id?: string | null
+          training_id?: string
+        }
+        Relationships: []
+      }
       training_certificates: {
         Row: {
           building_id: string | null
@@ -2461,6 +2500,7 @@ export type Database = {
         Returns: Database["public"]["Enums"]["safety_status"]
       }
       calculate_task_sla: { Args: { _task_id: string }; Returns: Json }
+      current_user_display_name: { Args: never; Returns: string }
       get_user_company_id: { Args: { _user_id: string }; Returns: string }
       has_role: {
         Args: {
