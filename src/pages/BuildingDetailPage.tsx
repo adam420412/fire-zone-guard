@@ -44,6 +44,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { BUILDING_DOCUMENT_CATEGORIES, BUILDING_DOCUMENT_CATEGORY_LABELS, type BuildingDocumentCategory } from "@/lib/constants";
 import CreateTaskDialog from "@/components/CreateTaskDialog";
+import BuildingTrainingsTab from "@/components/BuildingTrainingsTab";
 
 function EditBuildingDialog({ building, open, onOpenChange }: { building: any, open: boolean, onOpenChange: (o: boolean) => void }) {
   const { data: companies } = useCompanies();
