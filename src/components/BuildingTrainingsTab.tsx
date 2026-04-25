@@ -24,7 +24,10 @@ import { useToast } from "@/hooks/use-toast";
 import { GraduationCap, Plus, Calendar, Users, Trash2, Edit, UserPlus, CheckCircle2, ChevronDown, ChevronRight, Loader2, PenLine, Download } from "lucide-react";
 import { format } from "date-fns";
 import { pl } from "date-fns/locale";
-import { generateAndDownloadCertificate, uploadSignature } from "@/lib/trainingCertificates";
+import {
+  generateAndDownloadCertificate, uploadSignature,
+  generateCertificateBlob, uploadCertificatePdf,
+} from "@/lib/trainingCertificates";
 
 interface Props {
   buildingId: string;
@@ -179,6 +182,21 @@ function ParticipantsSection({
     return () => { active = false; };
   }, [buildingId]);
 
+  // Certyfikaty (numer + pdf_url) dla tego szkolenia
+  type CertRow = { id: string; participant_id: string; certificate_number: string;
+                   training_date: string; pdf_url: string | null; issued_at: string };
+  const [certs, setCerts] = useState<Record<string, CertRow>>({});
+  const refreshCerts = async () => {
+    const { data } = await supabase
+      .from("training_certificates" as any)
+      .select("id, participant_id, certificate_number, training_date, pdf_url, issued_at")
+      .eq("training_id", trainingId);
+    const map: Record<string, CertRow> = {};
+    ((data ?? []) as any[]).forEach((c) => { map[c.participant_id] = c as CertRow; });
+    setCerts(map);
+  };
+  useEffect(() => { refreshCerts(); /* eslint-disable-next-line */ }, [trainingId, participants.length]);
+
   const isCompleted = training.status === "zakonczone";
   const addedEmpIds = new Set(participants.map((p) => p.employee_id).filter(Boolean) as string[]);
   const availableEmployees = employees.filter((e) => !addedEmpIds.has(e.id));
@@ -236,27 +254,82 @@ function ParticipantsSection({
     }
   };
 
-  // Pobierz certyfikat
-  const handleDownloadCertificate = async (p: TrainingParticipant) => {
+  // Wygeneruj i (opcjonalnie) wyslij certyfikat do storage; pobiera z DB numer.
+  // Trigger w bazie tworzy rekord przy oznaczeniu obecny/usprawiedliwiony.
+  const ensureCertificate = async (
+    p: TrainingParticipant,
+    opts: { autoDownload?: boolean; silent?: boolean } = {},
+  ) => {
+    const { autoDownload = true, silent = false } = opts;
     setBusyCertId(p.id);
     try {
-      await generateAndDownloadCertificate({
+      // 1. Pobierz lub poczekaj na rekord certyfikatu
+      let cert = certs[p.id];
+      if (!cert) {
+        // krotkie 3-prob. czekanie na trigger DB
+        for (let i = 0; i < 3 && !cert; i++) {
+          const { data } = await supabase
+            .from("training_certificates" as any)
+            .select("id, participant_id, certificate_number, training_date, pdf_url, issued_at")
+            .eq("training_id", trainingId)
+            .eq("participant_id", p.id)
+            .maybeSingle();
+          if (data) { cert = data as any; break; }
+          await new Promise((r) => setTimeout(r, 350));
+        }
+      }
+      if (!cert) {
+        if (!silent) toast({ title: "Brak certyfikatu", description: "Oznacz uczestnika jako obecny lub usprawiedliwiony.", variant: "destructive" });
+        return;
+      }
+
+      // 2. Wygeneruj PDF z numerem z DB i data szkolenia
+      const certData = {
         participantName: participantName(p),
         trainingTitle: training.title,
         trainingType: TRAINING_TYPE_LABELS[training.type] ?? String(training.type),
         buildingName: building?.name ?? "—",
         buildingAddress: building?.address ?? null,
-        performedAt: training.completed_at ?? training.scheduled_at,
+        performedAt: cert.training_date,
         durationMinutes: training.duration_minutes,
         trainerName: training.trainer_name,
         trainerSignatureUrl: training.trainer_signature_url,
         participantSignatureUrl: p.signature_url,
-        certificateNumber: `${training.id.slice(0, 8).toUpperCase()}-${p.id.slice(0, 4).toUpperCase()}`,
-      });
+        certificateNumber: cert.certificate_number,
+      };
+
+      // 3. Jezeli brak pdf_url → wygeneruj, wyslij, zapisz
+      if (!cert.pdf_url) {
+        const { blob } = await generateCertificateBlob(certData);
+        const pdfUrl = await uploadCertificatePdf(cert.id, blob);
+        await supabase.from("training_certificates" as any)
+          .update({ pdf_url: pdfUrl }).eq("id", cert.id);
+        cert = { ...cert, pdf_url: pdfUrl };
+        setCerts((m) => ({ ...m, [p.id]: cert! }));
+      }
+
+      // 4. Pobierz lokalnie (na zyczenie)
+      if (autoDownload) {
+        await generateAndDownloadCertificate(certData);
+        if (!silent) toast({ title: `Certyfikat ${cert.certificate_number} wystawiony` });
+      } else if (!silent) {
+        toast({ title: `Certyfikat ${cert.certificate_number} zapisany` });
+      }
     } catch (e: any) {
       toast({ title: "Błąd generowania certyfikatu", description: e.message, variant: "destructive" });
     } finally {
       setBusyCertId(null);
+    }
+  };
+
+  // Po zmianie statusu na obecny/usprawiedliwiony — od razu wystawiamy certyfikat.
+  const handleAttendanceChange = async (p: TrainingParticipant, v: string) => {
+    await updateParticipant.mutateAsync({ id: p.id, updates: { attendance_status: v as any } });
+    if (v === "obecny" || v === "usprawiedliwiony") {
+      await new Promise((r) => setTimeout(r, 300)); // daj triggerowi szanse
+      await refreshCerts();
+      // wyslij PDF do storage bez auto-pobierania
+      await ensureCertificate({ ...p, attendance_status: v as any }, { autoDownload: false });
     }
   };
 
@@ -304,19 +377,27 @@ function ParticipantsSection({
           {participants.map((p) => {
             const name = participantName(p);
             const email = p.employee?.email ?? p.profile?.email ?? p.guest_email ?? "";
+            const cert = certs[p.id];
             const canCertificate =
-              isCompleted && (p.attendance_status === "obecny" || p.passed === true);
+              !!cert ||
+              p.attendance_status === "obecny" ||
+              p.attendance_status === "usprawiedliwiony";
             return (
               <div key={p.id} className="flex items-center gap-2 bg-card border border-border rounded-md px-3 py-2 text-sm flex-wrap">
                 <div className="flex-1 min-w-[160px]">
                   <div className="truncate font-medium">{name}</div>
-                  {email && <div className="text-xs text-muted-foreground truncate">{email}</div>}
+                  <div className="text-xs text-muted-foreground truncate flex items-center gap-2">
+                    {email && <span>{email}</span>}
+                    {cert && (
+                      <Badge variant="secondary" className="text-[10px] py-0 px-1.5">
+                        {cert.certificate_number}
+                      </Badge>
+                    )}
+                  </div>
                 </div>
                 <Select
                   value={p.attendance_status}
-                  onValueChange={(v) =>
-                    updateParticipant.mutate({ id: p.id, updates: { attendance_status: v as any } })
-                  }
+                  onValueChange={(v) => handleAttendanceChange(p, v)}
                 >
                   <SelectTrigger className="h-8 w-[150px] text-xs">
                     <SelectValue />
@@ -353,21 +434,26 @@ function ParticipantsSection({
                 )}
 
                 {/* Certyfikat */}
-                {isCompleted && (
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    className="h-8"
-                    disabled={!canCertificate || busyCertId === p.id}
-                    onClick={() => handleDownloadCertificate(p)}
-                    title={!canCertificate ? "Wymagana obecność lub zaliczenie" : "Pobierz certyfikat PDF"}
-                  >
-                    {busyCertId === p.id
-                      ? <Loader2 className="h-3.5 w-3.5 mr-1 animate-spin" />
-                      : <Download className="h-3.5 w-3.5 mr-1" />}
-                    Certyfikat
-                  </Button>
-                )}
+                <Button
+                  size="sm"
+                  variant={cert ? "default" : "outline"}
+                  className="h-8"
+                  disabled={!canCertificate || busyCertId === p.id}
+                  onClick={() => ensureCertificate(p, { autoDownload: true })}
+                  title={
+                    cert
+                      ? `Pobierz certyfikat ${cert.certificate_number}`
+                      : !canCertificate
+                        ? "Wymagana obecność lub usprawiedliwienie"
+                        : "Wygeneruj i pobierz certyfikat PDF"
+                  }
+                >
+                  {busyCertId === p.id
+                    ? <Loader2 className="h-3.5 w-3.5 mr-1 animate-spin" />
+                    : <Download className="h-3.5 w-3.5 mr-1" />}
+                  {cert ? "Pobierz" : "Certyfikat"}
+                </Button>
+
 
                 <Button
                   size="icon" variant="ghost" className="h-8 w-8"
