@@ -2210,6 +2210,66 @@ export type Database = {
         }
         Relationships: []
       }
+      training_certificates: {
+        Row: {
+          building_id: string | null
+          certificate_number: string
+          company_id: string | null
+          created_at: string
+          id: string
+          issued_at: string
+          issued_by: string | null
+          participant_id: string
+          participant_name: string | null
+          pdf_url: string | null
+          status: string
+          training_date: string
+          training_id: string
+          training_title: string | null
+          training_type: string | null
+          updated_at: string
+          valid_until: string | null
+        }
+        Insert: {
+          building_id?: string | null
+          certificate_number: string
+          company_id?: string | null
+          created_at?: string
+          id?: string
+          issued_at?: string
+          issued_by?: string | null
+          participant_id: string
+          participant_name?: string | null
+          pdf_url?: string | null
+          status?: string
+          training_date: string
+          training_id: string
+          training_title?: string | null
+          training_type?: string | null
+          updated_at?: string
+          valid_until?: string | null
+        }
+        Update: {
+          building_id?: string | null
+          certificate_number?: string
+          company_id?: string | null
+          created_at?: string
+          id?: string
+          issued_at?: string
+          issued_by?: string | null
+          participant_id?: string
+          participant_name?: string | null
+          pdf_url?: string | null
+          status?: string
+          training_date?: string
+          training_id?: string
+          training_title?: string | null
+          training_type?: string | null
+          updated_at?: string
+          valid_until?: string | null
+        }
+        Relationships: []
+      }
       user_roles: {
         Row: {
           created_at: string
