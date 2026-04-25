@@ -10,6 +10,7 @@ import {
   TRAINING_TYPE_LABELS, TRAINING_STATUS_LABELS, ATTENDANCE_LABELS,
   type BuildingTraining,
 } from "@/hooks/useBuildingTrainings";
+import TrainingAttendanceMatrix from "@/components/TrainingAttendanceMatrix";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
