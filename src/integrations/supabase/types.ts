@@ -139,6 +139,13 @@ export type Database = {
             foreignKeyName: "audits_building_id_fkey"
             columns: ["building_id"]
             isOneToOne: false
+            referencedRelation: "building_cost_summary"
+            referencedColumns: ["building_id"]
+          },
+          {
+            foreignKeyName: "audits_building_id_fkey"
+            columns: ["building_id"]
+            isOneToOne: false
             referencedRelation: "buildings"
             referencedColumns: ["id"]
           },
@@ -180,6 +187,13 @@ export type Database = {
             foreignKeyName: "building_documents_building_id_fkey"
             columns: ["building_id"]
             isOneToOne: false
+            referencedRelation: "building_cost_summary"
+            referencedColumns: ["building_id"]
+          },
+          {
+            foreignKeyName: "building_documents_building_id_fkey"
+            columns: ["building_id"]
+            isOneToOne: false
             referencedRelation: "buildings"
             referencedColumns: ["id"]
           },
@@ -192,8 +206,12 @@ export type Database = {
           created_at: string
           evacuation_last_date: string | null
           floor_plan_url: string | null
+          geocoded_at: string | null
           ibp_valid_until: string | null
           id: string
+          lat: number | null
+          lng: number | null
+          map_color: string | null
           name: string
         }
         Insert: {
@@ -202,8 +220,12 @@ export type Database = {
           created_at?: string
           evacuation_last_date?: string | null
           floor_plan_url?: string | null
+          geocoded_at?: string | null
           ibp_valid_until?: string | null
           id?: string
+          lat?: number | null
+          lng?: number | null
+          map_color?: string | null
           name: string
         }
         Update: {
@@ -212,8 +234,12 @@ export type Database = {
           created_at?: string
           evacuation_last_date?: string | null
           floor_plan_url?: string | null
+          geocoded_at?: string | null
           ibp_valid_until?: string | null
           id?: string
+          lat?: number | null
+          lng?: number | null
+          map_color?: string | null
           name?: string
         }
         Relationships: [
@@ -258,6 +284,13 @@ export type Database = {
           valid_until?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "certificates_building_id_fkey"
+            columns: ["building_id"]
+            isOneToOne: false
+            referencedRelation: "building_cost_summary"
+            referencedColumns: ["building_id"]
+          },
           {
             foreignKeyName: "certificates_building_id_fkey"
             columns: ["building_id"]
@@ -509,6 +542,13 @@ export type Database = {
             foreignKeyName: "devices_building_id_fkey"
             columns: ["building_id"]
             isOneToOne: false
+            referencedRelation: "building_cost_summary"
+            referencedColumns: ["building_id"]
+          },
+          {
+            foreignKeyName: "devices_building_id_fkey"
+            columns: ["building_id"]
+            isOneToOne: false
             referencedRelation: "buildings"
             referencedColumns: ["id"]
           },
@@ -596,6 +636,13 @@ export type Database = {
           user_id?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "employee_development_plans_building_id_fkey"
+            columns: ["building_id"]
+            isOneToOne: false
+            referencedRelation: "building_cost_summary"
+            referencedColumns: ["building_id"]
+          },
           {
             foreignKeyName: "employee_development_plans_building_id_fkey"
             columns: ["building_id"]
@@ -694,6 +741,13 @@ export type Database = {
             foreignKeyName: "evacuation_drills_building_id_fkey"
             columns: ["building_id"]
             isOneToOne: false
+            referencedRelation: "building_cost_summary"
+            referencedColumns: ["building_id"]
+          },
+          {
+            foreignKeyName: "evacuation_drills_building_id_fkey"
+            columns: ["building_id"]
+            isOneToOne: false
             referencedRelation: "buildings"
             referencedColumns: ["id"]
           },
@@ -772,6 +826,13 @@ export type Database = {
           type?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "inspections_building_id_fkey"
+            columns: ["building_id"]
+            isOneToOne: false
+            referencedRelation: "building_cost_summary"
+            referencedColumns: ["building_id"]
+          },
           {
             foreignKeyName: "inspections_building_id_fkey"
             columns: ["building_id"]
@@ -855,6 +916,13 @@ export type Database = {
           title?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "meetings_building_id_fkey"
+            columns: ["building_id"]
+            isOneToOne: false
+            referencedRelation: "building_cost_summary"
+            referencedColumns: ["building_id"]
+          },
           {
             foreignKeyName: "meetings_building_id_fkey"
             columns: ["building_id"]
@@ -1168,6 +1236,13 @@ export type Database = {
             foreignKeyName: "recurring_events_building_id_fkey"
             columns: ["building_id"]
             isOneToOne: false
+            referencedRelation: "building_cost_summary"
+            referencedColumns: ["building_id"]
+          },
+          {
+            foreignKeyName: "recurring_events_building_id_fkey"
+            columns: ["building_id"]
+            isOneToOne: false
             referencedRelation: "buildings"
             referencedColumns: ["id"]
           },
@@ -1246,9 +1321,14 @@ export type Database = {
       service_protocols: {
         Row: {
           building_id: string
+          client_signature_url: string | null
+          client_signed_at: string | null
+          client_signer_name: string | null
           created_at: string
           id: string
           inspector_id: string | null
+          inspector_signature_url: string | null
+          inspector_signed_at: string | null
           next_inspection_due: string | null
           notes: string | null
           overall_result: string | null
@@ -1258,9 +1338,14 @@ export type Database = {
         }
         Insert: {
           building_id: string
+          client_signature_url?: string | null
+          client_signed_at?: string | null
+          client_signer_name?: string | null
           created_at?: string
           id?: string
           inspector_id?: string | null
+          inspector_signature_url?: string | null
+          inspector_signed_at?: string | null
           next_inspection_due?: string | null
           notes?: string | null
           overall_result?: string | null
@@ -1270,9 +1355,14 @@ export type Database = {
         }
         Update: {
           building_id?: string
+          client_signature_url?: string | null
+          client_signed_at?: string | null
+          client_signer_name?: string | null
           created_at?: string
           id?: string
           inspector_id?: string | null
+          inspector_signature_url?: string | null
+          inspector_signed_at?: string | null
           next_inspection_due?: string | null
           notes?: string | null
           overall_result?: string | null
@@ -1281,6 +1371,13 @@ export type Database = {
           type?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "service_protocols_building_id_fkey"
+            columns: ["building_id"]
+            isOneToOne: false
+            referencedRelation: "building_cost_summary"
+            referencedColumns: ["building_id"]
+          },
           {
             foreignKeyName: "service_protocols_building_id_fkey"
             columns: ["building_id"]
@@ -1486,6 +1583,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sla_tickets_building_id_fkey"
+            columns: ["building_id"]
+            isOneToOne: false
+            referencedRelation: "building_cost_summary"
+            referencedColumns: ["building_id"]
           },
           {
             foreignKeyName: "sla_tickets_building_id_fkey"
@@ -1737,6 +1841,13 @@ export type Database = {
             foreignKeyName: "task_templates_building_id_fkey"
             columns: ["building_id"]
             isOneToOne: false
+            referencedRelation: "building_cost_summary"
+            referencedColumns: ["building_id"]
+          },
+          {
+            foreignKeyName: "task_templates_building_id_fkey"
+            columns: ["building_id"]
+            isOneToOne: false
             referencedRelation: "buildings"
             referencedColumns: ["id"]
           },
@@ -1756,6 +1867,8 @@ export type Database = {
           closed_at: string | null
           closing_comment: string | null
           company_id: string
+          cost_actual: number | null
+          cost_currency: string | null
           created_at: string
           deadline: string | null
           description: string
@@ -1778,6 +1891,8 @@ export type Database = {
           closed_at?: string | null
           closing_comment?: string | null
           company_id: string
+          cost_actual?: number | null
+          cost_currency?: string | null
           created_at?: string
           deadline?: string | null
           description?: string
@@ -1800,6 +1915,8 @@ export type Database = {
           closed_at?: string | null
           closing_comment?: string | null
           company_id?: string
+          cost_actual?: number | null
+          cost_currency?: string | null
           created_at?: string
           deadline?: string | null
           description?: string
@@ -1823,6 +1940,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tasks_building_id_fkey"
+            columns: ["building_id"]
+            isOneToOne: false
+            referencedRelation: "building_cost_summary"
+            referencedColumns: ["building_id"]
           },
           {
             foreignKeyName: "tasks_building_id_fkey"
@@ -1915,6 +2039,26 @@ export type Database = {
       }
     }
     Views: {
+      building_cost_summary: {
+        Row: {
+          building_id: string | null
+          building_name: string | null
+          company_id: string | null
+          cost_12m: number | null
+          last_closed_at: string | null
+          paid_tasks_12m: number | null
+          service_tasks_12m: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "buildings_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       employees_with_details: {
         Row: {
           building_id: string | null
@@ -1940,6 +2084,13 @@ export type Database = {
           user_id: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "employee_development_plans_building_id_fkey"
+            columns: ["building_id"]
+            isOneToOne: false
+            referencedRelation: "building_cost_summary"
+            referencedColumns: ["building_id"]
+          },
           {
             foreignKeyName: "employee_development_plans_building_id_fkey"
             columns: ["building_id"]
@@ -2011,6 +2162,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sla_tickets_building_id_fkey"
+            columns: ["building_id"]
+            isOneToOne: false
+            referencedRelation: "building_cost_summary"
+            referencedColumns: ["building_id"]
           },
           {
             foreignKeyName: "sla_tickets_building_id_fkey"
