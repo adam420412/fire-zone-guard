@@ -258,6 +258,115 @@ export function useRemoveParticipant() {
   });
 }
 
+// ---------- Attendance matrix per building (all trainings × participants) ----
+export interface AttendanceRow {
+  participantKey: string;       // employee_id | user_id | guest_email | guest_name
+  name: string;
+  email: string | null;
+  kind: "employee" | "user" | "guest";
+  total: number;                // szkolenia, na które był zapisany
+  present: number;              // obecny
+  excused: number;              // usprawiedliwiony
+  absent: number;               // nieobecny
+  planned: number;              // zaplanowany (jeszcze nie odbyte)
+  attendancePct: number;        // present / (present + absent + excused) * 100
+}
+
+export function useBuildingAttendance(
+  buildingId: string | null,
+  typeFilter: string | "all" = "all",
+) {
+  return useQuery({
+    queryKey: ["building_attendance", buildingId, typeFilter],
+    enabled: !!buildingId,
+    queryFn: async (): Promise<AttendanceRow[]> => {
+      if (!buildingId) return [];
+
+      // 1. szkolenia w obiekcie (z opcjonalnym filtrem typu)
+      let q = supabase
+        .from("building_trainings" as any)
+        .select("id, type")
+        .eq("building_id", buildingId);
+      if (typeFilter !== "all") q = q.eq("type", typeFilter);
+      const { data: trainings, error: tErr } = await q;
+      if (tErr) throw tErr;
+      const trainingIds = ((trainings ?? []) as any[]).map((t) => t.id);
+      if (trainingIds.length === 0) return [];
+
+      // 2. uczestnicy tych szkoleń
+      const { data: parts, error: pErr } = await supabase
+        .from("building_training_participants" as any)
+        .select("training_id, employee_id, user_id, guest_name, guest_email, attendance_status")
+        .in("training_id", trainingIds);
+      if (pErr) throw pErr;
+      const rows = (parts ?? []) as any[];
+
+      // 3. dociągnij dane pracowników/profili
+      const empIds = Array.from(new Set(rows.map((r) => r.employee_id).filter(Boolean))) as string[];
+      const userIds = Array.from(new Set(rows.map((r) => r.user_id).filter(Boolean))) as string[];
+      const employees: Record<string, any> = {};
+      const profiles: Record<string, any> = {};
+      if (empIds.length) {
+        const { data } = await supabase
+          .from("employee_development_plans" as any)
+          .select("id, first_name, last_name, email")
+          .in("id", empIds);
+        ((data ?? []) as any[]).forEach((e: any) => (employees[e.id] = e));
+      }
+      if (userIds.length) {
+        const { data } = await supabase
+          .from("profiles")
+          .select("id, name, email")
+          .in("id", userIds);
+        ((data ?? []) as any[]).forEach((p: any) => (profiles[p.id] = p));
+      }
+
+      // 4. agreguj per uczestnik
+      const map = new Map<string, AttendanceRow>();
+      for (const r of rows) {
+        let key: string;
+        let name = "—";
+        let email: string | null = null;
+        let kind: AttendanceRow["kind"] = "guest";
+        if (r.employee_id) {
+          key = `emp:${r.employee_id}`;
+          const e = employees[r.employee_id];
+          name = e ? `${e.first_name ?? ""} ${e.last_name ?? ""}`.trim() || e.email || "—" : "—";
+          email = e?.email ?? null;
+          kind = "employee";
+        } else if (r.user_id) {
+          key = `usr:${r.user_id}`;
+          const p = profiles[r.user_id];
+          name = p?.name ?? p?.email ?? "—";
+          email = p?.email ?? null;
+          kind = "user";
+        } else {
+          key = `g:${(r.guest_email ?? r.guest_name ?? "").toLowerCase()}`;
+          name = r.guest_name ?? r.guest_email ?? "Gość";
+          email = r.guest_email ?? null;
+        }
+        const cur =
+          map.get(key) ??
+          { participantKey: key, name, email, kind, total: 0, present: 0, excused: 0, absent: 0, planned: 0, attendancePct: 0 };
+        cur.total += 1;
+        if (r.attendance_status === "obecny") cur.present += 1;
+        else if (r.attendance_status === "nieobecny") cur.absent += 1;
+        else if (r.attendance_status === "usprawiedliwiony") cur.excused += 1;
+        else cur.planned += 1;
+        map.set(key, cur);
+      }
+
+      const list = Array.from(map.values()).map((r) => {
+        const denom = r.present + r.absent + r.excused;
+        r.attendancePct = denom > 0 ? Math.round((r.present / denom) * 100) : 0;
+        return r;
+      });
+      list.sort((a, b) => b.attendancePct - a.attendancePct || a.name.localeCompare(b.name));
+      return list;
+    },
+  });
+}
+
 // ---------- Helper: list candidate employees of a company --------------------
 export interface EmployeeCandidate {
   id: string;
