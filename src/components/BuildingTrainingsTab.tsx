@@ -2,15 +2,17 @@
 // BuildingTrainingsTab — szkolenia PPOŻ przypisane do obiektu z uczestnikami.
 // Używana w BuildingDetailPage jako zakładka "Szkolenia".
 // =============================================================================
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   useBuildingTrainings, useTrainingParticipants, useCreateTraining, useUpdateTraining,
   useDeleteTraining, useAddParticipant, useUpdateParticipant, useRemoveParticipant,
   useCompanyEmployees,
   TRAINING_TYPE_LABELS, TRAINING_STATUS_LABELS, ATTENDANCE_LABELS,
-  type BuildingTraining,
+  type BuildingTraining, type TrainingParticipant,
 } from "@/hooks/useBuildingTrainings";
 import TrainingAttendanceMatrix from "@/components/TrainingAttendanceMatrix";
+import { SignatureDialog } from "@/components/SignatureDialog";
+import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
@@ -19,9 +21,10 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
-import { GraduationCap, Plus, Calendar, Users, Trash2, Edit, UserPlus, CheckCircle2, XCircle, ChevronDown, ChevronRight, Loader2 } from "lucide-react";
+import { GraduationCap, Plus, Calendar, Users, Trash2, Edit, UserPlus, CheckCircle2, ChevronDown, ChevronRight, Loader2, PenLine, Download } from "lucide-react";
 import { format } from "date-fns";
 import { pl } from "date-fns/locale";
+import { generateAndDownloadCertificate, uploadSignature } from "@/lib/trainingCertificates";
 
 interface Props {
   buildingId: string;
@@ -121,7 +124,7 @@ export default function BuildingTrainingsTab({ buildingId, companyId }: Props) {
 
               {expanded === t.id && (
                 <div className="border-t border-border bg-muted/30 p-4">
-                  <ParticipantsSection trainingId={t.id} companyId={companyId} />
+                  <ParticipantsSection training={t} companyId={companyId} buildingId={buildingId} />
                   {t.description && (
                     <p className="text-sm text-muted-foreground mt-4 italic">{t.description}</p>
                   )}
@@ -146,65 +149,151 @@ export default function BuildingTrainingsTab({ buildingId, companyId }: Props) {
 }
 
 // -------------------------- Participants section -----------------------------
-function ParticipantsSection({ trainingId, companyId }: { trainingId: string; companyId: string | null }) {
+function ParticipantsSection({
+  training, companyId, buildingId,
+}: { training: BuildingTraining; companyId: string | null; buildingId: string }) {
+  const trainingId = training.id;
   const { data: participants = [], isLoading } = useTrainingParticipants(trainingId);
   const { data: employees = [] } = useCompanyEmployees(companyId);
   const addParticipant = useAddParticipant();
   const updateParticipant = useUpdateParticipant();
   const removeParticipant = useRemoveParticipant();
+  const updateTraining = useUpdateTraining();
   const { toast } = useToast();
 
   const [pickedEmployeeId, setPickedEmployeeId] = useState<string>("");
   const [guestName, setGuestName] = useState("");
   const [guestEmail, setGuestEmail] = useState("");
 
-  // Filter out already-added employees
+  // Signature dialog state
+  const [trainerSigOpen, setTrainerSigOpen] = useState(false);
+  const [participantSig, setParticipantSig] = useState<TrainingParticipant | null>(null);
+  const [busyCertId, setBusyCertId] = useState<string | null>(null);
+
+  // Building info for certificate
+  const [building, setBuilding] = useState<{ name: string; address: string | null } | null>(null);
+  useEffect(() => {
+    let active = true;
+    supabase.from("buildings").select("name, address").eq("id", buildingId).maybeSingle()
+      .then(({ data }) => { if (active && data) setBuilding(data as any); });
+    return () => { active = false; };
+  }, [buildingId]);
+
+  const isCompleted = training.status === "zakonczone";
   const addedEmpIds = new Set(participants.map((p) => p.employee_id).filter(Boolean) as string[]);
   const availableEmployees = employees.filter((e) => !addedEmpIds.has(e.id));
+
+  const participantName = (p: TrainingParticipant) =>
+    p.employee
+      ? `${p.employee.first_name ?? ""} ${p.employee.last_name ?? ""}`.trim() || p.employee.email || "—"
+      : p.profile?.name ?? p.guest_name ?? "—";
 
   const handleAddEmployee = () => {
     if (!pickedEmployeeId) return;
     const emp = employees.find((e) => e.id === pickedEmployeeId);
     addParticipant.mutate(
-      {
-        training_id: trainingId,
-        employee_id: pickedEmployeeId,
-        user_id: emp?.user_id ?? null,
-        attendance_status: "zaplanowany",
-      },
-      {
-        onSuccess: () => {
-          toast({ title: "Pracownik dodany" });
-          setPickedEmployeeId("");
-        },
-      },
+      { training_id: trainingId, employee_id: pickedEmployeeId, user_id: emp?.user_id ?? null, attendance_status: "zaplanowany" },
+      { onSuccess: () => { toast({ title: "Pracownik dodany" }); setPickedEmployeeId(""); } },
     );
   };
 
   const handleAddGuest = () => {
     if (!guestName.trim()) return;
     addParticipant.mutate(
-      {
-        training_id: trainingId,
-        guest_name: guestName.trim(),
-        guest_email: guestEmail.trim() || null,
-        attendance_status: "zaplanowany",
-      },
-      {
-        onSuccess: () => {
-          toast({ title: "Uczestnik dodany" });
-          setGuestName("");
-          setGuestEmail("");
-        },
-      },
+      { training_id: trainingId, guest_name: guestName.trim(), guest_email: guestEmail.trim() || null, attendance_status: "zaplanowany" },
+      { onSuccess: () => { toast({ title: "Uczestnik dodany" }); setGuestName(""); setGuestEmail(""); } },
     );
+  };
+
+  // Trener: zlozenie podpisu
+  const handleTrainerSignature = async (dataUrl: string) => {
+    try {
+      const url = await uploadSignature(dataUrl, "trainer", trainingId);
+      await updateTraining.mutateAsync({
+        id: trainingId,
+        updates: { trainer_signature_url: url, trainer_signed_at: new Date().toISOString() } as any,
+      });
+      toast({ title: "Podpis prowadzącego zapisany" });
+      setTrainerSigOpen(false);
+    } catch (e: any) {
+      toast({ title: "Błąd zapisu podpisu", description: e.message, variant: "destructive" });
+    }
+  };
+
+  // Uczestnik: zlozenie podpisu
+  const handleParticipantSignature = async (dataUrl: string) => {
+    if (!participantSig) return;
+    try {
+      const url = await uploadSignature(dataUrl, "participant", participantSig.id);
+      await updateParticipant.mutateAsync({
+        id: participantSig.id,
+        updates: { signature_url: url, signed_at: new Date().toISOString() } as any,
+      });
+      toast({ title: "Podpis uczestnika zapisany" });
+      setParticipantSig(null);
+    } catch (e: any) {
+      toast({ title: "Błąd zapisu podpisu", description: e.message, variant: "destructive" });
+    }
+  };
+
+  // Pobierz certyfikat
+  const handleDownloadCertificate = async (p: TrainingParticipant) => {
+    setBusyCertId(p.id);
+    try {
+      await generateAndDownloadCertificate({
+        participantName: participantName(p),
+        trainingTitle: training.title,
+        trainingType: TRAINING_TYPE_LABELS[training.type] ?? String(training.type),
+        buildingName: building?.name ?? "—",
+        buildingAddress: building?.address ?? null,
+        performedAt: training.completed_at ?? training.scheduled_at,
+        durationMinutes: training.duration_minutes,
+        trainerName: training.trainer_name,
+        trainerSignatureUrl: training.trainer_signature_url,
+        participantSignatureUrl: p.signature_url,
+        certificateNumber: `${training.id.slice(0, 8).toUpperCase()}-${p.id.slice(0, 4).toUpperCase()}`,
+      });
+    } catch (e: any) {
+      toast({ title: "Błąd generowania certyfikatu", description: e.message, variant: "destructive" });
+    } finally {
+      setBusyCertId(null);
+    }
   };
 
   return (
     <div className="space-y-3">
-      <div className="text-sm font-semibold flex items-center gap-2">
-        <Users className="h-4 w-4" /> Uczestnicy ({participants.length})
+      <div className="flex items-center justify-between flex-wrap gap-2">
+        <div className="text-sm font-semibold flex items-center gap-2">
+          <Users className="h-4 w-4" /> Uczestnicy ({participants.length})
+        </div>
+        {isCompleted && (
+          <div className="flex items-center gap-2 flex-wrap">
+            {training.trainer_signature_url ? (
+              <Badge variant="default" className="gap-1">
+                <CheckCircle2 className="h-3 w-3" />
+                Trener podpisał
+                {training.trainer_signed_at && (
+                  <span className="opacity-80">
+                    · {format(new Date(training.trainer_signed_at), "d MMM yyyy, HH:mm", { locale: pl })}
+                  </span>
+                )}
+              </Badge>
+            ) : (
+              <Badge variant="outline">Brak podpisu trenera</Badge>
+            )}
+            <Button size="sm" variant="outline" onClick={() => setTrainerSigOpen(true)}>
+              <PenLine className="h-4 w-4 mr-1" />
+              {training.trainer_signature_url ? "Podpisz ponownie" : "Podpis prowadzącego"}
+            </Button>
+          </div>
+        )}
       </div>
+
+      {!isCompleted && (
+        <div className="text-xs text-muted-foreground italic">
+          Podpisy elektroniczne i certyfikaty będą dostępne po oznaczeniu szkolenia jako „Zakończone".
+        </div>
+      )}
 
       {isLoading ? (
         <div className="text-xs text-muted-foreground">Ładowanie...</div>
@@ -213,14 +302,13 @@ function ParticipantsSection({ trainingId, companyId }: { trainingId: string; co
       ) : (
         <div className="space-y-1.5">
           {participants.map((p) => {
-            const name =
-              p.employee
-                ? `${p.employee.first_name ?? ""} ${p.employee.last_name ?? ""}`.trim() || p.employee.email
-                : p.profile?.name ?? p.guest_name ?? "—";
+            const name = participantName(p);
             const email = p.employee?.email ?? p.profile?.email ?? p.guest_email ?? "";
+            const canCertificate =
+              isCompleted && (p.attendance_status === "obecny" || p.passed === true);
             return (
-              <div key={p.id} className="flex items-center gap-2 bg-card border border-border rounded-md px-3 py-2 text-sm">
-                <div className="flex-1 min-w-0">
+              <div key={p.id} className="flex items-center gap-2 bg-card border border-border rounded-md px-3 py-2 text-sm flex-wrap">
+                <div className="flex-1 min-w-[160px]">
                   <div className="truncate font-medium">{name}</div>
                   {email && <div className="text-xs text-muted-foreground truncate">{email}</div>}
                 </div>
@@ -240,20 +328,49 @@ function ParticipantsSection({ trainingId, companyId }: { trainingId: string; co
                   </SelectContent>
                 </Select>
                 <Button
-                  size="icon"
-                  variant="ghost"
-                  className="h-8 w-8"
+                  size="icon" variant="ghost" className="h-8 w-8"
                   onClick={() =>
                     updateParticipant.mutate({ id: p.id, updates: { passed: p.passed === true ? null : true } })
                   }
                   aria-label="Zaliczył"
+                  title={p.passed === true ? "Zaliczone" : "Oznacz jako zaliczone"}
                 >
                   <CheckCircle2 className={`h-4 w-4 ${p.passed === true ? "text-success" : "text-muted-foreground"}`} />
                 </Button>
+
+                {/* Podpis uczestnika */}
+                {isCompleted && (
+                  <Button
+                    size="sm"
+                    variant={p.signature_url ? "secondary" : "outline"}
+                    className="h-8"
+                    onClick={() => setParticipantSig(p)}
+                    title={p.signature_url ? "Podpisany — kliknij aby podpisać ponownie" : "Złóż podpis uczestnika"}
+                  >
+                    <PenLine className="h-3.5 w-3.5 mr-1" />
+                    {p.signature_url ? "Podpisany" : "Podpis"}
+                  </Button>
+                )}
+
+                {/* Certyfikat */}
+                {isCompleted && (
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="h-8"
+                    disabled={!canCertificate || busyCertId === p.id}
+                    onClick={() => handleDownloadCertificate(p)}
+                    title={!canCertificate ? "Wymagana obecność lub zaliczenie" : "Pobierz certyfikat PDF"}
+                  >
+                    {busyCertId === p.id
+                      ? <Loader2 className="h-3.5 w-3.5 mr-1 animate-spin" />
+                      : <Download className="h-3.5 w-3.5 mr-1" />}
+                    Certyfikat
+                  </Button>
+                )}
+
                 <Button
-                  size="icon"
-                  variant="ghost"
-                  className="h-8 w-8"
+                  size="icon" variant="ghost" className="h-8 w-8"
                   onClick={() => {
                     if (!confirm("Usunąć uczestnika?")) return;
                     removeParticipant.mutate({ id: p.id, training_id: trainingId });
@@ -282,33 +399,33 @@ function ParticipantsSection({ trainingId, companyId }: { trainingId: string; co
             ))}
           </SelectContent>
         </Select>
-        <Button
-          size="sm"
-          onClick={handleAddEmployee}
-          disabled={!pickedEmployeeId || addParticipant.isPending}
-        >
+        <Button size="sm" onClick={handleAddEmployee} disabled={!pickedEmployeeId || addParticipant.isPending}>
           <UserPlus className="h-4 w-4 mr-1" /> Dodaj
         </Button>
       </div>
 
       {/* Add guest */}
       <div className="flex flex-col sm:flex-row gap-2">
-        <Input
-          placeholder="Gość: imię i nazwisko"
-          value={guestName}
-          onChange={(e) => setGuestName(e.target.value)}
-          className="h-9 flex-1"
-        />
-        <Input
-          placeholder="Email (opcjonalnie)"
-          value={guestEmail}
-          onChange={(e) => setGuestEmail(e.target.value)}
-          className="h-9 flex-1"
-        />
+        <Input placeholder="Gość: imię i nazwisko" value={guestName} onChange={(e) => setGuestName(e.target.value)} className="h-9 flex-1" />
+        <Input placeholder="Email (opcjonalnie)" value={guestEmail} onChange={(e) => setGuestEmail(e.target.value)} className="h-9 flex-1" />
         <Button size="sm" variant="outline" onClick={handleAddGuest} disabled={!guestName.trim()}>
           <Plus className="h-4 w-4 mr-1" /> Gość
         </Button>
       </div>
+
+      {/* Signature dialogs */}
+      <SignatureDialog
+        open={trainerSigOpen}
+        onOpenChange={setTrainerSigOpen}
+        onConfirm={handleTrainerSignature}
+        title={`Podpis prowadzącego: ${training.trainer_name ?? "—"}`}
+      />
+      <SignatureDialog
+        open={!!participantSig}
+        onOpenChange={(o) => !o && setParticipantSig(null)}
+        onConfirm={handleParticipantSignature}
+        title={participantSig ? `Podpis uczestnika: ${participantName(participantSig)}` : "Podpis uczestnika"}
+      />
     </div>
   );
 }
