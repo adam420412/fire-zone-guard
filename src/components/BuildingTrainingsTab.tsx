@@ -124,7 +124,7 @@ export default function BuildingTrainingsTab({ buildingId, companyId }: Props) {
 
               {expanded === t.id && (
                 <div className="border-t border-border bg-muted/30 p-4">
-                  <ParticipantsSection trainingId={t.id} companyId={companyId} />
+                  <ParticipantsSection training={t} companyId={companyId} buildingId={buildingId} />
                   {t.description && (
                     <p className="text-sm text-muted-foreground mt-4 italic">{t.description}</p>
                   )}
