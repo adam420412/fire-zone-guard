@@ -21,7 +21,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
-import { GraduationCap, Plus, Calendar, Users, Trash2, Edit, UserPlus, CheckCircle2, ChevronDown, ChevronRight, Loader2, PenLine, Download } from "lucide-react";
+import { GraduationCap, Plus, Calendar, Users, Trash2, Edit, UserPlus, CheckCircle2, ChevronDown, ChevronRight, Loader2, PenLine, Download, History } from "lucide-react";
+import { TrainingHistoryDialog } from "@/components/TrainingHistoryDialog";
 import { format } from "date-fns";
 import { pl } from "date-fns/locale";
 import {
