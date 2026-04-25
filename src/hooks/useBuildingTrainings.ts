@@ -44,6 +44,8 @@ export interface BuildingTraining {
   next_due_date: string | null;
   certificate_url: string | null;
   protocol_url: string | null;
+  trainer_signature_url: string | null;
+  trainer_signed_at: string | null;
   notes: string | null;
   created_by: string | null;
   created_at: string;
