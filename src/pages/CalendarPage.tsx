@@ -646,6 +646,11 @@ export default function CalendarPage() {
 
       <TaskDetailDialog task={selectedTask} open={!!selectedTask} onOpenChange={(o) => !o && setSelectedTask(null)} />
       <CreateMeetingDialog open={isMeetingOpen} onOpenChange={setIsMeetingOpen} />
+      <CreateTaskDialog
+        open={!!createTaskDay}
+        onOpenChange={(o) => { if (!o) setCreateTaskDay(null); }}
+        defaultValues={createTaskDay ? { title: "", description: `Zaplanowane na ${format(createTaskDay, "d MMMM yyyy", { locale: pl })}` } : undefined}
+      />
     </div>
   );
 }
