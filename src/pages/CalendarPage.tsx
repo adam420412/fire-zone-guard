@@ -490,42 +490,82 @@ export default function CalendarPage() {
               const isSelected = selectedDay && isSameDay(day, selectedDay);
               const isTodayDay = isToday(day);
 
+              const dayKey = format(day, "yyyy-MM-dd");
+              const isDragOver = dragOverDay === dayKey;
               return (
                 <div
                   key={i}
                   onClick={() => setSelectedDay((prev) => (prev && isSameDay(prev, day) ? null : day))}
+                  onDragOver={(e) => {
+                    if (draggedTaskId) {
+                      e.preventDefault();
+                      e.dataTransfer.dropEffect = "move";
+                      if (dragOverDay !== dayKey) setDragOverDay(dayKey);
+                    }
+                  }}
+                  onDragLeave={() => {
+                    if (dragOverDay === dayKey) setDragOverDay(null);
+                  }}
+                  onDrop={(e) => {
+                    e.preventDefault();
+                    handleDropOnDay(day);
+                  }}
                   className={cn(
-                    "min-h-[80px] border-b border-r border-border p-2 cursor-pointer transition-colors",
+                    "group relative min-h-[80px] border-b border-r border-border p-2 cursor-pointer transition-colors",
                     !isCurrentMonth && "opacity-30",
-                    isSelected ? "bg-primary/10" : "hover:bg-secondary/40"
+                    isSelected ? "bg-primary/10" : "hover:bg-secondary/40",
+                    isDragOver && "ring-2 ring-primary ring-inset bg-primary/15"
                   )}
                 >
-                  <div
-                    className={cn(
-                      "flex h-7 w-7 items-center justify-center rounded-full text-sm font-semibold mb-1",
-                      isTodayDay ? "bg-primary text-primary-foreground" : "text-card-foreground",
-                      isSelected && !isTodayDay && "ring-2 ring-primary text-primary"
+                  <div className="flex items-center justify-between mb-1">
+                    <div
+                      className={cn(
+                        "flex h-7 w-7 items-center justify-center rounded-full text-sm font-semibold",
+                        isTodayDay ? "bg-primary text-primary-foreground" : "text-card-foreground",
+                        isSelected && !isTodayDay && "ring-2 ring-primary text-primary"
+                      )}
+                    >
+                      {format(day, "d")}
+                    </div>
+                    {isCurrentMonth && (
+                      <button
+                        onClick={(e) => { e.stopPropagation(); setCreateTaskDay(day); }}
+                        title="Dodaj zadanie na ten dzień"
+                        className="opacity-0 group-hover:opacity-100 transition-opacity h-5 w-5 flex items-center justify-center rounded bg-primary/10 text-primary hover:bg-primary/20"
+                      >
+                        <Plus className="h-3 w-3" />
+                      </button>
                     )}
-                  >
-                    {format(day, "d")}
                   </div>
 
                   <div className="space-y-0.5">
-                    {dayItems.slice(0, 3).map((task) => (
-                      <div
-                        key={task.id}
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          if (task._type === "task") setSelectedTask(task);
-                        }}
-                        className={cn(
-                          "truncate rounded px-1 py-0.5 text-[9px] font-semibold border cursor-pointer hover:opacity-80 transition-opacity",
-                          getTaskColor(task)
-                        )}
-                      >
-                        {task.title}
-                      </div>
-                    ))}
+                    {dayItems.slice(0, 3).map((task) => {
+                      const isTaskItem = task._type === "task";
+                      return (
+                        <div
+                          key={task.id}
+                          draggable={isTaskItem}
+                          onDragStart={(e) => {
+                            if (!isTaskItem) return;
+                            setDraggedTaskId(task.id);
+                            e.dataTransfer.effectAllowed = "move";
+                          }}
+                          onDragEnd={() => { setDraggedTaskId(null); setDragOverDay(null); }}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            if (isTaskItem) setSelectedTask(task);
+                          }}
+                          className={cn(
+                            "truncate rounded px-1 py-0.5 text-[9px] font-semibold border cursor-pointer hover:opacity-80 transition-opacity",
+                            isTaskItem && "active:cursor-grabbing",
+                            draggedTaskId === task.id && "opacity-40",
+                            getTaskColor(task)
+                          )}
+                        >
+                          {task.title}
+                        </div>
+                      );
+                    })}
                     {dayItems.length > 3 && <div className="text-[9px] text-muted-foreground font-medium pl-1">+{dayItems.length - 3} więcej</div>}
                   </div>
                 </div>
