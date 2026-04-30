@@ -138,7 +138,15 @@ export function useDeleteBuilding() {
 // ---- TASKS with joins ----
 export interface TaskWithDetails extends Tables<"tasks"> {
   companyName?: string;
+  companyNip?: string | null;
+  companyAddress?: string | null;
   buildingName?: string;
+  buildingAddress?: string | null;
+  contactName?: string | null;
+  contactPhone?: string | null;
+  contactEmail?: string | null;
+  contactPosition?: string | null;
+  opportunityName?: string | null;
   assigneeName?: string;
   isOverdue?: boolean;
   hasReminders?: boolean;
