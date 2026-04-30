@@ -205,10 +205,25 @@ export default function TaskDetailDialog({ task, open, onOpenChange }: Props) {
             <TabsTrigger value="subtasks" className="flex-1">
               <ListTodo className="mr-1.5 h-3.5 w-3.5" /> Podzadania
             </TabsTrigger>
+            <TabsTrigger value="quotes" className="flex-1">
+              <FileText className="mr-1.5 h-3.5 w-3.5" /> Oferty
+            </TabsTrigger>
             <TabsTrigger value="history" className="flex-1">
               <History className="mr-1.5 h-3.5 w-3.5" /> Historia
             </TabsTrigger>
           </TabsList>
+
+          <TabsContent value="quotes" className="mt-4">
+            <TaskQuotesPanel
+              taskId={task.id}
+              companyId={(task as any).company_id}
+              buildingId={(task as any).building_id}
+              contactId={(task as any).contact_id}
+              opportunityId={(task as any).opportunity_id}
+              taskTitle={task.title}
+            />
+          </TabsContent>
+
 
           {/* SZCZEGÓŁY ZADANIA */}
           <TabsContent value="details" className="space-y-4 mt-4">
