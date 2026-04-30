@@ -18,6 +18,7 @@ import {
   ArrowRight, Loader2, Plus, Trash2, Bell, ListTodo, Wallet, TrendingUp, TrendingDown, Lock, Send, FileText
 } from "lucide-react";
 import TaskQuotesPanel from "@/components/TaskQuotesPanel";
+import TaskCustomerContextPanel from "@/components/TaskCustomerContextPanel";
 
 interface Props {
   task: TaskWithDetails | null;
