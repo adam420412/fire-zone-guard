@@ -769,6 +769,11 @@ export default function FinancePage() {
       <CreateQuoteDialog open={createQuoteOpen} onOpenChange={setCreateQuoteOpen} />
       <AddOpportunityDialog open={addOppOpen} onOpenChange={setAddOppOpen} />
       <QuoteDetailDialog quote={selectedQuote} open={!!selectedQuote} onOpenChange={(o) => { if (!o) setSelectedQuote(null); }} />
+      <ConvertOpportunityDialog
+        open={!!convertOpp}
+        onOpenChange={(o) => { if (!o) setConvertOpp(null); }}
+        opportunity={convertOpp}
+      />
     </div>
   );
 }
