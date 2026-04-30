@@ -36,7 +36,7 @@ export function useCreateCompany() {
       const payload: Record<string, any> = { name: company.name };
       if (company.nip) payload.nip = company.nip;
       if (company.address) payload.address = company.address;
-      const { data, error } = await supabase.from("companies").insert(payload).select().single();
+      const { data, error } = await supabase.from("companies").insert(payload as any).select().single();
       if (error) throw error;
       return data;
     },
