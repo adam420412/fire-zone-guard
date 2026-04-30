@@ -411,12 +411,32 @@ export default function CalendarPage() {
               Zamknięte: {monthClosed}
             </span>
           </div>
-          <Button onClick={() => setIsMeetingOpen(true)} className="fire-gradient">
+          <Button onClick={() => setIsMeetingOpen(true)} variant="outline">
             <Plus className="h-4 w-4 mr-2" />
-            Nowe Spotkanie
+            Spotkanie
+          </Button>
+          <Button onClick={() => setCreateTaskDay(selectedDay ?? new Date())} className="fire-gradient">
+            <Plus className="h-4 w-4 mr-2" />
+            Nowe Zadanie
           </Button>
         </div>
       </div>
+
+      {/* Type filters */}
+      <div className="flex flex-wrap items-center gap-2">
+        <Filter className="h-4 w-4 text-muted-foreground" />
+        <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Pokaż:</span>
+        {ALL_TYPES.map((t) => (
+          <Toggle
+            key={t}
+            size="sm"
+            pressed={enabledTypes.has(t)}
+            onPressedChange={() => toggleType(t)}
+            className="h-7 text-xs data-[state=on]:bg-primary/15 data-[state=on]:text-primary border border-border"
+          >
+            {TYPE_LABELS[t]}
+          </Toggle>
+        ))}
 
       {/* Active filter badge */}
       {activeFilterId !== "all" && (
