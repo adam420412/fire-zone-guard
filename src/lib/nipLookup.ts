@@ -62,7 +62,7 @@ async function fetchKrsDetails(krs: string): Promise<Partial<NipLookupResult> | 
 /** Główna funkcja: pobiera firmę po NIP z Białej Listy + uzupełnia z KRS. */
 export async function fetchCompanyByNIP(nip: string): Promise<NipLookupResult> {
   const v = validateNip(nip);
-  if (!v.ok) throw new Error(v.reason);
+  if (!v.ok) throw new Error((v as { ok: false; reason: string }).reason);
 
   const cleanNip = normalizeNip(nip);
   const today = new Date().toISOString().split("T")[0];
