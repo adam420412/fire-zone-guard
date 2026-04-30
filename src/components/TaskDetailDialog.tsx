@@ -15,8 +15,9 @@ import { cn } from "@/lib/utils";
 import { sendTelegramNotification } from "@/lib/telegramNotify";
 import {
   Building2, User, Clock, Calendar, AlertTriangle, History,
-  ArrowRight, Loader2, Plus, Trash2, Bell, ListTodo, Wallet, TrendingUp, TrendingDown, Lock, Send
+  ArrowRight, Loader2, Plus, Trash2, Bell, ListTodo, Wallet, TrendingUp, TrendingDown, Lock, Send, FileText
 } from "lucide-react";
+import TaskQuotesPanel from "@/components/TaskQuotesPanel";
 
 interface Props {
   task: TaskWithDetails | null;
