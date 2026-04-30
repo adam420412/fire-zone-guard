@@ -1,20 +1,32 @@
 import { useState, useMemo } from "react";
-import { useTasks, useProfiles, useProtocols, useAudits, useMeetings, useCompanies, useBuildings, useCreateMeeting, useAllSubtasks } from "@/hooks/useSupabaseData";
+import { useTasks, useProfiles, useProtocols, useAudits, useMeetings, useCompanies, useBuildings, useCreateMeeting, useAllSubtasks, useUpdateTask } from "@/hooks/useSupabaseData";
 import { useAuth } from "@/hooks/useAuth";
 import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameMonth, isSameDay, isToday, addMonths, subMonths, getDay } from "date-fns";
 import { pl } from "date-fns/locale";
 import { cn } from "@/lib/utils";
-import { ChevronLeft, ChevronRight, Calendar, AlertTriangle, Clock, CheckCircle2, Loader2, Plus, Users, User } from "lucide-react";
+import { ChevronLeft, ChevronRight, Calendar, AlertTriangle, Clock, CheckCircle2, Loader2, Plus, Users, User, Filter } from "lucide-react";
 import { priorityColors } from "@/lib/constants";
 import type { TaskPriority } from "@/lib/constants";
 import TaskDetailDialog from "@/components/TaskDetailDialog";
+import CreateTaskDialog from "@/components/CreateTaskDialog";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
+import { Toggle } from "@/components/ui/toggle";
 import { toast } from "sonner";
+
+type CalendarItemType = "task" | "subtask" | "meeting" | "audit" | "protocol";
+const ALL_TYPES: CalendarItemType[] = ["task", "subtask", "meeting", "audit", "protocol"];
+const TYPE_LABELS: Record<CalendarItemType, string> = {
+  task: "Zadania",
+  subtask: "Podzadania",
+  meeting: "Spotkania",
+  audit: "Audyty",
+  protocol: "Protokoły",
+};
 
 const WEEKDAYS = ["Pon", "Wt", "Śr", "Czw", "Pt", "Sob", "Nie"];
 
@@ -132,10 +144,18 @@ export default function CalendarPage() {
 
   const isAdmin = role === "super_admin" || role === "admin";
 
+  const { mutate: updateTask } = useUpdateTask();
+
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [selectedDay, setSelectedDay] = useState<Date | null>(null);
   const [selectedTask, setSelectedTask] = useState<any>(null);
   const [isMeetingOpen, setIsMeetingOpen] = useState(false);
+  const [createTaskDay, setCreateTaskDay] = useState<Date | null>(null);
+  // Drag&drop state
+  const [draggedTaskId, setDraggedTaskId] = useState<string | null>(null);
+  const [dragOverDay, setDragOverDay] = useState<string | null>(null);
+  // Type filters
+  const [enabledTypes, setEnabledTypes] = useState<Set<CalendarItemType>>(new Set(ALL_TYPES));
   // Employee filter: "all" for admins seeing everything, or a profile id
   const [selectedEmployeeId, setSelectedEmployeeId] = useState<string>("all");
 
@@ -143,6 +163,42 @@ export default function CalendarPage() {
   const activeFilterId = isAdmin ? selectedEmployeeId : profileId;
 
   const allTasks = (tasks ?? []) as any[];
+
+  const toggleType = (t: CalendarItemType) => {
+    setEnabledTypes((prev) => {
+      const next = new Set(prev);
+      if (next.has(t)) next.delete(t); else next.add(t);
+      return next;
+    });
+  };
+
+  // Drag&Drop handlers — moves task deadline to the dropped day
+  const handleDropOnDay = (day: Date) => {
+    if (!draggedTaskId) return;
+    const task = allTasks.find((t) => t.id === draggedTaskId);
+    if (!task) {
+      setDraggedTaskId(null);
+      setDragOverDay(null);
+      return;
+    }
+    // Preserve original time-of-day if any, otherwise default 09:00
+    const newDate = new Date(day);
+    if (task.deadline) {
+      const old = new Date(task.deadline);
+      newDate.setHours(old.getHours(), old.getMinutes(), 0, 0);
+    } else {
+      newDate.setHours(9, 0, 0, 0);
+    }
+    updateTask(
+      { id: draggedTaskId, deadline: newDate.toISOString() },
+      {
+        onSuccess: () => toast.success(`Termin przeniesiony na ${format(newDate, "d MMM, HH:mm", { locale: pl })}`),
+        onError: (err: any) => toast.error(err.message ?? "Błąd zmiany terminu"),
+      }
+    );
+    setDraggedTaskId(null);
+    setDragOverDay(null);
+  };
 
   // Filter items by employee (assignee)
   const filterByEmployee = (items: any[], assigneeField: string = "assignee_id") => {
@@ -241,7 +297,8 @@ export default function CalendarPage() {
         assigneeName: s.assigneeName,
       }));
 
-    return [...dayTasks, ...daySubtasks, ...dayProtocols, ...dayAudits, ...dayMeetings];
+    const all = [...dayTasks, ...daySubtasks, ...dayProtocols, ...dayAudits, ...dayMeetings];
+    return all.filter((it: any) => enabledTypes.has(it._type as CalendarItemType));
   };
 
   // Calendar grid
@@ -354,11 +411,37 @@ export default function CalendarPage() {
               Zamknięte: {monthClosed}
             </span>
           </div>
-          <Button onClick={() => setIsMeetingOpen(true)} className="fire-gradient">
+          <Button onClick={() => setIsMeetingOpen(true)} variant="outline">
             <Plus className="h-4 w-4 mr-2" />
-            Nowe Spotkanie
+            Spotkanie
+          </Button>
+          <Button onClick={() => setCreateTaskDay(selectedDay ?? new Date())} className="fire-gradient">
+            <Plus className="h-4 w-4 mr-2" />
+            Nowe Zadanie
           </Button>
         </div>
+      </div>
+
+      {/* Type filters */}
+      <div className="flex flex-wrap items-center gap-2">
+        <Filter className="h-4 w-4 text-muted-foreground" />
+        <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Pokaż:</span>
+        {ALL_TYPES.map((t) => (
+          <Toggle
+            key={t}
+            size="sm"
+            pressed={enabledTypes.has(t)}
+            onPressedChange={() => toggleType(t)}
+            className="h-7 text-xs data-[state=on]:bg-primary/15 data-[state=on]:text-primary border border-border"
+          >
+            {TYPE_LABELS[t]}
+          </Toggle>
+        ))}
+        {enabledTypes.size < ALL_TYPES.length && (
+          <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={() => setEnabledTypes(new Set(ALL_TYPES))}>
+            Pokaż wszystkie
+          </Button>
+        )}
       </div>
 
       {/* Active filter badge */}
@@ -407,42 +490,82 @@ export default function CalendarPage() {
               const isSelected = selectedDay && isSameDay(day, selectedDay);
               const isTodayDay = isToday(day);
 
+              const dayKey = format(day, "yyyy-MM-dd");
+              const isDragOver = dragOverDay === dayKey;
               return (
                 <div
                   key={i}
                   onClick={() => setSelectedDay((prev) => (prev && isSameDay(prev, day) ? null : day))}
+                  onDragOver={(e) => {
+                    if (draggedTaskId) {
+                      e.preventDefault();
+                      e.dataTransfer.dropEffect = "move";
+                      if (dragOverDay !== dayKey) setDragOverDay(dayKey);
+                    }
+                  }}
+                  onDragLeave={() => {
+                    if (dragOverDay === dayKey) setDragOverDay(null);
+                  }}
+                  onDrop={(e) => {
+                    e.preventDefault();
+                    handleDropOnDay(day);
+                  }}
                   className={cn(
-                    "min-h-[80px] border-b border-r border-border p-2 cursor-pointer transition-colors",
+                    "group relative min-h-[80px] border-b border-r border-border p-2 cursor-pointer transition-colors",
                     !isCurrentMonth && "opacity-30",
-                    isSelected ? "bg-primary/10" : "hover:bg-secondary/40"
+                    isSelected ? "bg-primary/10" : "hover:bg-secondary/40",
+                    isDragOver && "ring-2 ring-primary ring-inset bg-primary/15"
                   )}
                 >
-                  <div
-                    className={cn(
-                      "flex h-7 w-7 items-center justify-center rounded-full text-sm font-semibold mb-1",
-                      isTodayDay ? "bg-primary text-primary-foreground" : "text-card-foreground",
-                      isSelected && !isTodayDay && "ring-2 ring-primary text-primary"
+                  <div className="flex items-center justify-between mb-1">
+                    <div
+                      className={cn(
+                        "flex h-7 w-7 items-center justify-center rounded-full text-sm font-semibold",
+                        isTodayDay ? "bg-primary text-primary-foreground" : "text-card-foreground",
+                        isSelected && !isTodayDay && "ring-2 ring-primary text-primary"
+                      )}
+                    >
+                      {format(day, "d")}
+                    </div>
+                    {isCurrentMonth && (
+                      <button
+                        onClick={(e) => { e.stopPropagation(); setCreateTaskDay(day); }}
+                        title="Dodaj zadanie na ten dzień"
+                        className="opacity-0 group-hover:opacity-100 transition-opacity h-5 w-5 flex items-center justify-center rounded bg-primary/10 text-primary hover:bg-primary/20"
+                      >
+                        <Plus className="h-3 w-3" />
+                      </button>
                     )}
-                  >
-                    {format(day, "d")}
                   </div>
 
                   <div className="space-y-0.5">
-                    {dayItems.slice(0, 3).map((task) => (
-                      <div
-                        key={task.id}
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          if (task._type === "task") setSelectedTask(task);
-                        }}
-                        className={cn(
-                          "truncate rounded px-1 py-0.5 text-[9px] font-semibold border cursor-pointer hover:opacity-80 transition-opacity",
-                          getTaskColor(task)
-                        )}
-                      >
-                        {task.title}
-                      </div>
-                    ))}
+                    {dayItems.slice(0, 3).map((task) => {
+                      const isTaskItem = task._type === "task";
+                      return (
+                        <div
+                          key={task.id}
+                          draggable={isTaskItem}
+                          onDragStart={(e) => {
+                            if (!isTaskItem) return;
+                            setDraggedTaskId(task.id);
+                            e.dataTransfer.effectAllowed = "move";
+                          }}
+                          onDragEnd={() => { setDraggedTaskId(null); setDragOverDay(null); }}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            if (isTaskItem) setSelectedTask(task);
+                          }}
+                          className={cn(
+                            "truncate rounded px-1 py-0.5 text-[9px] font-semibold border cursor-pointer hover:opacity-80 transition-opacity",
+                            isTaskItem && "active:cursor-grabbing",
+                            draggedTaskId === task.id && "opacity-40",
+                            getTaskColor(task)
+                          )}
+                        >
+                          {task.title}
+                        </div>
+                      );
+                    })}
                     {dayItems.length > 3 && <div className="text-[9px] text-muted-foreground font-medium pl-1">+{dayItems.length - 3} więcej</div>}
                   </div>
                 </div>
@@ -523,6 +646,14 @@ export default function CalendarPage() {
 
       <TaskDetailDialog task={selectedTask} open={!!selectedTask} onOpenChange={(o) => !o && setSelectedTask(null)} />
       <CreateMeetingDialog open={isMeetingOpen} onOpenChange={setIsMeetingOpen} />
+      <CreateTaskDialog
+        open={!!createTaskDay}
+        onOpenChange={(o) => { if (!o) setCreateTaskDay(null); }}
+        defaultValues={createTaskDay ? {
+          deadline: format(new Date(createTaskDay.getFullYear(), createTaskDay.getMonth(), createTaskDay.getDate(), 9, 0), "yyyy-MM-dd'T'HH:mm"),
+          description: `Zaplanowane na ${format(createTaskDay, "d MMMM yyyy", { locale: pl })}`,
+        } : undefined}
+      />
     </div>
   );
 }
