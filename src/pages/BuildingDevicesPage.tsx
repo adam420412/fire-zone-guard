@@ -420,8 +420,8 @@ export default function BuildingDevicesPage() {
                               {list.length > 0 && (
                                 <ul className="text-[11px] text-muted-foreground pl-3 space-y-0.5">
                                   {list.slice(0, 5).map((d: any) => (
-                                    <li key={d.id} className="flex items-center justify-between">
-                                      <span className="truncate">
+                                    <li key={d.id} className="flex items-center justify-between gap-2">
+                                      <span className="truncate flex-1">
                                         {d.name}
                                         {d.location_in_building ? ` · ${d.location_in_building}` : ""}
                                       </span>
@@ -437,6 +437,16 @@ export default function BuildingDevicesPage() {
                                           {d.next_service_date}
                                         </span>
                                       )}
+                                      <ReportDeviceFaultButton
+                                        device={{
+                                          id: d.id,
+                                          name: d.name,
+                                          building_id: d.building_id ?? id ?? "",
+                                          location_in_building: d.location_in_building,
+                                          serial_number: d.serial_number,
+                                          model: d.model,
+                                        }}
+                                      />
                                     </li>
                                   ))}
                                   {list.length > 5 && (
