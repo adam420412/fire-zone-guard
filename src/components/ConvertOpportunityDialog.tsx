@@ -63,6 +63,20 @@ export default function ConvertOpportunityDialog({ open, onOpenChange, opportuni
   const [searching, setSearching] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [nipStatus, setNipStatus] = useState<"idle" | "ok" | "error">("idle");
+  const [nipError, setNipError] = useState<string | null>(null);
+  const [companyMeta, setCompanyMeta] = useState<NipLookupResult | null>(null);
+
+  // Walidacja NIP na żywo (po wpisaniu 10 cyfr)
+  const nipFormatHint = useMemo(() => {
+    const clean = normalizeNip(step1.nip);
+    if (!clean) return null;
+    if (clean.length < 10) return `Brakuje ${10 - clean.length} cyfr (NIP ma 10 cyfr).`;
+    if (clean.length > 10) return `NIP jest za długi o ${clean.length - 10} cyfr.`;
+    const v = validateNip(clean);
+    return v.ok ? null : (v as { ok: false; reason: string }).reason;
+  }, [step1.nip]);
+
+  const nipReady = useMemo(() => validateNip(step1.nip).ok, [step1.nip]);
 
   // Reset / prefill on open
   useEffect(() => {
@@ -78,11 +92,18 @@ export default function ConvertOpportunityDialog({ open, onOpenChange, opportuni
     setStep4({ template: "wizja", deadline: todayPlus(7), assignee_id: "", priority: "średni" });
     setSameAsCompany(true);
     setNipStatus("idle");
+    setNipError(null);
+    setCompanyMeta(null);
   }, [open, opportunity?.id]);
 
   const handleNipLookup = async () => {
-    if (!step1.nip.trim()) {
-      toast.error("Wpisz NIP");
+    setNipError(null);
+    const v = validateNip(step1.nip);
+    if (!v.ok) {
+      const msg = (v as { ok: false; reason: string }).reason;
+      setNipStatus("error");
+      setNipError(msg);
+      toast.error(msg);
       return;
     }
     setSearching(true);
@@ -90,11 +111,17 @@ export default function ConvertOpportunityDialog({ open, onOpenChange, opportuni
     try {
       const r = await fetchCompanyByNIP(step1.nip);
       setStep1({ name: r.name, nip: r.nip, address: r.address });
+      setCompanyMeta(r);
       setNipStatus("ok");
-      toast.success("Znaleziono firmę w Białej Liście");
+      toast.success(
+        r.source === "biala-lista+krs"
+          ? "Znaleziono w Białej Liście + KRS"
+          : "Znaleziono firmę w Białej Liście",
+      );
     } catch (e: any) {
       setNipStatus("error");
-      toast.error(e.message || "Nie znaleziono firmy");
+      setNipError(e?.message || "Nie znaleziono firmy");
+      toast.error(e?.message || "Nie znaleziono firmy");
     } finally {
       setSearching(false);
     }
