@@ -258,12 +258,33 @@ export default function ConvertOpportunityDialog({ open, onOpenChange, opportuni
                   />
                 </div>
                 <div>
-                  <Label className={labelCls}>NIP (lookup Biała Lista)</Label>
+                  <Label className={labelCls}>NIP (Biała Lista + KRS)</Label>
                   <div className="relative flex">
                     <input
-                      className={inputCls + " font-mono pr-28"}
+                      inputMode="numeric"
+                      maxLength={13}
+                      aria-invalid={!!nipFormatHint}
+                      className={
+                        inputCls +
+                        " font-mono pr-28 " +
+                        (nipFormatHint
+                          ? "border-destructive focus:border-destructive"
+                          : nipStatus === "ok"
+                            ? "border-emerald-500/60"
+                            : "")
+                      }
                       value={step1.nip}
-                      onChange={(e) => setStep1((s) => ({ ...s, nip: e.target.value }))}
+                      onChange={(e) => {
+                        setStep1((s) => ({ ...s, nip: e.target.value }));
+                        setNipStatus("idle");
+                        setNipError(null);
+                      }}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") {
+                          e.preventDefault();
+                          handleNipLookup();
+                        }
+                      }}
                       placeholder="np. 5213842910"
                     />
                     <Button
@@ -271,22 +292,50 @@ export default function ConvertOpportunityDialog({ open, onOpenChange, opportuni
                       size="sm"
                       variant="secondary"
                       onClick={handleNipLookup}
-                      disabled={searching || !step1.nip.trim()}
+                      disabled={searching || !nipReady}
                       className="absolute right-1 top-1/2 -translate-y-1/2 h-9 text-[10px] uppercase font-bold tracking-wider"
                     >
                       {searching ? <Loader2 className="h-3 w-3 animate-spin" /> : <Search className="h-3 w-3 mr-1" />}
                       Lookup
                     </Button>
                   </div>
-                  {nipStatus === "ok" && (
-                    <span className="inline-block mt-1 text-[9px] font-bold text-emerald-500 bg-emerald-500/10 px-1.5 py-0.5 rounded-sm">
-                      BIAŁA LISTA OK
-                    </span>
+
+                  {/* Walidacja na żywo */}
+                  {nipFormatHint && (
+                    <p className="mt-1.5 text-[11px] text-destructive flex items-center gap-1.5">
+                      <AlertTriangle className="h-3 w-3" />
+                      {nipFormatHint}
+                    </p>
                   )}
-                  {nipStatus === "error" && (
-                    <span className="inline-block mt-1 text-[9px] font-bold text-destructive bg-destructive/10 px-1.5 py-0.5 rounded-sm">
-                      NIE ZNALEZIONO
-                    </span>
+
+                  {/* Status lookupu */}
+                  {!nipFormatHint && nipStatus === "ok" && (
+                    <div className="mt-1.5 flex flex-wrap gap-1">
+                      <span className="text-[9px] font-bold text-emerald-500 bg-emerald-500/10 px-1.5 py-0.5 rounded-sm uppercase">
+                        Biała Lista OK
+                      </span>
+                      {companyMeta?.krs && (
+                        <span className="text-[9px] font-bold text-primary bg-primary/10 px-1.5 py-0.5 rounded-sm uppercase font-mono">
+                          KRS {companyMeta.krs}
+                        </span>
+                      )}
+                      {companyMeta?.regon && (
+                        <span className="text-[9px] font-bold text-muted-foreground bg-secondary px-1.5 py-0.5 rounded-sm uppercase font-mono">
+                          REGON {companyMeta.regon}
+                        </span>
+                      )}
+                      {companyMeta?.legalForm && (
+                        <span className="text-[9px] font-bold text-muted-foreground bg-secondary px-1.5 py-0.5 rounded-sm uppercase">
+                          {companyMeta.legalForm}
+                        </span>
+                      )}
+                    </div>
+                  )}
+                  {!nipFormatHint && nipStatus === "error" && nipError && (
+                    <p className="mt-1.5 text-[11px] text-destructive flex items-center gap-1.5">
+                      <AlertTriangle className="h-3 w-3" />
+                      {nipError}
+                    </p>
                   )}
                 </div>
                 <div>
