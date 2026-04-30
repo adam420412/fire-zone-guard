@@ -1284,8 +1284,10 @@ export type Database = {
       }
       quotes: {
         Row: {
+          accepted_at: string | null
           approved_at: string | null
           approved_by: string | null
+          building_id: string | null
           company_id: string
           contact_id: string | null
           created_at: string
@@ -1293,14 +1295,20 @@ export type Database = {
           discount_percent: number | null
           id: string
           notes: string | null
+          opportunity_id: string | null
           quote_number: string
+          rejected_at: string | null
+          sent_at: string | null
           status: string
+          task_id: string | null
           total: number
           valid_until: string | null
         }
         Insert: {
+          accepted_at?: string | null
           approved_at?: string | null
           approved_by?: string | null
+          building_id?: string | null
           company_id: string
           contact_id?: string | null
           created_at?: string
@@ -1308,14 +1316,20 @@ export type Database = {
           discount_percent?: number | null
           id?: string
           notes?: string | null
+          opportunity_id?: string | null
           quote_number?: string
+          rejected_at?: string | null
+          sent_at?: string | null
           status?: string
+          task_id?: string | null
           total?: number
           valid_until?: string | null
         }
         Update: {
+          accepted_at?: string | null
           approved_at?: string | null
           approved_by?: string | null
+          building_id?: string | null
           company_id?: string
           contact_id?: string | null
           created_at?: string
@@ -1323,12 +1337,30 @@ export type Database = {
           discount_percent?: number | null
           id?: string
           notes?: string | null
+          opportunity_id?: string | null
           quote_number?: string
+          rejected_at?: string | null
+          sent_at?: string | null
           status?: string
+          task_id?: string | null
           total?: number
           valid_until?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "quotes_building_id_fkey"
+            columns: ["building_id"]
+            isOneToOne: false
+            referencedRelation: "building_cost_summary"
+            referencedColumns: ["building_id"]
+          },
+          {
+            foreignKeyName: "quotes_building_id_fkey"
+            columns: ["building_id"]
+            isOneToOne: false
+            referencedRelation: "buildings"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "quotes_company_id_fkey"
             columns: ["company_id"]
@@ -1341,6 +1373,20 @@ export type Database = {
             columns: ["contact_id"]
             isOneToOne: false
             referencedRelation: "contacts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "quotes_opportunity_id_fkey"
+            columns: ["opportunity_id"]
+            isOneToOne: false
+            referencedRelation: "sales_opportunities"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "quotes_task_id_fkey"
+            columns: ["task_id"]
+            isOneToOne: false
+            referencedRelation: "tasks"
             referencedColumns: ["id"]
           },
         ]
