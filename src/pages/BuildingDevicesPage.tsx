@@ -24,6 +24,7 @@ import {
   useBulkAddDevices,
 } from "@/hooks/useBuildingData";
 import { useUpdateBuilding } from "@/hooks/useSupabaseData";
+import ReportDeviceFaultButton from "@/components/ReportDeviceFaultButton";
 import {
   BUILDING_CLASSES,
   DEVICE_CATEGORIES,
