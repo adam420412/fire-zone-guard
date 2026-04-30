@@ -7,9 +7,9 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useCreateCompany, useCreateBuilding, useCreateTask, useProfiles } from "@/hooks/useSupabaseData";
 import { useCreateContact, useUpdateOpportunity } from "@/hooks/useCrmData";
-import { fetchCompanyByNIP } from "@/lib/nipLookup";
+import { fetchCompanyByNIP, normalizeNip, validateNip, type NipLookupResult } from "@/lib/nipLookup";
 import { toast } from "sonner";
-import { Loader2, Search, ArrowRight, CheckCircle2 } from "lucide-react";
+import { Loader2, Search, ArrowRight, CheckCircle2, AlertTriangle } from "lucide-react";
 
 interface Opportunity {
   id: string;
@@ -63,6 +63,20 @@ export default function ConvertOpportunityDialog({ open, onOpenChange, opportuni
   const [searching, setSearching] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [nipStatus, setNipStatus] = useState<"idle" | "ok" | "error">("idle");
+  const [nipError, setNipError] = useState<string | null>(null);
+  const [companyMeta, setCompanyMeta] = useState<NipLookupResult | null>(null);
+
+  // Walidacja NIP na żywo (po wpisaniu 10 cyfr)
+  const nipFormatHint = useMemo(() => {
+    const clean = normalizeNip(step1.nip);
+    if (!clean) return null;
+    if (clean.length < 10) return `Brakuje ${10 - clean.length} cyfr (NIP ma 10 cyfr).`;
+    if (clean.length > 10) return `NIP jest za długi o ${clean.length - 10} cyfr.`;
+    const v = validateNip(clean);
+    return v.ok ? null : (v as { ok: false; reason: string }).reason;
+  }, [step1.nip]);
+
+  const nipReady = useMemo(() => validateNip(step1.nip).ok, [step1.nip]);
 
   // Reset / prefill on open
   useEffect(() => {
@@ -78,11 +92,18 @@ export default function ConvertOpportunityDialog({ open, onOpenChange, opportuni
     setStep4({ template: "wizja", deadline: todayPlus(7), assignee_id: "", priority: "średni" });
     setSameAsCompany(true);
     setNipStatus("idle");
+    setNipError(null);
+    setCompanyMeta(null);
   }, [open, opportunity?.id]);
 
   const handleNipLookup = async () => {
-    if (!step1.nip.trim()) {
-      toast.error("Wpisz NIP");
+    setNipError(null);
+    const v = validateNip(step1.nip);
+    if (!v.ok) {
+      const msg = (v as { ok: false; reason: string }).reason;
+      setNipStatus("error");
+      setNipError(msg);
+      toast.error(msg);
       return;
     }
     setSearching(true);
@@ -90,11 +111,17 @@ export default function ConvertOpportunityDialog({ open, onOpenChange, opportuni
     try {
       const r = await fetchCompanyByNIP(step1.nip);
       setStep1({ name: r.name, nip: r.nip, address: r.address });
+      setCompanyMeta(r);
       setNipStatus("ok");
-      toast.success("Znaleziono firmę w Białej Liście");
+      toast.success(
+        r.source === "biala-lista+krs"
+          ? "Znaleziono w Białej Liście + KRS"
+          : "Znaleziono firmę w Białej Liście",
+      );
     } catch (e: any) {
       setNipStatus("error");
-      toast.error(e.message || "Nie znaleziono firmy");
+      setNipError(e?.message || "Nie znaleziono firmy");
+      toast.error(e?.message || "Nie znaleziono firmy");
     } finally {
       setSearching(false);
     }
@@ -231,12 +258,33 @@ export default function ConvertOpportunityDialog({ open, onOpenChange, opportuni
                   />
                 </div>
                 <div>
-                  <Label className={labelCls}>NIP (lookup Biała Lista)</Label>
+                  <Label className={labelCls}>NIP (Biała Lista + KRS)</Label>
                   <div className="relative flex">
                     <input
-                      className={inputCls + " font-mono pr-28"}
+                      inputMode="numeric"
+                      maxLength={13}
+                      aria-invalid={!!nipFormatHint}
+                      className={
+                        inputCls +
+                        " font-mono pr-28 " +
+                        (nipFormatHint
+                          ? "border-destructive focus:border-destructive"
+                          : nipStatus === "ok"
+                            ? "border-emerald-500/60"
+                            : "")
+                      }
                       value={step1.nip}
-                      onChange={(e) => setStep1((s) => ({ ...s, nip: e.target.value }))}
+                      onChange={(e) => {
+                        setStep1((s) => ({ ...s, nip: e.target.value }));
+                        setNipStatus("idle");
+                        setNipError(null);
+                      }}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") {
+                          e.preventDefault();
+                          handleNipLookup();
+                        }
+                      }}
                       placeholder="np. 5213842910"
                     />
                     <Button
@@ -244,22 +292,50 @@ export default function ConvertOpportunityDialog({ open, onOpenChange, opportuni
                       size="sm"
                       variant="secondary"
                       onClick={handleNipLookup}
-                      disabled={searching || !step1.nip.trim()}
+                      disabled={searching || !nipReady}
                       className="absolute right-1 top-1/2 -translate-y-1/2 h-9 text-[10px] uppercase font-bold tracking-wider"
                     >
                       {searching ? <Loader2 className="h-3 w-3 animate-spin" /> : <Search className="h-3 w-3 mr-1" />}
                       Lookup
                     </Button>
                   </div>
-                  {nipStatus === "ok" && (
-                    <span className="inline-block mt-1 text-[9px] font-bold text-emerald-500 bg-emerald-500/10 px-1.5 py-0.5 rounded-sm">
-                      BIAŁA LISTA OK
-                    </span>
+
+                  {/* Walidacja na żywo */}
+                  {nipFormatHint && (
+                    <p className="mt-1.5 text-[11px] text-destructive flex items-center gap-1.5">
+                      <AlertTriangle className="h-3 w-3" />
+                      {nipFormatHint}
+                    </p>
                   )}
-                  {nipStatus === "error" && (
-                    <span className="inline-block mt-1 text-[9px] font-bold text-destructive bg-destructive/10 px-1.5 py-0.5 rounded-sm">
-                      NIE ZNALEZIONO
-                    </span>
+
+                  {/* Status lookupu */}
+                  {!nipFormatHint && nipStatus === "ok" && (
+                    <div className="mt-1.5 flex flex-wrap gap-1">
+                      <span className="text-[9px] font-bold text-emerald-500 bg-emerald-500/10 px-1.5 py-0.5 rounded-sm uppercase">
+                        Biała Lista OK
+                      </span>
+                      {companyMeta?.krs && (
+                        <span className="text-[9px] font-bold text-primary bg-primary/10 px-1.5 py-0.5 rounded-sm uppercase font-mono">
+                          KRS {companyMeta.krs}
+                        </span>
+                      )}
+                      {companyMeta?.regon && (
+                        <span className="text-[9px] font-bold text-muted-foreground bg-secondary px-1.5 py-0.5 rounded-sm uppercase font-mono">
+                          REGON {companyMeta.regon}
+                        </span>
+                      )}
+                      {companyMeta?.legalForm && (
+                        <span className="text-[9px] font-bold text-muted-foreground bg-secondary px-1.5 py-0.5 rounded-sm uppercase">
+                          {companyMeta.legalForm}
+                        </span>
+                      )}
+                    </div>
+                  )}
+                  {!nipFormatHint && nipStatus === "error" && nipError && (
+                    <p className="mt-1.5 text-[11px] text-destructive flex items-center gap-1.5">
+                      <AlertTriangle className="h-3 w-3" />
+                      {nipError}
+                    </p>
                   )}
                 </div>
                 <div>

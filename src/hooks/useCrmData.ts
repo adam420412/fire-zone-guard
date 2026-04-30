@@ -82,6 +82,27 @@ export function useQuotes(companyId?: string) {
   });
 }
 
+// Oferty powiązane z konkretnym zadaniem
+export function useTaskQuotes(taskId?: string) {
+  return useQuery({
+    queryKey: ["quotes", "task", taskId],
+    enabled: !!taskId,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("quotes")
+        .select("*, companies(name), contacts(name)")
+        .eq("task_id", taskId!)
+        .order("created_at", { ascending: false });
+      if (error) throw error;
+      return (data ?? []).map((q: any) => ({
+        ...q,
+        company_name: q.companies?.name ?? "",
+        contact_name: q.contacts?.name ?? "",
+      }));
+    },
+  });
+}
+
 export function useCreateQuote() {
   const qc = useQueryClient();
   return useMutation({
