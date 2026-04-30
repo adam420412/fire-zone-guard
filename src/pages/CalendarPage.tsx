@@ -1,20 +1,32 @@
 import { useState, useMemo } from "react";
-import { useTasks, useProfiles, useProtocols, useAudits, useMeetings, useCompanies, useBuildings, useCreateMeeting, useAllSubtasks } from "@/hooks/useSupabaseData";
+import { useTasks, useProfiles, useProtocols, useAudits, useMeetings, useCompanies, useBuildings, useCreateMeeting, useAllSubtasks, useUpdateTask } from "@/hooks/useSupabaseData";
 import { useAuth } from "@/hooks/useAuth";
 import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameMonth, isSameDay, isToday, addMonths, subMonths, getDay } from "date-fns";
 import { pl } from "date-fns/locale";
 import { cn } from "@/lib/utils";
-import { ChevronLeft, ChevronRight, Calendar, AlertTriangle, Clock, CheckCircle2, Loader2, Plus, Users, User } from "lucide-react";
+import { ChevronLeft, ChevronRight, Calendar, AlertTriangle, Clock, CheckCircle2, Loader2, Plus, Users, User, Filter } from "lucide-react";
 import { priorityColors } from "@/lib/constants";
 import type { TaskPriority } from "@/lib/constants";
 import TaskDetailDialog from "@/components/TaskDetailDialog";
+import CreateTaskDialog from "@/components/CreateTaskDialog";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
+import { Toggle } from "@/components/ui/toggle";
 import { toast } from "sonner";
+
+type CalendarItemType = "task" | "subtask" | "meeting" | "audit" | "protocol";
+const ALL_TYPES: CalendarItemType[] = ["task", "subtask", "meeting", "audit", "protocol"];
+const TYPE_LABELS: Record<CalendarItemType, string> = {
+  task: "Zadania",
+  subtask: "Podzadania",
+  meeting: "Spotkania",
+  audit: "Audyty",
+  protocol: "Protokoły",
+};
 
 const WEEKDAYS = ["Pon", "Wt", "Śr", "Czw", "Pt", "Sob", "Nie"];
 
