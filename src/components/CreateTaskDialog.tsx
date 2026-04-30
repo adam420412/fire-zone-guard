@@ -12,6 +12,7 @@ interface DefaultValues {
   description?: string;
   type?: string;
   priority?: string;
+  deadline?: string; // ISO string or yyyy-MM-ddTHH:mm
 }
 
 interface Props {
@@ -26,6 +27,12 @@ export default function CreateTaskDialog({ open, onOpenChange, defaultValues }: 
   const createTask = useCreateTask();
   const { toast } = useToast();
 
+  const initialDeadline = defaultValues?.deadline
+    ? defaultValues.deadline.length > 16
+      ? defaultValues.deadline.slice(0, 16)
+      : defaultValues.deadline
+    : "";
+
   const [form, setForm] = useState({
     title: defaultValues?.title || "",
     description: defaultValues?.description || "",
@@ -34,7 +41,7 @@ export default function CreateTaskDialog({ open, onOpenChange, defaultValues }: 
     building_id: defaultValues?.buildingId || "",
     assignee_id: "",
     sla_hours: 72,
-    deadline: "",
+    deadline: initialDeadline,
   });
 
   const [errors, setErrors] = useState<Record<string, string>>({});
