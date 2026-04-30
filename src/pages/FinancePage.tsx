@@ -616,9 +616,9 @@ export default function FinancePage() {
                               <ArrowRight className="mr-1 h-3 w-3" /> {OPP_STATUS_MAP[nextStatus]?.label}
                             </Button>
                           )}
-                          {opp.status === "oferta" && !opp.company_id && (
-                            <Button size="sm" variant="default" className="h-7 text-xs" onClick={() => handleConvertToCompany(opp)}>
-                              <Building2 className="mr-1 h-3 w-3" /> Utwórz firmę + zlecenie
+                          {!opp.company_id && opp.status !== "archiwum" && (
+                            <Button size="sm" variant="default" className="h-7 text-xs fire-gradient" onClick={() => handleConvertToCompany(opp)}>
+                              <Building2 className="mr-1 h-3 w-3" /> Konwertuj na klienta
                             </Button>
                           )}
                           {opp.company_id && (
