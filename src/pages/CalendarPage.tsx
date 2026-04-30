@@ -649,7 +649,10 @@ export default function CalendarPage() {
       <CreateTaskDialog
         open={!!createTaskDay}
         onOpenChange={(o) => { if (!o) setCreateTaskDay(null); }}
-        defaultValues={createTaskDay ? { title: "", description: `Zaplanowane na ${format(createTaskDay, "d MMMM yyyy", { locale: pl })}` } : undefined}
+        defaultValues={createTaskDay ? {
+          deadline: format(new Date(createTaskDay.getFullYear(), createTaskDay.getMonth(), createTaskDay.getDate(), 9, 0), "yyyy-MM-dd'T'HH:mm"),
+          description: `Zaplanowane na ${format(createTaskDay, "d MMMM yyyy", { locale: pl })}`,
+        } : undefined}
       />
     </div>
   );
