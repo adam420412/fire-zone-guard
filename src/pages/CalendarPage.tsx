@@ -144,10 +144,18 @@ export default function CalendarPage() {
 
   const isAdmin = role === "super_admin" || role === "admin";
 
+  const { mutate: updateTask } = useUpdateTask();
+
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [selectedDay, setSelectedDay] = useState<Date | null>(null);
   const [selectedTask, setSelectedTask] = useState<any>(null);
   const [isMeetingOpen, setIsMeetingOpen] = useState(false);
+  const [createTaskDay, setCreateTaskDay] = useState<Date | null>(null);
+  // Drag&drop state
+  const [draggedTaskId, setDraggedTaskId] = useState<string | null>(null);
+  const [dragOverDay, setDragOverDay] = useState<string | null>(null);
+  // Type filters
+  const [enabledTypes, setEnabledTypes] = useState<Set<CalendarItemType>>(new Set(ALL_TYPES));
   // Employee filter: "all" for admins seeing everything, or a profile id
   const [selectedEmployeeId, setSelectedEmployeeId] = useState<string>("all");
 
@@ -155,6 +163,42 @@ export default function CalendarPage() {
   const activeFilterId = isAdmin ? selectedEmployeeId : profileId;
 
   const allTasks = (tasks ?? []) as any[];
+
+  const toggleType = (t: CalendarItemType) => {
+    setEnabledTypes((prev) => {
+      const next = new Set(prev);
+      if (next.has(t)) next.delete(t); else next.add(t);
+      return next;
+    });
+  };
+
+  // Drag&Drop handlers — moves task deadline to the dropped day
+  const handleDropOnDay = (day: Date) => {
+    if (!draggedTaskId) return;
+    const task = allTasks.find((t) => t.id === draggedTaskId);
+    if (!task) {
+      setDraggedTaskId(null);
+      setDragOverDay(null);
+      return;
+    }
+    // Preserve original time-of-day if any, otherwise default 09:00
+    const newDate = new Date(day);
+    if (task.deadline) {
+      const old = new Date(task.deadline);
+      newDate.setHours(old.getHours(), old.getMinutes(), 0, 0);
+    } else {
+      newDate.setHours(9, 0, 0, 0);
+    }
+    updateTask(
+      { id: draggedTaskId, deadline: newDate.toISOString() },
+      {
+        onSuccess: () => toast.success(`Termin przeniesiony na ${format(newDate, "d MMM, HH:mm", { locale: pl })}`),
+        onError: (err: any) => toast.error(err.message ?? "Błąd zmiany terminu"),
+      }
+    );
+    setDraggedTaskId(null);
+    setDragOverDay(null);
+  };
 
   // Filter items by employee (assignee)
   const filterByEmployee = (items: any[], assigneeField: string = "assignee_id") => {
