@@ -297,7 +297,8 @@ export default function CalendarPage() {
         assigneeName: s.assigneeName,
       }));
 
-    return [...dayTasks, ...daySubtasks, ...dayProtocols, ...dayAudits, ...dayMeetings];
+    const all = [...dayTasks, ...daySubtasks, ...dayProtocols, ...dayAudits, ...dayMeetings];
+    return all.filter((it: any) => enabledTypes.has(it._type as CalendarItemType));
   };
 
   // Calendar grid
