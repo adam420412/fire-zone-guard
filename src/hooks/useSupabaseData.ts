@@ -160,7 +160,9 @@ export function useTasks() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("tasks")
-        .select("*, companies(name), buildings(name), profiles!tasks_assignee_id_fkey(name)")
+        .select(
+          "*, companies(name, nip, address), buildings(name, address), profiles!tasks_assignee_id_fkey(name), contacts(name, phone, email, position), sales_opportunities(company_name)"
+        )
         .order("created_at", { ascending: false });
       if (error) throw error;
 
@@ -183,7 +185,15 @@ export function useTasks() {
       return (data ?? []).map((t: any) => ({
         ...t,
         companyName: t.companies?.name ?? "",
+        companyNip: t.companies?.nip ?? null,
+        companyAddress: t.companies?.address ?? null,
         buildingName: t.buildings?.name ?? "",
+        buildingAddress: t.buildings?.address ?? null,
+        contactName: t.contacts?.name ?? null,
+        contactPhone: t.contacts?.phone ?? null,
+        contactEmail: t.contacts?.email ?? null,
+        contactPosition: t.contacts?.position ?? null,
+        opportunityName: t.sales_opportunities?.company_name ?? null,
         assigneeName: t.profiles?.name ?? "Nieprzypisany",
         isOverdue: t.deadline && new Date(t.deadline) < new Date() && t.status !== "Zamknięte",
         hasReminders: (reminderCounts[t.id] ?? 0) > 0,
