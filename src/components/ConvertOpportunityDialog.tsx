@@ -7,9 +7,9 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useCreateCompany, useCreateBuilding, useCreateTask, useProfiles } from "@/hooks/useSupabaseData";
 import { useCreateContact, useUpdateOpportunity } from "@/hooks/useCrmData";
-import { fetchCompanyByNIP } from "@/lib/nipLookup";
+import { fetchCompanyByNIP, normalizeNip, validateNip, type NipLookupResult } from "@/lib/nipLookup";
 import { toast } from "sonner";
-import { Loader2, Search, ArrowRight, CheckCircle2 } from "lucide-react";
+import { Loader2, Search, ArrowRight, CheckCircle2, AlertTriangle } from "lucide-react";
 
 interface Opportunity {
   id: string;
