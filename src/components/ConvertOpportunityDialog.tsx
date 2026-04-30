@@ -116,7 +116,6 @@ export default function ConvertOpportunityDialog({ open, onOpenChange, opportuni
       toast.error("Uzupełnij nazwę firmy i nazwę obiektu");
       return;
     }
-    setSubmitting true;
     setSubmitting(true);
     try {
       // 1) FIRMA (lub istniejąca z opp.company_id)
