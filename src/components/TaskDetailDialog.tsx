@@ -18,6 +18,7 @@ import {
   ArrowRight, Loader2, Plus, Trash2, Bell, ListTodo, Wallet, TrendingUp, TrendingDown, Lock, Send, FileText
 } from "lucide-react";
 import TaskQuotesPanel from "@/components/TaskQuotesPanel";
+import TaskCustomerContextPanel from "@/components/TaskCustomerContextPanel";
 
 interface Props {
   task: TaskWithDetails | null;
@@ -228,6 +229,8 @@ export default function TaskDetailDialog({ task, open, onOpenChange }: Props) {
 
           {/* SZCZEGÓŁY ZADANIA */}
           <TabsContent value="details" className="space-y-4 mt-4">
+            <TaskCustomerContextPanel task={task} />
+
             {task.description && (
               <div>
                 <p className="text-xs font-medium text-muted-foreground mb-1">Opis</p>
@@ -236,20 +239,6 @@ export default function TaskDetailDialog({ task, open, onOpenChange }: Props) {
             )}
 
             <div className="grid grid-cols-2 gap-4">
-              <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                <Building2 className="h-4 w-4" />
-                <div>
-                  <p className="text-xs text-muted-foreground">Obiekt</p>
-                  <p className="text-sm text-card-foreground">{task.buildingName}</p>
-                </div>
-              </div>
-              <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                <User className="h-4 w-4" />
-                <div>
-                  <p className="text-xs text-muted-foreground">Firma</p>
-                  <p className="text-sm text-card-foreground">{task.companyName}</p>
-                </div>
-              </div>
               {task.deadline && (
                 <div className="flex items-center gap-2">
                   <Calendar className="h-4 w-4 text-muted-foreground" />
