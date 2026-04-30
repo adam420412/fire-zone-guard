@@ -437,6 +437,12 @@ export default function CalendarPage() {
             {TYPE_LABELS[t]}
           </Toggle>
         ))}
+        {enabledTypes.size < ALL_TYPES.length && (
+          <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={() => setEnabledTypes(new Set(ALL_TYPES))}>
+            Pokaż wszystkie
+          </Button>
+        )}
+      </div>
 
       {/* Active filter badge */}
       {activeFilterId !== "all" && (
