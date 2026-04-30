@@ -2061,6 +2061,7 @@ export type Database = {
           closed_at: string | null
           closing_comment: string | null
           company_id: string
+          contact_id: string | null
           cost_actual: number | null
           cost_currency: string | null
           created_at: string
@@ -2069,6 +2070,7 @@ export type Database = {
           first_response_at: string | null
           id: string
           meeting_id: string | null
+          opportunity_id: string | null
           priority: Database["public"]["Enums"]["task_priority"]
           repair_price: number | null
           sla_hours: number
@@ -2085,6 +2087,7 @@ export type Database = {
           closed_at?: string | null
           closing_comment?: string | null
           company_id: string
+          contact_id?: string | null
           cost_actual?: number | null
           cost_currency?: string | null
           created_at?: string
@@ -2093,6 +2096,7 @@ export type Database = {
           first_response_at?: string | null
           id?: string
           meeting_id?: string | null
+          opportunity_id?: string | null
           priority?: Database["public"]["Enums"]["task_priority"]
           repair_price?: number | null
           sla_hours?: number
@@ -2109,6 +2113,7 @@ export type Database = {
           closed_at?: string | null
           closing_comment?: string | null
           company_id?: string
+          contact_id?: string | null
           cost_actual?: number | null
           cost_currency?: string | null
           created_at?: string
@@ -2117,6 +2122,7 @@ export type Database = {
           first_response_at?: string | null
           id?: string
           meeting_id?: string | null
+          opportunity_id?: string | null
           priority?: Database["public"]["Enums"]["task_priority"]
           repair_price?: number | null
           sla_hours?: number
@@ -2157,10 +2163,24 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "tasks_contact_id_fkey"
+            columns: ["contact_id"]
+            isOneToOne: false
+            referencedRelation: "contacts"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "tasks_meeting_id_fkey"
             columns: ["meeting_id"]
             isOneToOne: false
             referencedRelation: "meetings"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tasks_opportunity_id_fkey"
+            columns: ["opportunity_id"]
+            isOneToOne: false
+            referencedRelation: "sales_opportunities"
             referencedColumns: ["id"]
           },
         ]

@@ -16,6 +16,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
 import { Plus, Loader2, FileText, Search, ShoppingCart, CheckCircle, XCircle, DollarSign, TrendingUp, BarChart3, Percent, Target, Building2, Archive, ArrowRight, Trash2 } from "lucide-react";
 import { generateReportPDF } from "@/lib/pdfGenerator";
+import ConvertOpportunityDialog from "@/components/ConvertOpportunityDialog";
 
 const REVENUE_CATEGORIES = ["Szkolenia", "Dokumentacja", "Serwis", "Wykonawstwo", "Montaż", "Audyty", "Odbiory"] as const;
 
@@ -466,6 +467,7 @@ export default function FinancePage() {
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [oppStatusFilter, setOppStatusFilter] = useState("active");
+  const [convertOpp, setConvertOpp] = useState<any | null>(null);
 
   const isSuperAdmin = role === "super_admin";
 
@@ -509,14 +511,8 @@ export default function FinancePage() {
   };
 
   const handleConvertToCompany = (opp: any) => {
-    createCompany({ name: opp.company_name }, {
-      onSuccess: (newCompany: any) => {
-        updateOpportunity({ id: opp.id, updates: { status: "zlecenie", company_id: newCompany.id, updated_at: new Date().toISOString() } }, {
-          onSuccess: () => toast.success(`"${opp.company_name}" przekształcono w firmę i zlecenie!`),
-        });
-      },
-      onError: (err) => toast.error("Błąd tworzenia firmy: " + err.message),
-    });
+    // Otwórz pełny dialog konwersji (firma + obiekt + kontakt + zadanie startowe)
+    setConvertOpp(opp);
   };
 
   
@@ -620,9 +616,9 @@ export default function FinancePage() {
                               <ArrowRight className="mr-1 h-3 w-3" /> {OPP_STATUS_MAP[nextStatus]?.label}
                             </Button>
                           )}
-                          {opp.status === "oferta" && !opp.company_id && (
-                            <Button size="sm" variant="default" className="h-7 text-xs" onClick={() => handleConvertToCompany(opp)}>
-                              <Building2 className="mr-1 h-3 w-3" /> Utwórz firmę + zlecenie
+                          {!opp.company_id && opp.status !== "archiwum" && (
+                            <Button size="sm" variant="default" className="h-7 text-xs fire-gradient" onClick={() => handleConvertToCompany(opp)}>
+                              <Building2 className="mr-1 h-3 w-3" /> Konwertuj na klienta
                             </Button>
                           )}
                           {opp.company_id && (
@@ -773,6 +769,11 @@ export default function FinancePage() {
       <CreateQuoteDialog open={createQuoteOpen} onOpenChange={setCreateQuoteOpen} />
       <AddOpportunityDialog open={addOppOpen} onOpenChange={setAddOppOpen} />
       <QuoteDetailDialog quote={selectedQuote} open={!!selectedQuote} onOpenChange={(o) => { if (!o) setSelectedQuote(null); }} />
+      <ConvertOpportunityDialog
+        open={!!convertOpp}
+        onOpenChange={(o) => { if (!o) setConvertOpp(null); }}
+        opportunity={convertOpp}
+      />
     </div>
   );
 }
