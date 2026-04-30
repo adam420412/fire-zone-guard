@@ -32,8 +32,11 @@ export function useUpdateCompany() {
 export function useCreateCompany() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async (company: { name: string; nip?: string }) => {
-      const { data, error } = await supabase.from("companies").insert({ name: company.name }).select().single();
+    mutationFn: async (company: { name: string; nip?: string; address?: string }) => {
+      const payload: Record<string, any> = { name: company.name };
+      if (company.nip) payload.nip = company.nip;
+      if (company.address) payload.address = company.address;
+      const { data, error } = await supabase.from("companies").insert(payload).select().single();
       if (error) throw error;
       return data;
     },
