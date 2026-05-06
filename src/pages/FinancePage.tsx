@@ -1,4 +1,5 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
+import { useSearchParams } from "react-router-dom";
 import { useQuotes, useQuoteItems, useServices, useContacts, useCreateQuote, useCreateQuoteItem, useUpdateQuote, useSalesOpportunities, useCreateOpportunity, useUpdateOpportunity, useDeleteOpportunity } from "@/hooks/useCrmData";
 import { useCompanies, useCreateCompany, useTaskFinanceSummary } from "@/hooks/useSupabaseData";
 import { useAuth } from "@/hooks/useAuth";
