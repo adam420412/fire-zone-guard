@@ -159,7 +159,9 @@ describe("buildKanbanPdf — paginacja wielu grup", () => {
     for (let i = 0; i < layout.sections.length; i++) {
       const s = layout.sections[i];
       expect(s.tableStartY).toBeGreaterThanOrEqual(s.headerBottom);
-      expect(s.tableFinalY).toBeGreaterThan(s.tableStartY);
+      if (s.tableEndPage === s.page) {
+        expect(s.tableFinalY).toBeGreaterThan(s.tableStartY);
+      }
       if (i > 0) {
         const prev = layout.sections[i - 1];
         if (s.page === prev.tableEndPage) {
