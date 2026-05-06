@@ -181,9 +181,21 @@ export default function TaskCard({ task, onClick }: TaskCardProps) {
             rel ? `Aktualizacja: ${rel}` : null,
           ].filter(Boolean).join(" · ");
           return (
-            <span
-              className={cn("inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-[10px] font-medium", meta.cls)}
-              title={tooltip}
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                const params = new URLSearchParams({ tab: "quotes", task: task.id });
+                if ((task.quoteCount ?? 0) === 1 && task.quoteNumber) {
+                  params.set("q", task.quoteNumber);
+                }
+                navigate(`/finance?${params.toString()}`);
+              }}
+              className={cn(
+                "inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-[10px] font-medium hover:ring-1 hover:ring-primary/40 transition",
+                meta.cls
+              )}
+              title={`${tooltip} — kliknij, aby ${(task.quoteCount ?? 0) > 1 ? "zobaczyć listę ofert" : "otworzyć ofertę"}`}
             >
               <FileText className="h-2.5 w-2.5" />
               <span>{meta.label}</span>
@@ -191,7 +203,7 @@ export default function TaskCard({ task, onClick }: TaskCardProps) {
                 <span className="opacity-70">×{task.quoteCount}</span>
               )}
               {rel && <span className="opacity-70">· {rel}</span>}
-            </span>
+            </button>
           );
         })()}
         {(task.financialBalance ?? 0) !== 0 && (
