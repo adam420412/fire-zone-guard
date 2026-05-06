@@ -338,37 +338,6 @@ export default function KanbanPage() {
   };
 
 
-  const sortTasks = useCallback((arr: any[]) => {
-    const sorted = [...arr];
-    if (sortMode === "deadline") {
-      sorted.sort((a, b) => {
-        const ad = a.deadline ? new Date(a.deadline).getTime() : Infinity;
-        const bd = b.deadline ? new Date(b.deadline).getTime() : Infinity;
-        return ad - bd;
-      });
-    } else if (sortMode === "priority") {
-      sorted.sort((a, b) => (PRIORITY_RANK[a.priority] ?? 9) - (PRIORITY_RANK[b.priority] ?? 9));
-    } else if (sortMode === "title") {
-      sorted.sort((a, b) => (a.title || "").localeCompare(b.title || "", "pl"));
-    } else if (sortMode === "updated") {
-      sorted.sort((a, b) => taskLastActivityMs(b) - taskLastActivityMs(a));
-    } else if (sortMode === "quoteStatus") {
-      sorted.sort((a, b) => {
-        const r = quoteStatusRank(a.quoteStatus) - quoteStatusRank(b.quoteStatus);
-        if (r !== 0) return r;
-        return taskLastActivityMs(b) - taskLastActivityMs(a);
-      });
-    } else if (sortMode === "quoteCount") {
-      sorted.sort((a, b) => {
-        const d = (b.quoteCount ?? 0) - (a.quoteCount ?? 0);
-        if (d !== 0) return d;
-        return taskLastActivityMs(b) - taskLastActivityMs(a);
-      });
-    } else {
-      sorted.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
-    }
-    return sorted;
-  }, [sortMode]);
 
   const getTasksForStatus = useCallback((status: TaskStatus) => {
     return sortTasks(filteredTasks.filter((t: any) => t.status === status));
