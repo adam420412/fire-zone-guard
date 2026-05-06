@@ -196,7 +196,7 @@ export default function KanbanPage() {
 
   // Grupowanie eksportu
   type ExportGroupBy = "none" | "company" | "building" | "assignee";
-  type ExportGroupOutput = "sections" | "files";
+  type ExportGroupOutput = "sections" | "files" | "single-sheet";
   const [exportGroupBy, setExportGroupBy] = useState<ExportGroupBy>(() => {
     if (typeof window === "undefined") return "none";
     const v = window.localStorage.getItem("kanban.exportGroupBy");
@@ -205,7 +205,7 @@ export default function KanbanPage() {
   const [exportGroupOutput, setExportGroupOutput] = useState<ExportGroupOutput>(() => {
     if (typeof window === "undefined") return "sections";
     const v = window.localStorage.getItem("kanban.exportGroupOutput");
-    return v === "files" ? "files" : "sections";
+    return v === "files" || v === "single-sheet" ? v : "sections";
   });
   useEffect(() => {
     if (typeof window !== "undefined") {
