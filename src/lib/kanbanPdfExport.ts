@@ -342,6 +342,9 @@ export function buildKanbanPdf(
     measureLineHeight(TABLE_FONT_SIZE) + 2 * TABLE_CELL_PADDING;
 
   const sections: KanbanPdfLayoutSection[] = [];
+  // Śledzenie poprzedniej sekcji do wizualizacji gap-u na tej samej stronie.
+  let prevTableFinalY: number | null = null;
+  let prevTableEndPage: number | null = null;
 
   groups.forEach((g, idx) => {
     if (idx > 0) {
