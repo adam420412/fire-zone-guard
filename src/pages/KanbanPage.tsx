@@ -908,6 +908,99 @@ export default function KanbanPage() {
 
       <CreateTaskDialog open={showCreate} onOpenChange={setShowCreate} />
       <TaskDetailDialog task={selectedTask} open={!!selectedTask} onOpenChange={(o) => !o && setSelectedTask(null)} />
+
+      <Dialog open={columnsDialogOpen} onOpenChange={setColumnsDialogOpen}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Kolumny eksportu</DialogTitle>
+            <DialogDescription>
+              Wybierz pola, które mają znaleźć się w plikach CSV, Excel i PDF.
+              Wybór jest zapamiętywany lokalnie.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="max-h-[60vh] overflow-y-auto space-y-4 py-2">
+            {EXPORT_COLUMN_GROUPS.map((g) => {
+              const cols = EXPORT_COLUMNS.filter((c) => c.group === g.key);
+              const allChecked = cols.every((c) => exportColumns.includes(c.key));
+              const someChecked = cols.some((c) => exportColumns.includes(c.key));
+              return (
+                <div key={g.key} className="space-y-2">
+                  <div className="flex items-center justify-between border-b border-border pb-1">
+                    <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                      {g.label}
+                    </span>
+                    <button
+                      type="button"
+                      className="text-[11px] text-primary hover:underline"
+                      onClick={() => {
+                        setExportColumns((prev) => {
+                          const keys = cols.map((c) => c.key);
+                          const next = allChecked
+                            ? prev.filter((k) => !keys.includes(k))
+                            : Array.from(new Set([...prev, ...keys]));
+                          return EXPORT_COLUMNS.map((c) => c.key).filter((k) => next.includes(k));
+                        });
+                      }}
+                    >
+                      {allChecked ? "Odznacz grupę" : someChecked ? "Zaznacz wszystkie" : "Zaznacz grupę"}
+                    </button>
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                    {cols.map((c) => {
+                      const checked = exportColumns.includes(c.key);
+                      return (
+                        <label
+                          key={c.key}
+                          className="flex items-center gap-2 text-sm cursor-pointer rounded px-2 py-1.5 hover:bg-secondary/60"
+                        >
+                          <Checkbox
+                            checked={checked}
+                            onCheckedChange={() => toggleExportColumn(c.key)}
+                          />
+                          <span>{c.label}</span>
+                        </label>
+                      );
+                    })}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+
+          <DialogFooter className="flex flex-col sm:flex-row sm:justify-between gap-2">
+            <div className="flex gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => setExportColumns(DEFAULT_EXPORT_COLUMNS)}
+              >
+                Domyślne
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => setExportColumns(EXPORT_COLUMNS.map((c) => c.key))}
+              >
+                Wszystkie
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => setExportColumns([])}
+              >
+                Żadne
+              </Button>
+            </div>
+            <Button type="button" onClick={() => setColumnsDialogOpen(false)}>
+              Gotowe ({activeColumnDefs.length})
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
