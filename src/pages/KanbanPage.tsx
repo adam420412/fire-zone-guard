@@ -307,6 +307,36 @@ export default function KanbanPage() {
     URL.revokeObjectURL(url);
   };
 
+  const handleExportXLSX = async () => {
+    const XLSX = await import("xlsx");
+    const headers = [
+      "ID", "Tytuł", "Obiekt", "Firma", "Przypisany", "Priorytet", "Status", "Typ",
+      "Deadline", "Oferta — status", "Oferta — liczba", "Ostatnia aktywność",
+    ];
+    const metaRows: any[][] = [
+      [`Eksport: ${new Date().toLocaleString("pl-PL")}`],
+      [`Sortowanie: ${exportContext.sortLabel}`],
+      [`Filtry: ${exportContext.filters.map(f => `${f.label}=${f.value}`).join(" | ") || "—"}`],
+      [`Liczba zadań: ${exportRows.length}`],
+      [],
+    ];
+    const dataRows = exportRows.map(r => [
+      r.id, r.title, r.building, r.company, r.assignee, r.priority, r.status, r.type,
+      r.deadline, r.quoteStatus, r.quoteCount, r.lastActivity,
+    ]);
+    const aoa = [...metaRows, headers, ...dataRows];
+    const ws = XLSX.utils.aoa_to_sheet(aoa);
+    // Szerokości kolumn
+    ws["!cols"] = [
+      { wch: 10 }, { wch: 38 }, { wch: 22 }, { wch: 22 }, { wch: 18 },
+      { wch: 10 }, { wch: 14 }, { wch: 12 }, { wch: 14 }, { wch: 16 },
+      { wch: 8 }, { wch: 22 },
+    ];
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Zadania");
+    XLSX.writeFile(wb, `${exportFileBase}.xlsx`);
+  };
+
   const handleExportPDF = async () => {
     const [{ default: jsPDF }, autoTableMod] = await Promise.all([
       import("jspdf"),
@@ -541,6 +571,9 @@ export default function KanbanPage() {
               <DropdownMenuLabel className="text-[10px] uppercase">Z aktualnymi filtrami</DropdownMenuLabel>
               <DropdownMenuItem onClick={handleExportCSV}>
                 <FileText className="h-3.5 w-3.5 mr-2" /> CSV (.csv)
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={handleExportXLSX}>
+                <FileText className="h-3.5 w-3.5 mr-2" /> Excel (.xlsx)
               </DropdownMenuItem>
               <DropdownMenuItem onClick={handleExportPDF}>
                 <FileText className="h-3.5 w-3.5 mr-2" /> PDF (.pdf)
