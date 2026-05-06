@@ -214,6 +214,79 @@ export default function KanbanPage() {
     }
   }, [exportGroupBy, exportGroupOutput]);
 
+  // === Szablony eksportu ===
+  type ExportTemplate = {
+    id: string;
+    name: string;
+    format: ExportFormat;
+    columns: ExportColumnKey[];
+    includeMeta: boolean;
+    groupBy: ExportGroupBy;
+    groupOutput: ExportGroupOutput;
+    createdAt: number;
+  };
+  const TEMPLATES_KEY = "kanban.exportTemplates";
+  const [exportTemplates, setExportTemplates] = useState<ExportTemplate[]>(() => {
+    if (typeof window === "undefined") return [];
+    try {
+      const raw = window.localStorage.getItem(TEMPLATES_KEY);
+      if (!raw) return [];
+      const parsed = JSON.parse(raw);
+      return Array.isArray(parsed) ? parsed.filter((t: any) => t && typeof t.id === "string" && typeof t.name === "string") : [];
+    } catch { return []; }
+  });
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      window.localStorage.setItem(TEMPLATES_KEY, JSON.stringify(exportTemplates));
+    }
+  }, [exportTemplates]);
+  const [templatesDialogOpen, setTemplatesDialogOpen] = useState(false);
+  const [newTemplateName, setNewTemplateName] = useState("");
+
+  const saveCurrentAsTemplate = (name: string) => {
+    const trimmed = name.trim();
+    if (!trimmed) { toast.error("Podaj nazwę szablonu"); return; }
+    const tpl: ExportTemplate = {
+      id: (typeof crypto !== "undefined" && "randomUUID" in crypto) ? crypto.randomUUID() : `tpl_${Date.now()}`,
+      name: trimmed,
+      format: lastExportFormat,
+      columns: [...exportColumns],
+      includeMeta: includeExportMeta,
+      groupBy: exportGroupBy,
+      groupOutput: exportGroupOutput,
+      createdAt: Date.now(),
+    };
+    setExportTemplates((prev) => {
+      const filtered = prev.filter((p) => p.name.toLowerCase() !== trimmed.toLowerCase());
+      return [tpl, ...filtered];
+    });
+    setNewTemplateName("");
+    toast.success(`Zapisano szablon „${trimmed}"`);
+  };
+
+  const applyTemplate = (tpl: ExportTemplate) => {
+    setLastExportFormat(tpl.format);
+    setExportColumns(tpl.columns.filter((k) => EXPORT_COLUMNS.some((c) => c.key === k)));
+    setIncludeExportMeta(tpl.includeMeta);
+    setExportGroupBy(tpl.groupBy);
+    setExportGroupOutput(tpl.groupOutput);
+    toast.success(`Wczytano szablon „${tpl.name}"`);
+  };
+
+  const deleteTemplate = (id: string) => {
+    setExportTemplates((prev) => prev.filter((t) => t.id !== id));
+  };
+
+  const runTemplate = (tpl: ExportTemplate) => {
+    applyTemplate(tpl);
+    // eksport po następnym renderze, gdy state się zaaplikuje
+    setTimeout(() => {
+      if (tpl.format === "csv") handleExportCSV();
+      else if (tpl.format === "xlsx") handleExportXLSX();
+      else handleExportPDF();
+    }, 50);
+  };
+
   const groupTasksForExport = useCallback((arr: any[], by: ExportGroupBy) => {
     if (by === "none") return [{ key: "_all", label: "Wszystkie", tasks: arr }];
     const map = new Map<string, { key: string; label: string; tasks: any[] }>();
