@@ -154,6 +154,46 @@ describe("buildKanbanPdf — paginacja wielu grup", () => {
     expect(samePagePairs).toBeGreaterThan(0);
   });
 
+  it("respektuje konfigurowalne odstępy spacing.headerToTable / tableToNextHeader", () => {
+    const groups: KanbanPdfGroup[] = [
+      { label: "G1", tasks: makeTasks(3, "G1") },
+      { label: "G2", tasks: makeTasks(3, "G2") },
+    ];
+    const { layout } = buildKanbanPdf(
+      { jsPDF, autoTable: autoTable as unknown as (doc: any, opts: any) => void },
+      {
+        groups,
+        columns: COLUMNS,
+        groupBy: "company",
+        groupByLabel: GROUP_BY_LABEL,
+        spacing: { headerToTable: 20, tableToNextHeader: 40 },
+      },
+    );
+    const [s1, s2] = layout.sections;
+    // headerBottom = baseline + headerToTable; sprawdzamy że bryła nagłówka jest większa niż przy domyślnych 8pt.
+    expect(s1.headerBottom - s1.headerTop).toBeGreaterThanOrEqual(20);
+    if (s2.page === s1.tableEndPage) {
+      expect(s2.headerTop - s1.tableFinalY).toBeGreaterThanOrEqual(40);
+    }
+  });
+
+  it("clampuje wartości spacing poza dozwolonym zakresem (np. ujemne)", () => {
+    const { layout } = buildKanbanPdf(
+      { jsPDF, autoTable: autoTable as unknown as (doc: any, opts: any) => void },
+      {
+        groups: [{ label: "X", tasks: makeTasks(3, "X") }],
+        columns: COLUMNS,
+        groupBy: "company",
+        groupByLabel: GROUP_BY_LABEL,
+        spacing: { headerToTable: -50, tableToNextHeader: 9999 },
+      },
+    );
+    const s = layout.sections[0];
+    // -50 → 0; bryła nagłówka = wysokość tekstu + 0 (czyli realna wysokość tekstu).
+    expect(s.headerBottom - s.headerTop).toBeGreaterThan(0);
+    expect(s.headerBottom - s.headerTop).toBeLessThan(30);
+  });
+
   it("wymusza nową stronę gdy w bieżącej zostało za mało miejsca na nagłówek + min. wiersz tabeli", () => {
     // Dużo małych grup wymusi co najmniej kilka page-breaków.
     const groups: KanbanPdfGroup[] = Array.from({ length: 10 }, (_, i) => ({
