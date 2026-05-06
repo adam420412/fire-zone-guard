@@ -101,8 +101,12 @@ export function buildKanbanPdf(
   };
 
   // ── Debug overlay ─────────────────────────────────────────────────────────
+  const debugFramedPages = new Set<number>();
   const drawDebugFrame = () => {
     if (!debug) return;
+    const page = doc.getNumberOfPages();
+    if (debugFramedPages.has(page)) return;
+    debugFramedPages.add(page);
     const prevDraw = (doc.getDrawColor?.() as string) ?? "0";
     const prevFill = (doc.getFillColor?.() as string) ?? "0";
     const prevText = (doc.getTextColor?.() as string) ?? "0";
