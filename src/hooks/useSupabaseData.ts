@@ -193,7 +193,7 @@ export function useTasks() {
       // Subtask progress per task
       const taskIds = (data ?? []).map((t: any) => t.id);
       const subtaskAgg: Record<string, { total: number; done: number }> = {};
-      const quoteAgg: Record<string, { count: number; latestStatus: string | null }> = {};
+      const quoteAgg: Record<string, { count: number; latestStatus: string | null; latestUpdatedAt: string | null; latestNumber: string | null }> = {};
       const finAgg: Record<string, number> = {};
 
       if (taskIds.length > 0) {
