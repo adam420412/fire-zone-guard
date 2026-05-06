@@ -767,6 +767,10 @@ export default function KanbanPage() {
     ]);
     const autoTable = (autoTableMod as any).default ?? (autoTableMod as any);
 
+    // Diagnostyka jest niezbędna, gdy użytkownik chce pobrać raport JSON —
+    // inaczej `pages`/`totals` byłyby puste/zerowe. Stąd OR z preferencją.
+    const diagnosticsForRun = pdfDiagnostics || pdfDownloadLayoutJson;
+
     const buildDocAndLayout = (grps: { label: string; tasks: any[] }[]) =>
       buildKanbanPdf(
         { jsPDF, autoTable },
@@ -778,6 +782,7 @@ export default function KanbanPage() {
           metaLines: includeExportMeta ? buildMetaLines() : [],
           debug: pdfDebugLayout,
           spacing: pdfSpacing,
+          diagnostics: diagnosticsForRun,
         },
       );
 
