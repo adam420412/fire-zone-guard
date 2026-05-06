@@ -156,6 +156,37 @@ export default function KanbanPage() {
       window.localStorage.setItem("kanban.exportIncludeMeta", includeExportMeta ? "1" : "0");
     }
   }, [includeExportMeta]);
+
+  // Wybór kolumn eksportu (CSV/XLSX/PDF)
+  const [exportColumns, setExportColumns] = useState<ExportColumnKey[]>(() => {
+    if (typeof window === "undefined") return DEFAULT_EXPORT_COLUMNS;
+    try {
+      const raw = window.localStorage.getItem("kanban.exportColumns");
+      if (!raw) return DEFAULT_EXPORT_COLUMNS;
+      const parsed = JSON.parse(raw);
+      if (!Array.isArray(parsed)) return DEFAULT_EXPORT_COLUMNS;
+      const valid = parsed.filter((k: any): k is ExportColumnKey =>
+        EXPORT_COLUMNS.some((c) => c.key === k)
+      );
+      return valid.length ? valid : DEFAULT_EXPORT_COLUMNS;
+    } catch {
+      return DEFAULT_EXPORT_COLUMNS;
+    }
+  });
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      window.localStorage.setItem("kanban.exportColumns", JSON.stringify(exportColumns));
+    }
+  }, [exportColumns]);
+  const [columnsDialogOpen, setColumnsDialogOpen] = useState(false);
+
+  // Aktywne definicje kolumn w kolejności wyboru
+  const activeColumnDefs = useMemo(
+    () => exportColumns
+      .map((k) => EXPORT_COLUMNS.find((c) => c.key === k))
+      .filter((c): c is ExportColumnDef => !!c),
+    [exportColumns]
+  );
   const [showCreate, setShowCreate] = useState(false);
   const [selectedTask, setSelectedTask] = useState<any>(null);
   
