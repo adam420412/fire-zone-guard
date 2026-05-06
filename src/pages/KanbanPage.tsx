@@ -593,6 +593,14 @@ export default function KanbanPage() {
               <DropdownMenuItem onClick={handleExportPDF}>
                 <FileText className="h-3.5 w-3.5 mr-2" /> PDF (.pdf)
               </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuCheckboxItem
+                checked={includeExportMeta}
+                onCheckedChange={(v) => setIncludeExportMeta(!!v)}
+                onSelect={(e) => e.preventDefault()}
+              >
+                Dołącz metadane (filtry, sort)
+              </DropdownMenuCheckboxItem>
             </DropdownMenuContent>
           </DropdownMenu>
           <button
