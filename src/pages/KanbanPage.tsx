@@ -743,6 +743,7 @@ export default function KanbanPage() {
           groupByLabel,
           metaLines: includeExportMeta ? buildMetaLines() : [],
           debug: pdfDebugLayout,
+          spacing: pdfSpacing,
         },
       ).doc;
 
