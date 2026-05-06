@@ -66,16 +66,22 @@ describe("buildKanbanPdf — paginacja wielu grup", () => {
     expect(layout.sections).toHaveLength(groups.length);
 
     for (const s of layout.sections) {
-      // Tabela musi się zaczynać NA LUB POD dolną krawędzią nagłówka.
+      // Tabela musi się zaczynać NA LUB POD dolną krawędzią nagłówka (na tej samej stronie).
       expect(s.tableStartY).toBeGreaterThanOrEqual(s.headerBottom);
       // Nagłówek musi mieć dodatnią wysokość.
       expect(s.headerBottom).toBeGreaterThan(s.headerTop);
-      // Tabela musi mieć dodatnią wysokość (autoTable się wykonał).
-      expect(s.tableFinalY).toBeGreaterThan(s.tableStartY);
+      // Tabela ma zawartość: jeśli skończyła na tej samej stronie, finalY rośnie;
+      // jeśli przeszła na nową stronę, finalY jest mierzone od góry nowej strony.
+      if (s.tableEndPage === s.page) {
+        expect(s.tableFinalY).toBeGreaterThan(s.tableStartY);
+      } else {
+        expect(s.tableEndPage).toBeGreaterThan(s.page);
+        expect(s.tableFinalY).toBeGreaterThanOrEqual(layout.marginTop);
+      }
       // Nagłówek mieści się w obszarze użytkowym strony.
       expect(s.headerTop).toBeGreaterThanOrEqual(layout.marginTop - 1);
       expect(s.headerBottom).toBeLessThanOrEqual(layout.pageHeight - layout.marginBottom);
-      // Tabela kończy się powyżej dolnego marginesu (autoTable respektuje margin.bottom).
+      // Tabela kończy się powyżej dolnego marginesu.
       expect(s.tableFinalY).toBeLessThanOrEqual(layout.pageHeight - layout.marginBottom + 1);
     }
   });
