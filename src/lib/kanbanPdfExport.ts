@@ -84,16 +84,29 @@ export function buildKanbanPdf(
   const marginBottom = 30;
   const marginLeft = 40;
 
+  // Strony, na których stopka została już narysowana — gwarancja idempotencji
+  // niezależnie od tego, czy wywoła nas manualny page-break czy autoTable.didDrawPage.
+  const footeredPages = new Set<number>();
   const drawFooter = () => {
-    const str = `Strona ${doc.getNumberOfPages()}`;
+    const page = doc.getNumberOfPages();
+    if (footeredPages.has(page)) return;
+    footeredPages.add(page);
+    const prevSize = doc.getFontSize();
+    const prevText = (doc.getTextColor?.() as string) ?? "0";
     doc.setFontSize(8);
     doc.setTextColor(150);
-    doc.text(str, pageWidth - 60, pageHeight - 14);
+    doc.text(`Strona ${page}`, pageWidth - 60, pageHeight - 14);
+    doc.setFontSize(prevSize);
+    doc.setTextColor(prevText as any);
   };
 
   // ── Debug overlay ─────────────────────────────────────────────────────────
+  const debugFramedPages = new Set<number>();
   const drawDebugFrame = () => {
     if (!debug) return;
+    const page = doc.getNumberOfPages();
+    if (debugFramedPages.has(page)) return;
+    debugFramedPages.add(page);
     const prevDraw = (doc.getDrawColor?.() as string) ?? "0";
     const prevFill = (doc.getFillColor?.() as string) ?? "0";
     const prevText = (doc.getTextColor?.() as string) ?? "0";
@@ -342,6 +355,17 @@ export function buildKanbanPdf(
       tableEndPage,
     });
   });
+
+  // Sweep końcowy: gwarancja, że KAŻDA strona ma stopkę dokładnie raz
+  // (np. gdy autoTable dodał stronę bez wywołania didDrawPage, albo gdy
+  // pierwsza strona została utworzona implicite przez konstruktor jsPDF).
+  const totalPagesFinal = doc.getNumberOfPages();
+  for (let p = 1; p <= totalPagesFinal; p++) {
+    if (footeredPages.has(p)) continue;
+    doc.setPage(p);
+    drawFooter();
+  }
+  doc.setPage(totalPagesFinal);
 
   return {
     doc,

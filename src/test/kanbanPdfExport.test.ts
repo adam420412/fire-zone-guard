@@ -171,3 +171,93 @@ describe("buildKanbanPdf — paginacja wielu grup", () => {
     }
   });
 });
+
+describe("buildKanbanPdf — stopka strony", () => {
+  function makeSpyJsPDF() {
+    const calls: { page: number; text: string }[] = [];
+    class SpyPDF extends (jsPDF as any) {
+      constructor(...args: any[]) {
+        super(...args);
+        const realText = this.text.bind(this);
+        this.text = (txt: any, x: number, y: number, ...rest: any[]) => {
+          calls.push({ page: this.getNumberOfPages(), text: String(txt) });
+          return realText(txt, x, y, ...rest);
+        };
+      }
+    }
+    return { SpyPDF, calls };
+  }
+
+  const runWithSpy = (
+    groups: KanbanPdfGroup[],
+    groupBy = "company",
+    debug = false,
+  ) => {
+    const { SpyPDF, calls } = makeSpyJsPDF();
+    const { layout } = buildKanbanPdf(
+      { jsPDF: SpyPDF, autoTable: autoTable as unknown as (doc: any, opts: any) => void },
+      {
+        groups,
+        columns: COLUMNS,
+        groupBy,
+        groupByLabel: GROUP_BY_LABEL,
+        metaLines: ["Wygenerowano: 2026-05-06"],
+        debug,
+      },
+    );
+
+    const footerCountsByPage = new Map<number, number>();
+    for (const c of calls) {
+      if (/^Strona \d+$/.test(c.text)) {
+        footerCountsByPage.set(c.page, (footerCountsByPage.get(c.page) ?? 0) + 1);
+      }
+    }
+    return { layout, footerCountsByPage };
+  };
+
+  it("rysuje stopkę dokładnie raz na pojedynczej stronie", () => {
+    const { layout, footerCountsByPage } = runWithSpy([
+      { label: "Mała", tasks: makeTasks(3, "M") },
+    ]);
+    expect(layout.totalPages).toBe(1);
+    expect(footerCountsByPage.get(1)).toBe(1);
+  });
+
+  it("rysuje stopkę dokładnie raz na każdej stronie przy wielu grupach z page-breakami", () => {
+    const groups: KanbanPdfGroup[] = Array.from({ length: 8 }, (_, i) => ({
+      label: `Sekcja-${i + 1}`,
+      tasks: makeTasks(8, `S${i + 1}`),
+    }));
+    const { layout, footerCountsByPage } = runWithSpy(groups);
+    expect(layout.totalPages).toBeGreaterThan(1);
+    for (let p = 1; p <= layout.totalPages; p++) {
+      expect(footerCountsByPage.get(p), `strona ${p}`).toBe(1);
+    }
+  });
+
+  it("rysuje stopkę raz nawet gdy autoTable sam dodaje strony (długa pojedyncza tabela)", () => {
+    const { layout, footerCountsByPage } = runWithSpy(
+      [{ label: "Wszystkie", tasks: makeTasks(120, "X") }],
+      "none",
+    );
+    expect(layout.totalPages).toBeGreaterThan(1);
+    for (let p = 1; p <= layout.totalPages; p++) {
+      expect(footerCountsByPage.get(p), `strona ${p}`).toBe(1);
+    }
+  });
+
+  it("rysuje stopkę raz w trybie debug (dwa źródła wywołań mogą się nakładać)", () => {
+    const { layout, footerCountsByPage } = runWithSpy(
+      Array.from({ length: 6 }, (_, i) => ({
+        label: `D-${i}`,
+        tasks: makeTasks(8, `D${i}`),
+      })),
+      "company",
+      true,
+    );
+    expect(layout.totalPages).toBeGreaterThan(1);
+    for (let p = 1; p <= layout.totalPages; p++) {
+      expect(footerCountsByPage.get(p), `strona ${p} (debug)`).toBe(1);
+    }
+  });
+});
