@@ -882,6 +882,47 @@ export default function KanbanPage() {
                 >
                   Dołącz metadane (filtry, sort)
                 </DropdownMenuCheckboxItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuLabel className="text-[10px] uppercase">
+                  Grupuj eksport wg
+                </DropdownMenuLabel>
+                {([
+                  { v: "none",     l: "Brak (jeden plik)" },
+                  { v: "company",  l: "Firma" },
+                  { v: "building", l: "Obiekt" },
+                  { v: "assignee", l: "Osoba (wykonawca)" },
+                ] as { v: ExportGroupBy; l: string }[]).map((opt) => (
+                  <DropdownMenuCheckboxItem
+                    key={opt.v}
+                    checked={exportGroupBy === opt.v}
+                    onCheckedChange={() => setExportGroupBy(opt.v)}
+                    onSelect={(e) => e.preventDefault()}
+                  >
+                    {opt.l}
+                  </DropdownMenuCheckboxItem>
+                ))}
+                {exportGroupBy !== "none" && (
+                  <>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuLabel className="text-[10px] uppercase">
+                      Tryb wyjścia
+                    </DropdownMenuLabel>
+                    <DropdownMenuCheckboxItem
+                      checked={exportGroupOutput === "sections"}
+                      onCheckedChange={() => setExportGroupOutput("sections")}
+                      onSelect={(e) => e.preventDefault()}
+                    >
+                      Sekcje w jednym pliku
+                    </DropdownMenuCheckboxItem>
+                    <DropdownMenuCheckboxItem
+                      checked={exportGroupOutput === "files"}
+                      onCheckedChange={() => setExportGroupOutput("files")}
+                      onSelect={(e) => e.preventDefault()}
+                    >
+                      Osobne pliki (.zip)
+                    </DropdownMenuCheckboxItem>
+                  </>
+                )}
               </DropdownMenuContent>
             </DropdownMenu>
           </div>
