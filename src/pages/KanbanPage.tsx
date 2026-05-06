@@ -200,6 +200,16 @@ export default function KanbanPage() {
     }
   }, [pdfDiagnostics]);
 
+  // INWARIANT: pobranie .layout.json wymaga diagnostyki włączonej.
+  // Gdy user włączy JSON przy wyłączonej diagnostyce — auto-włączamy diagnostykę
+  // (zob. handler `onCheckedChange`). Ten efekt jest safety-netem na wypadek
+  // niespójności (np. zmiana w localStorage z innej karty / starszej wersji UI).
+  useEffect(() => {
+    if (pdfDownloadLayoutJson && !pdfDiagnostics) {
+      setPdfDiagnostics(true);
+    }
+  }, [pdfDownloadLayoutJson, pdfDiagnostics]);
+
   // Konfigurowalne odstępy pionowe w PDF (pt). Domyślnie 8 / 18.
   const PDF_SPACING_DEFAULTS = { headerToTable: 8, tableToNextHeader: 18 };
   const [pdfSpacing, setPdfSpacing] = useState<{
@@ -842,6 +852,16 @@ export default function KanbanPage() {
       toast.error("Wybierz przynajmniej jedną kolumnę do eksportu");
       return;
     }
+    // Walidacja inwariantu: pobranie .layout.json wymaga diagnostyki.
+    // To powinno być już zsynchronizowane przez UI/effect, ale chronimy się
+    // przed nieoczekiwaną desynchronizacją (np. zmiana w localStorage z innej karty).
+    if (pdfDownloadLayoutJson && !pdfDiagnostics) {
+      setPdfDiagnostics(true);
+      toast.warning(
+        "Eksport .layout.json wymaga trybu diagnostycznego — został właśnie włączony. Ponów eksport.",
+      );
+      return;
+    }
     setLastExportFormat("pdf");
     const groups = groupTasksForExport(sortedFilteredTasks, exportGroupBy);
     const tasksCount = groups.reduce((a, g) => a + g.tasks.length, 0);
@@ -1125,11 +1145,22 @@ export default function KanbanPage() {
                 </DropdownMenuCheckboxItem>
                 <DropdownMenuCheckboxItem
                   checked={pdfDownloadLayoutJson}
-                  onCheckedChange={(v) => setPdfDownloadLayoutJson(!!v)}
+                  onCheckedChange={(v) => {
+                    const next = !!v;
+                    setPdfDownloadLayoutJson(next);
+                    // INWARIANT UI: pobranie .layout.json wymaga diagnostyki.
+                    // Włączamy ją automatycznie i informujemy użytkownika.
+                    if (next && !pdfDiagnostics) {
+                      setPdfDiagnostics(true);
+                      toast.info(
+                        "Włączono tryb diagnostyczny PDF — wymagany do pełnego raportu .layout.json",
+                      );
+                    }
+                  }}
                   onSelect={(e) => e.preventDefault()}
                   title={
                     "Po eksporcie PDF pobiera dodatkowo plik .layout.json z pełnym KanbanPdfLayoutReport (sekcje + per-strona)." +
-                    "\n\nUWAGA: gdy zaznaczysz tę opcję, tryb diagnostyczny PDF zostanie automatycznie wymuszony — inaczej JSON byłby pusty (sections=[], pages=[], totals=0)."
+                    "\n\nUWAGA: gdy zaznaczysz tę opcję, tryb diagnostyczny PDF zostanie automatycznie włączony — inaczej JSON byłby pusty (sections=[], pages=[], totals=0)."
                   }
                 >
                   Pobierz raport układu (.layout.json) razem z PDF
