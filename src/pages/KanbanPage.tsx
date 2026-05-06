@@ -578,8 +578,6 @@ export default function KanbanPage() {
               <DropdownMenuItem onClick={handleExportPDF}>
                 <FileText className="h-3.5 w-3.5 mr-2" /> PDF (.pdf)
               </DropdownMenuItem>
-                <FileText className="h-3.5 w-3.5 mr-2" /> PDF (.pdf)
-              </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
           <button
