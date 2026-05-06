@@ -715,6 +715,7 @@ export default function KanbanPage() {
           groupBy: exportGroupBy,
           groupByLabel,
           metaLines: includeExportMeta ? buildMetaLines() : [],
+          debug: pdfDebugLayout,
         },
       ).doc;
 
