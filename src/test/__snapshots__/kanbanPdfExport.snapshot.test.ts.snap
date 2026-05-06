@@ -1,0 +1,211 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`buildKanbanPdf — snapshot układu > snapshot: 1 grupa × 5 zadań (mały zestaw, jedna strona) 1`] = `
+{
+  "marginBottom": 30,
+  "marginTop": 40,
+  "pageHeight": 595,
+  "pageWidth": 842,
+  "sections": [
+    {
+      "groupIndex": 0,
+      "groupLabel": "Małe",
+      "headerBottom": 93,
+      "headerTop": 74,
+      "page": 1,
+      "tableEndPage": 1,
+      "tableFinalY": 230,
+      "tableStartY": 93,
+    },
+  ],
+  "totalPages": 1,
+}
+`;
+
+exports[`buildKanbanPdf — snapshot układu > snapshot: 1 ogromna grupa bez grupowania (autoTable sam dzieli na strony) 1`] = `
+{
+  "marginBottom": 30,
+  "marginTop": 40,
+  "pageHeight": 595,
+  "pageWidth": 842,
+  "sections": [
+    {
+      "groupIndex": 0,
+      "groupLabel": "wszystkie",
+      "headerBottom": 74,
+      "headerTop": 74,
+      "page": 1,
+      "tableEndPage": 5,
+      "tableFinalY": 80,
+      "tableStartY": 74,
+    },
+  ],
+  "totalPages": 5,
+}
+`;
+
+exports[`buildKanbanPdf — snapshot układu > snapshot: 3 grupy × 8 zadań (mieści się na 1-2 stronach) 1`] = `
+{
+  "marginBottom": 30,
+  "marginTop": 40,
+  "pageHeight": 595,
+  "pageWidth": 842,
+  "sections": [
+    {
+      "groupIndex": 0,
+      "groupLabel": "Alfa",
+      "headerBottom": 93,
+      "headerTop": 74,
+      "page": 1,
+      "tableEndPage": 1,
+      "tableFinalY": 303,
+      "tableStartY": 93,
+    },
+    {
+      "groupIndex": 1,
+      "groupLabel": "Beta",
+      "headerBottom": 340,
+      "headerTop": 321,
+      "page": 1,
+      "tableEndPage": 1,
+      "tableFinalY": 551,
+      "tableStartY": 340,
+    },
+    {
+      "groupIndex": 2,
+      "groupLabel": "Gamma",
+      "headerBottom": 59,
+      "headerTop": 40,
+      "page": 2,
+      "tableEndPage": 2,
+      "tableFinalY": 269,
+      "tableStartY": 59,
+    },
+  ],
+  "totalPages": 2,
+}
+`;
+
+exports[`buildKanbanPdf — snapshot układu > snapshot: 5 grup × 15 zadań (wymusza wiele page-breaków) 1`] = `
+{
+  "marginBottom": 30,
+  "marginTop": 40,
+  "pageHeight": 595,
+  "pageWidth": 842,
+  "sections": [
+    {
+      "groupIndex": 0,
+      "groupLabel": "G1",
+      "headerBottom": 93,
+      "headerTop": 74,
+      "page": 1,
+      "tableEndPage": 1,
+      "tableFinalY": 474,
+      "tableStartY": 93,
+    },
+    {
+      "groupIndex": 1,
+      "groupLabel": "G2",
+      "headerBottom": 511,
+      "headerTop": 492,
+      "page": 1,
+      "tableEndPage": 2,
+      "tableFinalY": 397,
+      "tableStartY": 511,
+    },
+    {
+      "groupIndex": 2,
+      "groupLabel": "G3",
+      "headerBottom": 434,
+      "headerTop": 415,
+      "page": 2,
+      "tableEndPage": 3,
+      "tableFinalY": 324,
+      "tableStartY": 434,
+    },
+    {
+      "groupIndex": 3,
+      "groupLabel": "G4",
+      "headerBottom": 361,
+      "headerTop": 342,
+      "page": 3,
+      "tableEndPage": 4,
+      "tableFinalY": 250,
+      "tableStartY": 361,
+    },
+    {
+      "groupIndex": 4,
+      "groupLabel": "G5",
+      "headerBottom": 287,
+      "headerTop": 268,
+      "page": 4,
+      "tableEndPage": 5,
+      "tableFinalY": 177,
+      "tableStartY": 287,
+    },
+  ],
+  "totalPages": 5,
+}
+`;
+
+exports[`buildKanbanPdf — snapshot układu > snapshot: grupy o mieszanej wielkości (1, 0, 25, 3, 12) 1`] = `
+{
+  "marginBottom": 30,
+  "marginTop": 40,
+  "pageHeight": 595,
+  "pageWidth": 842,
+  "sections": [
+    {
+      "groupIndex": 0,
+      "groupLabel": "Singleton",
+      "headerBottom": 93,
+      "headerTop": 74,
+      "page": 1,
+      "tableEndPage": 1,
+      "tableFinalY": 133,
+      "tableStartY": 93,
+    },
+    {
+      "groupIndex": 1,
+      "groupLabel": "Pusta",
+      "headerBottom": 170,
+      "headerTop": 151,
+      "page": 1,
+      "tableEndPage": 1,
+      "tableFinalY": 200,
+      "tableStartY": 170,
+    },
+    {
+      "groupIndex": 2,
+      "groupLabel": "Duża",
+      "headerBottom": 237,
+      "headerTop": 218,
+      "page": 1,
+      "tableEndPage": 2,
+      "tableFinalY": 372,
+      "tableStartY": 237,
+    },
+    {
+      "groupIndex": 3,
+      "groupLabel": "Tri",
+      "headerBottom": 409,
+      "headerTop": 390,
+      "page": 2,
+      "tableEndPage": 2,
+      "tableFinalY": 498,
+      "tableStartY": 409,
+    },
+    {
+      "groupIndex": 4,
+      "groupLabel": "Średnia",
+      "headerBottom": 535,
+      "headerTop": 516,
+      "page": 2,
+      "tableEndPage": 3,
+      "tableFinalY": 348,
+      "tableStartY": 535,
+    },
+  ],
+  "totalPages": 3,
+}
+`;
