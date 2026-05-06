@@ -179,6 +179,7 @@ export default function KanbanPage() {
     }
   }, [exportColumns]);
   const [columnsDialogOpen, setColumnsDialogOpen] = useState(false);
+  const [previewDialogOpen, setPreviewDialogOpen] = useState(false);
 
   // Ostatnio użyty format eksportu (CSV/XLSX/PDF) — pozwala szybko powtórzyć
   type ExportFormat = "csv" | "xlsx" | "pdf";
