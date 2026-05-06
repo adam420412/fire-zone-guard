@@ -293,7 +293,40 @@ export function useUpdateTask() {
       if (error) throw error;
       return data;
     },
-    onSuccess: () => {
+    // Optimistic update — patch ["tasks"] cache immediately so UI does not flicker
+    onMutate: async ({ id, ...updates }: { id: string } & Partial<Tables<"tasks">>) => {
+      await qc.cancelQueries({ queryKey: ["tasks"] });
+      const previous = qc.getQueryData<any[]>(["tasks"]);
+
+      // Resolve assignee display name from profiles cache (if assignee changed)
+      let assigneePatch: Record<string, any> = {};
+      if ("assignee_id" in updates) {
+        const profiles = qc.getQueryData<any[]>(["profiles"]) ?? [];
+        const found = profiles.find((p: any) => p.id === (updates as any).assignee_id);
+        assigneePatch.assigneeName = found?.name ?? (updates as any).assignee_id ? "—" : "Nieprzypisany";
+      }
+
+      if (previous) {
+        qc.setQueryData<any[]>(["tasks"], previous.map((t) => {
+          if (t.id !== id) return t;
+          const merged = { ...t, ...updates, ...assigneePatch };
+          // Recompute isOverdue if deadline changed
+          if ("deadline" in updates || "status" in updates) {
+            merged.isOverdue = merged.deadline
+              && new Date(merged.deadline) < new Date()
+              && merged.status !== "Zamknięte";
+          }
+          return merged;
+        }));
+      }
+
+      return { previous };
+    },
+    onError: (_err, _vars, ctx) => {
+      // Rollback on failure
+      if (ctx?.previous) qc.setQueryData(["tasks"], ctx.previous);
+    },
+    onSettled: () => {
       qc.invalidateQueries({ queryKey: ["tasks"] });
       qc.invalidateQueries({ queryKey: ["buildings"] });
       qc.invalidateQueries({ queryKey: ["dashboard"] });
