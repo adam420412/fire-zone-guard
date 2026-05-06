@@ -1053,7 +1053,7 @@ export default function KanbanPage() {
                     <DropdownMenuItem
                       key={tpl.id}
                       onSelect={(e) => { e.preventDefault(); runTemplate(tpl); }}
-                      title={`${tpl.format.toUpperCase()} · ${tpl.columns.length} kol. · grupowanie: ${groupByLabel[tpl.groupBy]}${tpl.groupBy !== "none" ? ` (${tpl.groupOutput === "files" ? "pliki" : "sekcje"})` : ""}${tpl.includeMeta ? " · z meta" : ""}`}
+                      title={`${tpl.format.toUpperCase()} · ${tpl.columns.length} kol. · grupowanie: ${groupByLabel[tpl.groupBy]}${tpl.groupBy !== "none" ? ` (${groupOutputShort[tpl.groupOutput]})` : ""}${tpl.includeMeta ? " · z meta" : ""}`}
                     >
                       <Download className="h-3.5 w-3.5 mr-2" />
                       <span className="truncate">{tpl.name}</span>
