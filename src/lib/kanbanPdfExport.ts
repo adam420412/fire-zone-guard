@@ -389,6 +389,22 @@ export function buildKanbanPdf(
       );
     }
 
+    // Wizualizacja gap-u "tabela → kolejny nagłówek" (tylko gdy poprzednia tabela była na tej samej stronie).
+    if (
+      debug &&
+      idx > 0 &&
+      prevTableFinalY != null &&
+      prevTableEndPage === doc.getNumberOfPages() &&
+      cursorY > prevTableFinalY
+    ) {
+      drawDebugGap(
+        prevTableFinalY,
+        cursorY,
+        "GAP_BETWEEN_TABLE_AND_NEXT_HEADER",
+        GAP_BETWEEN_TABLE_AND_NEXT_HEADER,
+      );
+    }
+
     if (groupBy !== "none") {
       doc.setFontSize(GROUP_HEADER_FONT);
       doc.setTextColor(40);
@@ -410,6 +426,14 @@ export function buildKanbanPdf(
         doc.setLineDashPattern?.([], 0);
         doc.setLineWidth(prevLW);
         doc.setDrawColor(prevDraw as any);
+
+        // Wizualizacja gap-u "nagłówek → tabela" (między baseline tekstu a startem tabeli).
+        drawDebugGap(
+          headerBaseline,
+          headerBottom,
+          "GAP_BETWEEN_HEADER_AND_TABLE",
+          GAP_BETWEEN_HEADER_AND_TABLE,
+        );
       }
     } else {
       headerTop = cursorY;
