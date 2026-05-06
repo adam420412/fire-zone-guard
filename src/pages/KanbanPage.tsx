@@ -100,6 +100,29 @@ export default function KanbanPage() {
     return true;
   };
 
+  // Mapuje quoteStatus na klucz filtra (uwzględnia też wygasłą wg valid_until z agregacji).
+  const matchesQuote = useCallback((t: any): boolean => {
+    if (quoteFilter === "all") return true;
+    const counts = t.quoteStatusCounts ?? {};
+    const totalQuotes = t.quoteCount ?? 0;
+    if (quoteFilter === "any") return totalQuotes > 0;
+    if (quoteFilter === "none") return totalQuotes === 0;
+    // Konkretny status: wystarczy, że istnieje JAKAKOLWIEK oferta tego zadania w danym statusie.
+    return (counts[quoteFilter] ?? 0) > 0;
+  }, [quoteFilter]);
+
+  const matchesRecency = useCallback((t: any): boolean => {
+    if (recencyFilter === "all") return true;
+    const last = taskLastActivityMs(t);
+    if (!last) return false;
+    const ageMs = Date.now() - last;
+    const hour = 3_600_000;
+    if (recencyFilter === "24h") return ageMs <= 24 * hour;
+    if (recencyFilter === "7d") return ageMs <= 7 * 24 * hour;
+    if (recencyFilter === "30d") return ageMs <= 30 * 24 * hour;
+    return true;
+  }, [recencyFilter]);
+
   const filteredTasks = localTasks.filter((t: any) => {
     const matchesSearch =
       search === "" ||
@@ -113,7 +136,7 @@ export default function KanbanPage() {
         ? (t.buildingName || "— bez obiektu —") === groupValueFilter
         : (t.assigneeName || "— nieprzypisane —") === groupValueFilter
     );
-    return matchesSearch && matchesPriority && matchesDue && matchesGroupValue;
+    return matchesSearch && matchesPriority && matchesDue && matchesGroupValue && matchesQuote(t) && matchesRecency(t);
   });
 
   const handleExportCSV = () => {
