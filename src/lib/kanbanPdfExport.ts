@@ -114,6 +114,7 @@ export function buildKanbanPdf(
     metaLines = [],
     title = "Fire Zone — Eksport zadań (Kanban)",
     debug = false,
+    spacing,
   } = opts;
 
   const doc = new jsPDF({ orientation: "landscape", unit: "pt", format: "a4" });
