@@ -11,6 +11,10 @@ import { KanbanSkeleton } from "@/components/PageSkeleton";
 import { DragDropContext, Droppable, Draggable, DropResult } from "@hello-pangea/dnd";
 import { toast } from "sonner";
 import { formatRelative, formatLocalDateTime } from "@/lib/relativeTime";
+import {
+  DropdownMenu, DropdownMenuTrigger, DropdownMenuContent,
+  DropdownMenuItem, DropdownMenuLabel,
+} from "@/components/ui/dropdown-menu";
 import { buildLastActivityTooltip } from "@/lib/lastActivity";
 
 type SortMode = "deadline" | "priority" | "created" | "title" | "updated" | "quoteStatus" | "quoteCount";
