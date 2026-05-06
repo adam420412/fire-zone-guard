@@ -214,6 +214,79 @@ export default function KanbanPage() {
     }
   }, [exportGroupBy, exportGroupOutput]);
 
+  // === Szablony eksportu ===
+  type ExportTemplate = {
+    id: string;
+    name: string;
+    format: ExportFormat;
+    columns: ExportColumnKey[];
+    includeMeta: boolean;
+    groupBy: ExportGroupBy;
+    groupOutput: ExportGroupOutput;
+    createdAt: number;
+  };
+  const TEMPLATES_KEY = "kanban.exportTemplates";
+  const [exportTemplates, setExportTemplates] = useState<ExportTemplate[]>(() => {
+    if (typeof window === "undefined") return [];
+    try {
+      const raw = window.localStorage.getItem(TEMPLATES_KEY);
+      if (!raw) return [];
+      const parsed = JSON.parse(raw);
+      return Array.isArray(parsed) ? parsed.filter((t: any) => t && typeof t.id === "string" && typeof t.name === "string") : [];
+    } catch { return []; }
+  });
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      window.localStorage.setItem(TEMPLATES_KEY, JSON.stringify(exportTemplates));
+    }
+  }, [exportTemplates]);
+  const [templatesDialogOpen, setTemplatesDialogOpen] = useState(false);
+  const [newTemplateName, setNewTemplateName] = useState("");
+
+  const saveCurrentAsTemplate = (name: string) => {
+    const trimmed = name.trim();
+    if (!trimmed) { toast.error("Podaj nazwę szablonu"); return; }
+    const tpl: ExportTemplate = {
+      id: (typeof crypto !== "undefined" && "randomUUID" in crypto) ? crypto.randomUUID() : `tpl_${Date.now()}`,
+      name: trimmed,
+      format: lastExportFormat,
+      columns: [...exportColumns],
+      includeMeta: includeExportMeta,
+      groupBy: exportGroupBy,
+      groupOutput: exportGroupOutput,
+      createdAt: Date.now(),
+    };
+    setExportTemplates((prev) => {
+      const filtered = prev.filter((p) => p.name.toLowerCase() !== trimmed.toLowerCase());
+      return [tpl, ...filtered];
+    });
+    setNewTemplateName("");
+    toast.success(`Zapisano szablon „${trimmed}"`);
+  };
+
+  const applyTemplate = (tpl: ExportTemplate) => {
+    setLastExportFormat(tpl.format);
+    setExportColumns(tpl.columns.filter((k) => EXPORT_COLUMNS.some((c) => c.key === k)));
+    setIncludeExportMeta(tpl.includeMeta);
+    setExportGroupBy(tpl.groupBy);
+    setExportGroupOutput(tpl.groupOutput);
+    toast.success(`Wczytano szablon „${tpl.name}"`);
+  };
+
+  const deleteTemplate = (id: string) => {
+    setExportTemplates((prev) => prev.filter((t) => t.id !== id));
+  };
+
+  const runTemplate = (tpl: ExportTemplate) => {
+    applyTemplate(tpl);
+    // eksport po następnym renderze, gdy state się zaaplikuje
+    setTimeout(() => {
+      if (tpl.format === "csv") handleExportCSV();
+      else if (tpl.format === "xlsx") handleExportXLSX();
+      else handleExportPDF();
+    }, 50);
+  };
+
   const groupTasksForExport = useCallback((arr: any[], by: ExportGroupBy) => {
     if (by === "none") return [{ key: "_all", label: "Wszystkie", tasks: arr }];
     const map = new Map<string, { key: string; label: string; tasks: any[] }>();
@@ -928,6 +1001,31 @@ export default function KanbanPage() {
                     </DropdownMenuCheckboxItem>
                   </>
                 )}
+                <DropdownMenuSeparator />
+                <DropdownMenuLabel className="text-[10px] uppercase">
+                  Szablony eksportu
+                </DropdownMenuLabel>
+                {exportTemplates.length === 0 ? (
+                  <div className="px-2 py-1.5 text-[11px] text-muted-foreground italic">
+                    Brak zapisanych szablonów
+                  </div>
+                ) : (
+                  exportTemplates.slice(0, 6).map((tpl) => (
+                    <DropdownMenuItem
+                      key={tpl.id}
+                      onSelect={(e) => { e.preventDefault(); runTemplate(tpl); }}
+                      title={`${tpl.format.toUpperCase()} · ${tpl.columns.length} kol. · grupowanie: ${groupByLabel[tpl.groupBy]}${tpl.groupBy !== "none" ? ` (${tpl.groupOutput === "files" ? "pliki" : "sekcje"})` : ""}${tpl.includeMeta ? " · z meta" : ""}`}
+                    >
+                      <Download className="h-3.5 w-3.5 mr-2" />
+                      <span className="truncate">{tpl.name}</span>
+                      <span className="ml-auto text-[10px] text-muted-foreground">{tpl.format.toUpperCase()}</span>
+                    </DropdownMenuItem>
+                  ))
+                )}
+                <DropdownMenuItem onSelect={(e) => { e.preventDefault(); setTemplatesDialogOpen(true); }}>
+                  <Settings2 className="h-3.5 w-3.5 mr-2" />
+                  Zarządzaj szablonami…
+                </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
           </div>
@@ -1384,6 +1482,99 @@ export default function KanbanPage() {
                 Pobierz PDF
               </Button>
             </div>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* === Szablony eksportu === */}
+      <Dialog open={templatesDialogOpen} onOpenChange={setTemplatesDialogOpen}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Szablony eksportu</DialogTitle>
+            <DialogDescription>
+              Zapisz aktualne ustawienia (format, kolumny, metadane, grupowanie) jako szablon i uruchamiaj jednym kliknięciem.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4">
+            {/* Aktualne ustawienia */}
+            <div className="rounded-md border border-border bg-card/40 p-3 text-xs space-y-1">
+              <div className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold">
+                Bieżące ustawienia
+              </div>
+              <div className="flex flex-wrap gap-x-4 gap-y-1">
+                <span><span className="text-muted-foreground">Format:</span> <b>{lastExportFormat.toUpperCase()}</b></span>
+                <span><span className="text-muted-foreground">Kolumny:</span> <b>{exportColumns.length}/{EXPORT_COLUMNS.length}</b></span>
+                <span><span className="text-muted-foreground">Metadane:</span> <b>{includeExportMeta ? "tak" : "nie"}</b></span>
+                <span><span className="text-muted-foreground">Grupowanie:</span> <b>{groupByLabel[exportGroupBy]}</b>{exportGroupBy !== "none" && <> · <b>{exportGroupOutput === "files" ? "pliki" : "sekcje"}</b></>}</span>
+              </div>
+            </div>
+
+            {/* Zapisz nowy */}
+            <div className="flex gap-2 items-end">
+              <div className="flex-1">
+                <label className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground block mb-1">
+                  Nazwa nowego szablonu
+                </label>
+                <input
+                  value={newTemplateName}
+                  onChange={(e) => setNewTemplateName(e.target.value)}
+                  onKeyDown={(e) => { if (e.key === "Enter") saveCurrentAsTemplate(newTemplateName); }}
+                  placeholder="np. Raport klienta — XLSX wg obiektu"
+                  className="w-full rounded-md border border-border bg-card px-3 py-1.5 text-sm outline-none focus:border-primary"
+                />
+              </div>
+              <Button type="button" onClick={() => saveCurrentAsTemplate(newTemplateName)}>
+                Zapisz szablon
+              </Button>
+            </div>
+
+            {/* Lista */}
+            <div className="space-y-2">
+              <div className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+                Zapisane szablony ({exportTemplates.length})
+              </div>
+              {exportTemplates.length === 0 ? (
+                <p className="text-sm text-muted-foreground italic px-2">Brak zapisanych szablonów.</p>
+              ) : (
+                <div className="max-h-[40vh] overflow-y-auto space-y-1.5">
+                  {exportTemplates.map((tpl) => (
+                    <div key={tpl.id} className="flex items-center gap-2 rounded-md border border-border bg-card/40 px-3 py-2">
+                      <div className="flex-1 min-w-0">
+                        <div className="font-medium text-sm truncate">{tpl.name}</div>
+                        <div className="text-[11px] text-muted-foreground">
+                          {tpl.format.toUpperCase()} · {tpl.columns.length} kol. · grupowanie: {groupByLabel[tpl.groupBy]}
+                          {tpl.groupBy !== "none" && <> ({tpl.groupOutput === "files" ? "pliki" : "sekcje"})</>}
+                          {tpl.includeMeta && " · z meta"}
+                        </div>
+                      </div>
+                      <Button type="button" size="sm" variant="outline" onClick={() => applyTemplate(tpl)}>
+                        Wczytaj
+                      </Button>
+                      <Button type="button" size="sm" onClick={() => { setTemplatesDialogOpen(false); runTemplate(tpl); }}>
+                        Eksportuj
+                      </Button>
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="ghost"
+                        className="text-destructive hover:text-destructive"
+                        onClick={() => deleteTemplate(tpl.id)}
+                        title="Usuń szablon"
+                      >
+                        ✕
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button type="button" variant="outline" onClick={() => setTemplatesDialogOpen(false)}>
+              Zamknij
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
