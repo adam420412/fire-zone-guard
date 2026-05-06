@@ -640,7 +640,29 @@ export default function KanbanPage() {
       return;
     }
 
-    // sekcje = osobne arkusze w jednym skoroszycie
+    if (exportGroupOutput === "single-sheet") {
+      // Wszystkie grupy w jednym arkuszu, oddzielone nagłówkiem sekcji i pustym wierszem
+      const headers = activeColumnDefs.map((c) => c.label);
+      const aoa: any[][] = [];
+      if (includeExportMeta) {
+        buildMetaLines().forEach((l) => aoa.push([l]));
+        aoa.push([]);
+      }
+      groups.forEach((g, idx) => {
+        if (idx > 0) aoa.push([]);
+        aoa.push([`${groupByLabel[exportGroupBy]}: ${g.label} (${g.tasks.length})`]);
+        aoa.push(headers);
+        g.tasks.forEach((t: any) => aoa.push(activeColumnDefs.map((c) => c.accessor(t))));
+      });
+      const ws = XLSX.utils.aoa_to_sheet(aoa);
+      ws["!cols"] = activeColumnDefs.map((c) => ({ wch: c.xlsxWidth ?? 16 }));
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, "Zadania");
+      XLSX.writeFile(wb, `${exportFileBase}__by-${exportGroupBy}.xlsx`);
+      return;
+    }
+
+    // sections (domyślne dla XLSX) = osobne arkusze w jednym skoroszycie
     const wb = XLSX.utils.book_new();
     const usedNames = new Set<string>();
     for (const g of groups) {
