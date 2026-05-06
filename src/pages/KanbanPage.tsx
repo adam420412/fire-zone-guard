@@ -13,6 +13,7 @@ import { toast } from "sonner";
 
 type SortMode = "deadline" | "priority" | "created" | "title";
 type GroupMode = "none" | "building" | "assignee";
+type DueFilter = "all" | "overdue" | "today" | "week";
 
 const PRIORITY_RANK: Record<string, number> = { krytyczny: 0, wysoki: 1, "średni": 2, niski: 3 };
 
@@ -24,6 +25,8 @@ export default function KanbanPage() {
   const [filterPriority, setFilterPriority] = useState("all");
   const [sortMode, setSortMode] = useState<SortMode>("deadline");
   const [groupMode, setGroupMode] = useState<GroupMode>("none");
+  const [dueFilter, setDueFilter] = useState<DueFilter>("all");
+  const [groupValueFilter, setGroupValueFilter] = useState<string>("all");
   const [showCreate, setShowCreate] = useState(false);
   const [selectedTask, setSelectedTask] = useState<any>(null);
   
@@ -36,6 +39,44 @@ export default function KanbanPage() {
     }
   }, [tasks]);
 
+  // Reset value filter when group mode changes
+  useEffect(() => {
+    setGroupValueFilter("all");
+  }, [groupMode]);
+
+  // Compute available group values (buildings or assignees) from current dataset
+  const groupValueOptions = useMemo(() => {
+    if (groupMode === "none") return [];
+    const set = new Map<string, number>();
+    localTasks.forEach((t: any) => {
+      const key = groupMode === "building"
+        ? (t.buildingName || "— bez obiektu —")
+        : (t.assigneeName || "— nieprzypisane —");
+      set.set(key, (set.get(key) ?? 0) + 1);
+    });
+    return Array.from(set.entries())
+      .sort((a, b) => a[0].localeCompare(b[0], "pl"))
+      .map(([label, count]) => ({ label, count }));
+  }, [localTasks, groupMode]);
+
+  const isWithinRange = (deadline: string | null | undefined, status: string) => {
+    if (dueFilter === "all") return true;
+    if (!deadline) return false;
+    const d = new Date(deadline);
+    const now = new Date();
+    const isClosed = status === "Zamknięte";
+    if (dueFilter === "overdue") return !isClosed && d < now;
+    if (dueFilter === "today") {
+      return d.toDateString() === now.toDateString();
+    }
+    if (dueFilter === "week") {
+      const in7 = new Date();
+      in7.setDate(in7.getDate() + 7);
+      return d >= now && d <= in7;
+    }
+    return true;
+  };
+
   const filteredTasks = localTasks.filter((t: any) => {
     const matchesSearch =
       search === "" ||
@@ -43,7 +84,13 @@ export default function KanbanPage() {
       (t.assigneeName ?? "").toLowerCase().includes(search.toLowerCase()) ||
       (t.buildingName ?? "").toLowerCase().includes(search.toLowerCase());
     const matchesPriority = filterPriority === "all" || t.priority === filterPriority;
-    return matchesSearch && matchesPriority;
+    const matchesDue = isWithinRange(t.deadline, t.status);
+    const matchesGroupValue = groupValueFilter === "all" || groupMode === "none" || (
+      groupMode === "building"
+        ? (t.buildingName || "— bez obiektu —") === groupValueFilter
+        : (t.assigneeName || "— nieprzypisane —") === groupValueFilter
+    );
+    return matchesSearch && matchesPriority && matchesDue && matchesGroupValue;
   });
 
   const handleExportCSV = () => {
