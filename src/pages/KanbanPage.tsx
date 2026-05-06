@@ -364,16 +364,18 @@ export default function KanbanPage() {
     doc.text("Fire Zone — Eksport zadań (Kanban)", 40, 36);
     doc.setFontSize(9);
     doc.setTextColor(110);
-    const metaLines = [
-      `Wygenerowano: ${new Date().toLocaleString("pl-PL")}`,
-      `Sortowanie: ${exportContext.sortLabel}`,
-      `Filtry: ${exportContext.filters.map(f => `${f.label}=${f.value}`).join("  |  ")}`,
-      `Liczba zadań: ${exportRows.length}`,
-    ];
+    const metaLines = includeExportMeta
+      ? [
+          `Wygenerowano: ${new Date().toLocaleString("pl-PL")}`,
+          `Sortowanie: ${exportContext.sortLabel}`,
+          `Filtry: ${exportContext.filters.map(f => `${f.label}=${f.value}`).join("  |  ") || "—"}`,
+          `Liczba zadań: ${exportRows.length}`,
+        ]
+      : [];
     metaLines.forEach((line, i) => doc.text(line, 40, 54 + i * 12));
 
     autoTable(doc, {
-      startY: 54 + metaLines.length * 12 + 8,
+      startY: metaLines.length ? 54 + metaLines.length * 12 + 8 : 50,
       head: [[
         "ID", "Tytuł", "Obiekt / Firma", "Wykonawca",
         "Pr.", "Status", "Termin", "Oferta", "Akt.",
