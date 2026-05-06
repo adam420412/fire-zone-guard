@@ -222,6 +222,7 @@ export function PdfLayoutDebugDialog({
           {/* Layout report */}
           <ScrollArea className="min-h-0">
             <div className="p-4 space-y-4">
+              <PerfHistoryPanel />
               {layout ? (
                 <LayoutReportView
                   layout={layout}
