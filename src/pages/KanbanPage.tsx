@@ -139,21 +139,30 @@ export default function KanbanPage() {
     return true;
   }, [recencyFilter]);
 
-  const filteredTasks = localTasks.filter((t: any) => {
-    const matchesSearch =
-      search === "" ||
-      t.title.toLowerCase().includes(search.toLowerCase()) ||
-      (t.assigneeName ?? "").toLowerCase().includes(search.toLowerCase()) ||
-      (t.buildingName ?? "").toLowerCase().includes(search.toLowerCase());
-    const matchesPriority = filterPriority === "all" || t.priority === filterPriority;
-    const matchesDue = isWithinRange(t.deadline, t.status);
-    const matchesGroupValue = groupValueFilter === "all" || groupMode === "none" || (
-      groupMode === "building"
-        ? (t.buildingName || "— bez obiektu —") === groupValueFilter
-        : (t.assigneeName || "— nieprzypisane —") === groupValueFilter
-    );
-    return matchesSearch && matchesPriority && matchesDue && matchesGroupValue && matchesQuote(t) && matchesRecency(t);
-  });
+  // Bazowe predykaty (bez filtra Aktywność) — używane też do liczników chipsów Aktywność,
+  // żeby liczniki uwzględniały pozostałe aktywne filtry (termin, priorytet, search, grupa, oferta).
+  const baseFilteredTasks = useMemo(() => {
+    return localTasks.filter((t: any) => {
+      const matchesSearch =
+        search === "" ||
+        t.title.toLowerCase().includes(search.toLowerCase()) ||
+        (t.assigneeName ?? "").toLowerCase().includes(search.toLowerCase()) ||
+        (t.buildingName ?? "").toLowerCase().includes(search.toLowerCase());
+      const matchesPriority = filterPriority === "all" || t.priority === filterPriority;
+      const matchesDue = isWithinRange(t.deadline, t.status);
+      const matchesGroupValue = groupValueFilter === "all" || groupMode === "none" || (
+        groupMode === "building"
+          ? (t.buildingName || "— bez obiektu —") === groupValueFilter
+          : (t.assigneeName || "— nieprzypisane —") === groupValueFilter
+      );
+      return matchesSearch && matchesPriority && matchesDue && matchesGroupValue && matchesQuote(t);
+    });
+  }, [localTasks, search, filterPriority, dueFilter, groupValueFilter, groupMode, matchesQuote]);
+
+  const filteredTasks = useMemo(
+    () => baseFilteredTasks.filter((t: any) => matchesRecency(t)),
+    [baseFilteredTasks, matchesRecency]
+  );
 
   const handleExportCSV = () => {
     const headers = ["ID", "Tytul", "Obiekt", "Przypisany", "Priorytet", "Status", "Deadline", "Typ"];
