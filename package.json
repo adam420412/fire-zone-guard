@@ -10,7 +10,10 @@
     "lint": "eslint .",
     "preview": "vite preview",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "test:ci": "CI=true vitest run --reporter=verbose --passWithNoTests=false",
+    "test:snapshots": "CI=true vitest run --reporter=verbose src/test/kanbanPdfExport.snapshot.test.ts src/test/kanbanPdfExport.edgecases.test.ts src/test/kanbanPdfExport.multipage.test.ts src/test/kanbanPdfExport.test.ts src/test/kanbanLayoutDiff.test.ts",
+    "test:snapshots:update": "vitest run -u src/test/kanbanPdfExport.snapshot.test.ts src/test/kanbanPdfExport.edgecases.test.ts"
   },
   "dependencies": {
     "@hello-pangea/dnd": "^18.0.1",
