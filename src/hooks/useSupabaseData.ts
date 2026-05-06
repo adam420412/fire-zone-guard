@@ -301,6 +301,7 @@ export function useTasks() {
         quoteUpdatedAt: quoteAgg[t.id]?.latestUpdatedAt ?? null,
         quoteNumber: quoteAgg[t.id]?.latestNumber ?? null,
         quoteLastEvent: quoteAgg[t.id]?.latestEvent ?? null,
+        quoteStatusCounts: quoteAgg[t.id]?.counts ?? {},
         financialBalance: finAgg[t.id] ?? 0,
       })) as TaskWithDetails[];
     },
