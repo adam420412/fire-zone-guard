@@ -283,6 +283,7 @@ export function useTasks() {
         quoteStatus: quoteAgg[t.id]?.latestStatus ?? null,
         quoteUpdatedAt: quoteAgg[t.id]?.latestUpdatedAt ?? null,
         quoteNumber: quoteAgg[t.id]?.latestNumber ?? null,
+        quoteLastEvent: quoteAgg[t.id]?.latestEvent ?? null,
         financialBalance: finAgg[t.id] ?? 0,
       })) as TaskWithDetails[];
     },
