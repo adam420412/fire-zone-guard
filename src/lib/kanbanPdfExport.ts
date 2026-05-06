@@ -560,66 +560,73 @@ export function buildKanbanPdf(
 
   // ── Post-processing diagnostyczny ─────────────────────────────────────────
   const totalPages = doc.getNumberOfPages();
-  const perPageCounter = new Map<number, number>();
-  for (let i = 0; i < sections.length; i++) {
-    const s = sections[i];
-    const prev = i > 0 ? sections[i - 1] : null;
-
-    s.headerHeight = s.headerBottom - s.headerTop;
-    s.tablePageSpan = Math.max(1, s.tableEndPage - s.page + 1);
-    s.tableHeightFirstPage =
-      s.tableEndPage === s.page
-        ? Math.max(0, s.tableFinalY - s.tableStartY)
-        : Math.max(0, pageHeight - marginBottom - s.tableStartY);
-    s.sectionHeightOnStartPage = s.headerHeight + s.tableHeightFirstPage;
-    s.startsNewPage = !prev || s.page > prev.tableEndPage;
-    s.gapBeforeHeader =
-      prev && prev.tableEndPage === s.page
-        ? Math.max(0, s.headerTop - prev.tableFinalY)
-        : null;
-    const idxOnPage = perPageCounter.get(s.page) ?? 0;
-    s.indexOnPage = idxOnPage;
-    perPageCounter.set(s.page, idxOnPage + 1);
-  }
-
-  // Agregaty per-strona.
   const pages: KanbanPdfPageSummary[] = [];
-  for (let p = 1; p <= totalPages; p++) {
-    const onPage = sections.filter((s) => s.page === p);
-    const endingHere = sections.filter((s) => s.tableEndPage === p);
-    const ys: number[] = [];
-    onPage.forEach((s) => ys.push(s.headerTop, s.tableStartY));
-    endingHere.forEach((s) => ys.push(s.tableFinalY));
-    const firstUsedY = ys.length ? Math.min(...ys) : null;
-    const lastUsedY = ys.length ? Math.max(...ys) : null;
-    const trailingWhitespace =
-      lastUsedY != null
-        ? Math.max(0, pageHeight - marginBottom - lastUsedY)
-        : pageHeight - marginTop - marginBottom;
-    pages.push({
-      page: p,
-      sectionsStarting: onPage.length,
-      sectionsEnding: endingHere.length,
-      firstUsedY,
-      lastUsedY,
-      trailingWhitespace,
-    });
-  }
+  let totalHeaderHeight = 0;
+  let totalTableHeightOnStartPage = 0;
+  let totalGapBeforeHeader = 0;
+  let avgTrailingWhitespace = 0;
 
-  // Globalne sumy.
-  const totalHeaderHeight = sections.reduce((a, s) => a + s.headerHeight, 0);
-  const totalTableHeightOnStartPage = sections.reduce(
-    (a, s) => a + s.tableHeightFirstPage,
-    0,
-  );
-  const totalGapBeforeHeader = sections.reduce(
-    (a, s) => a + (s.gapBeforeHeader ?? 0),
-    0,
-  );
-  const avgTrailingWhitespace =
-    pages.length > 0
-      ? pages.reduce((a, p) => a + p.trailingWhitespace, 0) / pages.length
-      : 0;
+  if (diagnostics) {
+    const perPageCounter = new Map<number, number>();
+    for (let i = 0; i < sections.length; i++) {
+      const s = sections[i];
+      const prev = i > 0 ? sections[i - 1] : null;
+
+      s.headerHeight = s.headerBottom - s.headerTop;
+      s.tablePageSpan = Math.max(1, s.tableEndPage - s.page + 1);
+      s.tableHeightFirstPage =
+        s.tableEndPage === s.page
+          ? Math.max(0, s.tableFinalY - s.tableStartY)
+          : Math.max(0, pageHeight - marginBottom - s.tableStartY);
+      s.sectionHeightOnStartPage = s.headerHeight + s.tableHeightFirstPage;
+      s.startsNewPage = !prev || s.page > prev.tableEndPage;
+      s.gapBeforeHeader =
+        prev && prev.tableEndPage === s.page
+          ? Math.max(0, s.headerTop - prev.tableFinalY)
+          : null;
+      const idxOnPage = perPageCounter.get(s.page) ?? 0;
+      s.indexOnPage = idxOnPage;
+      perPageCounter.set(s.page, idxOnPage + 1);
+    }
+
+    // Agregaty per-strona.
+    for (let p = 1; p <= totalPages; p++) {
+      const onPage = sections.filter((s) => s.page === p);
+      const endingHere = sections.filter((s) => s.tableEndPage === p);
+      const ys: number[] = [];
+      onPage.forEach((s) => ys.push(s.headerTop, s.tableStartY));
+      endingHere.forEach((s) => ys.push(s.tableFinalY));
+      const firstUsedY = ys.length ? Math.min(...ys) : null;
+      const lastUsedY = ys.length ? Math.max(...ys) : null;
+      const trailingWhitespace =
+        lastUsedY != null
+          ? Math.max(0, pageHeight - marginBottom - lastUsedY)
+          : pageHeight - marginTop - marginBottom;
+      pages.push({
+        page: p,
+        sectionsStarting: onPage.length,
+        sectionsEnding: endingHere.length,
+        firstUsedY,
+        lastUsedY,
+        trailingWhitespace,
+      });
+    }
+
+    // Globalne sumy.
+    totalHeaderHeight = sections.reduce((a, s) => a + s.headerHeight, 0);
+    totalTableHeightOnStartPage = sections.reduce(
+      (a, s) => a + s.tableHeightFirstPage,
+      0,
+    );
+    totalGapBeforeHeader = sections.reduce(
+      (a, s) => a + (s.gapBeforeHeader ?? 0),
+      0,
+    );
+    avgTrailingWhitespace =
+      pages.length > 0
+        ? pages.reduce((a, p) => a + p.trailingWhitespace, 0) / pages.length
+        : 0;
+  }
 
   return {
     doc,
