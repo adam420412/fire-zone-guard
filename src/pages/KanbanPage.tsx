@@ -162,6 +162,27 @@ export default function KanbanPage() {
             <option value="średni">Średni</option>
             <option value="niski">Niski</option>
           </select>
+          <select
+            value={sortMode}
+            onChange={(e) => setSortMode(e.target.value as SortMode)}
+            className="rounded-md border border-border bg-card px-3 py-1.5 text-sm outline-none cursor-pointer"
+            title="Sortowanie kart w kolumnie"
+          >
+            <option value="deadline">Sort: Termin</option>
+            <option value="priority">Sort: Priorytet</option>
+            <option value="created">Sort: Data utworzenia</option>
+            <option value="title">Sort: Tytuł A-Z</option>
+          </select>
+          <select
+            value={groupMode}
+            onChange={(e) => setGroupMode(e.target.value as GroupMode)}
+            className="rounded-md border border-border bg-card px-3 py-1.5 text-sm outline-none cursor-pointer"
+            title="Grupowanie zadań w kolumnie"
+          >
+            <option value="none">Grupuj: brak</option>
+            <option value="building">Grupuj: Obiekt</option>
+            <option value="assignee">Grupuj: Wykonawca</option>
+          </select>
           <button
             onClick={handleExportCSV}
             className="flex items-center gap-2 rounded-md border border-border bg-card px-3 py-1.5 text-sm font-medium hover:bg-secondary transition-colors"
@@ -203,26 +224,43 @@ export default function KanbanPage() {
                           snapshot.isDraggingOver && "bg-secondary/30"
                         )}
                       >
-                        {columnTasks.map((task: any, index: number) => (
-                          <Draggable key={task.id} draggableId={task.id} index={index}>
-                            {(provided, snapshot) => (
-                              <div
-                                ref={provided.innerRef}
-                                {...provided.draggableProps}
-                                {...provided.dragHandleProps}
-                                className={cn(
-                                  "transition-transform",
-                                  snapshot.isDragging && "opacity-90 shadow-2xl scale-105 z-50 ring-2 ring-primary/50"
-                                )}
-                                style={{
-                                  ...provided.draggableProps.style,
-                                }}
-                              >
-                                <TaskCard task={task} onClick={() => setSelectedTask(task)} />
-                              </div>
-                            )}
-                          </Draggable>
-                        ))}
+                        {groupTasks(columnTasks).map((group, gIdx) => {
+                          let runningIndex = 0;
+                          // compute starting index for stable Draggable indices
+                          const prevGroups = groupTasks(columnTasks).slice(0, gIdx);
+                          runningIndex = prevGroups.reduce((sum, g) => sum + g.tasks.length, 0);
+                          return (
+                            <div key={group.key} className="space-y-2">
+                              {groupMode !== "none" && (
+                                <div className="sticky top-0 z-10 flex items-center justify-between bg-card/80 backdrop-blur px-2 py-1 rounded text-[10px] font-bold uppercase tracking-wider text-muted-foreground border-b border-border">
+                                  <span className="truncate">{group.label}</span>
+                                  <span className="ml-2 shrink-0">{group.tasks.length}</span>
+                                </div>
+                              )}
+                              {group.tasks.map((task: any, idxInGroup: number) => {
+                                const realIndex = runningIndex + idxInGroup;
+                                return (
+                                  <Draggable key={task.id} draggableId={task.id} index={realIndex}>
+                                    {(provided, snapshot) => (
+                                      <div
+                                        ref={provided.innerRef}
+                                        {...provided.draggableProps}
+                                        {...provided.dragHandleProps}
+                                        className={cn(
+                                          "transition-transform",
+                                          snapshot.isDragging && "opacity-90 shadow-2xl scale-105 z-50 ring-2 ring-primary/50"
+                                        )}
+                                        style={{ ...provided.draggableProps.style }}
+                                      >
+                                        <TaskCard task={task} onClick={() => setSelectedTask(task)} />
+                                      </div>
+                                    )}
+                                  </Draggable>
+                                );
+                              })}
+                            </div>
+                          );
+                        })}
                         {provided.placeholder}
                         {columnTasks.length === 0 && !snapshot.isDraggingOver && (
                           <div className="flex flex-col items-center justify-center py-10 opacity-30 text-center">
