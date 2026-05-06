@@ -169,18 +169,29 @@ export default function TaskCard({ task, onClick }: TaskCardProps) {
             {task.subtasksDone}/{task.subtasksTotal}
           </span>
         )}
-        {(task.quoteCount ?? 0) > 0 && task.quoteStatus && (
-          <span
-            className={cn(
-              "inline-flex items-center gap-0.5 rounded px-1.5 py-0.5 text-[10px] font-medium",
-              quoteStatusBadge[task.quoteStatus]?.cls ?? "bg-secondary text-secondary-foreground"
-            )}
-            title={`Oferty: ${task.quoteCount}, ostatnia: ${task.quoteStatus}`}
-          >
-            <FileText className="h-2.5 w-2.5" />
-            {quoteStatusBadge[task.quoteStatus]?.label ?? task.quoteStatus}
-          </span>
-        )}
+        {(task.quoteCount ?? 0) > 0 && task.quoteStatus && (() => {
+          const meta = quoteStatusBadge[task.quoteStatus] ?? { label: task.quoteStatus, cls: "bg-secondary text-secondary-foreground border border-border" };
+          const rel = formatRelative(task.quoteUpdatedAt);
+          const tooltip = [
+            `Oferta: ${meta.label}`,
+            task.quoteNumber ? `Nr ${task.quoteNumber}` : null,
+            (task.quoteCount ?? 0) > 1 ? `${task.quoteCount} ofert` : null,
+            rel ? `Aktualizacja: ${rel}` : null,
+          ].filter(Boolean).join(" · ");
+          return (
+            <span
+              className={cn("inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-[10px] font-medium", meta.cls)}
+              title={tooltip}
+            >
+              <FileText className="h-2.5 w-2.5" />
+              <span>{meta.label}</span>
+              {(task.quoteCount ?? 0) > 1 && (
+                <span className="opacity-70">×{task.quoteCount}</span>
+              )}
+              {rel && <span className="opacity-70">· {rel}</span>}
+            </span>
+          );
+        })()}
         {(task.financialBalance ?? 0) !== 0 && (
           <span
             className={cn(
