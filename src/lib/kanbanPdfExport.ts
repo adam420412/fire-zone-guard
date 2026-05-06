@@ -214,8 +214,14 @@ export function buildKanbanPdf(
   const TABLE_FONT_SIZE = 8;
   const TABLE_CELL_PADDING = 3;
   const GROUP_HEADER_FONT = 11;
-  const GROUP_HEADER_GAP_BEFORE = 16;
-  const GROUP_HEADER_GAP_AFTER = 6;
+  // ── Sztywne odstępy pionowe (pt). Stałe i niezależne od pomiarów. ──
+  /** Odstęp między końcem POPRZEDNIEJ tabeli a górą nagłówka KOLEJNEJ grupy. */
+  const GAP_BETWEEN_TABLE_AND_NEXT_HEADER = 18;
+  /** Odstęp między dolną krawędzią nagłówka grupy a pierwszym wierszem tabeli. */
+  const GAP_BETWEEN_HEADER_AND_TABLE = 8;
+  // Aliasy zachowane dla czytelności w istniejącym kodzie.
+  const GROUP_HEADER_GAP_BEFORE = GAP_BETWEEN_TABLE_AND_NEXT_HEADER;
+  const GROUP_HEADER_GAP_AFTER = GAP_BETWEEN_HEADER_AND_TABLE;
 
   /** Wysokość pojedynczej linii tekstu przy danym rozmiarze fontu (pt). */
   const measureLineHeight = (fontSize: number): number => {
