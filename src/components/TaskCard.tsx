@@ -40,6 +40,27 @@ const quoteEventMeta: Record<NonNullable<TaskWithDetails["quoteLastEvent"]>, { l
   created:  { label: "Utworzona",    verb: "Utworzono",    Icon: FilePlus2,    cls: "text-muted-foreground" },
 };
 
+type QuoteCountKey = keyof NonNullable<TaskWithDetails["quoteStatusCounts"]>;
+
+const quoteCountMeta: Record<QuoteCountKey, { short: string; label: string; cls: string }> = {
+  draft:    { short: "D", label: "Wersja robocza", cls: "text-muted-foreground" },
+  sent:     { short: "W", label: "Wysłane",        cls: "text-blue-400" },
+  accepted: { short: "Z", label: "Zaakceptowane",  cls: "text-success" },
+  rejected: { short: "O", label: "Odrzucone",      cls: "text-destructive" },
+  expired:  { short: "E", label: "Wygasłe",        cls: "text-warning" },
+};
+
+// Mapowanie quoteStatus → klucz licznika, by móc wykluczyć status "latest" z chipsa „pozostałe”.
+function quoteStatusToCountKey(status?: string | null): QuoteCountKey | null {
+  const s = String(status ?? "").toLowerCase();
+  if (s === "zaakceptowana") return "accepted";
+  if (s === "odrzucona") return "rejected";
+  if (s === "wysłana" || s === "wyslana") return "sent";
+  if (s === "wygasła" || s === "wygasla") return "expired";
+  if (s === "wersja robocza") return "draft";
+  return null;
+}
+
 
 export default function TaskCard({ task, onClick }: TaskCardProps) {
   const priority = task.priority as TaskPriority;
@@ -183,39 +204,73 @@ export default function TaskCard({ task, onClick }: TaskCardProps) {
               ? `Ostatnio: ${event.verb}${rel ? ` (${rel})` : ""}${exact ? ` — ${exact}` : ""}`
               : (rel ? `Aktualizacja: ${rel}${exact ? ` (${exact})` : ""}` : null),
           ].filter(Boolean).join(" · ");
+          // Skróty ofert w pozostałych statusach (oprócz statusu „latest”), tylko gdy >1 oferta.
+          const counts = task.quoteStatusCounts ?? {};
+          const latestKey = quoteStatusToCountKey(task.quoteStatus);
+          const otherEntries = (Object.keys(quoteCountMeta) as QuoteCountKey[])
+            .map((k) => ({ key: k, n: counts[k] ?? 0 }))
+            .filter((e) => e.n > 0 && e.key !== latestKey);
+          const showOthers = (task.quoteCount ?? 0) > 1 && otherEntries.length > 0;
+          const othersTooltip = otherEntries
+            .map((e) => `${quoteCountMeta[e.key].label}: ${e.n}`)
+            .join(" · ");
+
           return (
-            <button
-              type="button"
-              onClick={(e) => {
-                e.stopPropagation();
-                const params = new URLSearchParams({ tab: "quotes", task: task.id });
-                if ((task.quoteCount ?? 0) === 1 && task.quoteNumber) {
-                  params.set("q", task.quoteNumber);
-                }
-                navigate(`/finance?${params.toString()}`);
-              }}
-              className={cn(
-                "inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-[10px] font-medium hover:ring-1 hover:ring-primary/40 transition",
-                meta.cls
-              )}
-              title={`${tooltip} — kliknij, aby ${(task.quoteCount ?? 0) > 1 ? "zobaczyć listę ofert" : "otworzyć ofertę"}`}
-              aria-label={tooltip}
-            >
-              <FileText className="h-2.5 w-2.5" />
-              <span>{meta.label}</span>
-              {(task.quoteCount ?? 0) > 1 && (
-                <span className="opacity-70">×{task.quoteCount}</span>
-              )}
-              {event && (
-                <span
-                  className={cn("inline-flex items-center gap-0.5 ml-0.5 pl-1 border-l border-current/30", event.cls)}
-                  title={`${event.verb}${rel ? ` · ${rel}` : ""}`}
+            <span className="inline-flex items-center gap-1">
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  const params = new URLSearchParams({ tab: "quotes", task: task.id });
+                  if ((task.quoteCount ?? 0) === 1 && task.quoteNumber) {
+                    params.set("q", task.quoteNumber);
+                  }
+                  navigate(`/finance?${params.toString()}`);
+                }}
+                className={cn(
+                  "inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-[10px] font-medium hover:ring-1 hover:ring-primary/40 transition",
+                  meta.cls
+                )}
+                title={`${tooltip} — kliknij, aby ${(task.quoteCount ?? 0) > 1 ? "zobaczyć listę ofert" : "otworzyć ofertę"}`}
+                aria-label={tooltip}
+              >
+                <FileText className="h-2.5 w-2.5" />
+                <span>{meta.label}</span>
+                {(task.quoteCount ?? 0) > 1 && (
+                  <span className="opacity-70">×{task.quoteCount}</span>
+                )}
+                {event && (
+                  <span
+                    className={cn("inline-flex items-center gap-0.5 ml-0.5 pl-1 border-l border-current/30", event.cls)}
+                    title={`${event.verb}${rel ? ` · ${rel}` : ""}`}
+                  >
+                    <EventIcon className="h-2.5 w-2.5" />
+                  </span>
+                )}
+                {rel && <span className="opacity-70">· {rel}</span>}
+              </button>
+              {showOthers && (
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    const params = new URLSearchParams({ tab: "quotes", task: task.id });
+                    navigate(`/finance?${params.toString()}`);
+                  }}
+                  className="inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-[10px] font-medium bg-secondary/60 text-secondary-foreground border border-border hover:ring-1 hover:ring-primary/40 transition"
+                  title={`Pozostałe oferty — ${othersTooltip}`}
+                  aria-label={`Pozostałe oferty: ${othersTooltip}`}
                 >
-                  <EventIcon className="h-2.5 w-2.5" />
-                </span>
+                  {otherEntries.map((e, i) => (
+                    <span key={e.key} className={cn("inline-flex items-center", quoteCountMeta[e.key].cls)}>
+                      {i > 0 && <span className="text-muted-foreground/60 mx-0.5">·</span>}
+                      <span className="font-semibold">{e.n}</span>
+                      <span className="opacity-80 ml-0.5">{quoteCountMeta[e.key].short}</span>
+                    </span>
+                  ))}
+                </button>
               )}
-              {rel && <span className="opacity-70">· {rel}</span>}
-            </button>
+            </span>
           );
         })()}
         {(task.financialBalance ?? 0) !== 0 && (
