@@ -258,10 +258,24 @@ export function buildKanbanPdf(
     let headerTop = cursorY;
     let headerBottom = cursorY;
 
+    // Adnotacja debug PRZED ewentualnym page-breakiem (pokazuje wynik decyzji).
+    drawDebugCursorAnnotation(
+      cursorY,
+      minSectionHeight,
+      `sekcja "${g.label}" (min ${minSectionHeight.toFixed(0)}pt)`,
+    );
+
     if (cursorY + minSectionHeight > pageHeight - marginBottom) {
       doc.addPage();
       drawFooter();
+      drawDebugFrame();
       cursorY = marginTop;
+      // Po page-breaku dorysuj adnotację już na nowej stronie.
+      drawDebugCursorAnnotation(
+        cursorY,
+        minSectionHeight,
+        `sekcja "${g.label}" po page-break`,
+      );
     }
 
     if (groupBy !== "none") {
@@ -273,6 +287,19 @@ export function buildKanbanPdf(
       headerTop = cursorY;
       headerBottom = headerBaseline + GROUP_HEADER_GAP_AFTER;
       cursorY = headerBottom;
+
+      if (debug) {
+        // Lekki obrys nagłówka grupy.
+        const prevDraw = (doc.getDrawColor?.() as string) ?? "0";
+        const prevLW = doc.getLineWidth?.() ?? 0.2;
+        doc.setLineWidth(0.3);
+        doc.setDrawColor(0, 120, 200);
+        doc.setLineDashPattern?.([1.5, 1.5], 0);
+        doc.rect(marginLeft - 1, headerTop, pageWidth - 2 * marginLeft + 2, headerBottom - headerTop);
+        doc.setLineDashPattern?.([], 0);
+        doc.setLineWidth(prevLW);
+        doc.setDrawColor(prevDraw as any);
+      }
     } else {
       headerTop = cursorY;
       headerBottom = cursorY;
@@ -296,6 +323,7 @@ export function buildKanbanPdf(
       rowPageBreak: "avoid",
       didDrawPage: () => {
         drawFooter();
+        drawDebugFrame();
       },
     });
 
