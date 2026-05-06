@@ -1485,6 +1485,99 @@ export default function KanbanPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* === Szablony eksportu === */}
+      <Dialog open={templatesDialogOpen} onOpenChange={setTemplatesDialogOpen}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Szablony eksportu</DialogTitle>
+            <DialogDescription>
+              Zapisz aktualne ustawienia (format, kolumny, metadane, grupowanie) jako szablon i uruchamiaj jednym kliknięciem.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4">
+            {/* Aktualne ustawienia */}
+            <div className="rounded-md border border-border bg-card/40 p-3 text-xs space-y-1">
+              <div className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold">
+                Bieżące ustawienia
+              </div>
+              <div className="flex flex-wrap gap-x-4 gap-y-1">
+                <span><span className="text-muted-foreground">Format:</span> <b>{lastExportFormat.toUpperCase()}</b></span>
+                <span><span className="text-muted-foreground">Kolumny:</span> <b>{exportColumns.length}/{EXPORT_COLUMNS.length}</b></span>
+                <span><span className="text-muted-foreground">Metadane:</span> <b>{includeExportMeta ? "tak" : "nie"}</b></span>
+                <span><span className="text-muted-foreground">Grupowanie:</span> <b>{groupByLabel[exportGroupBy]}</b>{exportGroupBy !== "none" && <> · <b>{exportGroupOutput === "files" ? "pliki" : "sekcje"}</b></>}</span>
+              </div>
+            </div>
+
+            {/* Zapisz nowy */}
+            <div className="flex gap-2 items-end">
+              <div className="flex-1">
+                <label className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground block mb-1">
+                  Nazwa nowego szablonu
+                </label>
+                <input
+                  value={newTemplateName}
+                  onChange={(e) => setNewTemplateName(e.target.value)}
+                  onKeyDown={(e) => { if (e.key === "Enter") saveCurrentAsTemplate(newTemplateName); }}
+                  placeholder="np. Raport klienta — XLSX wg obiektu"
+                  className="w-full rounded-md border border-border bg-card px-3 py-1.5 text-sm outline-none focus:border-primary"
+                />
+              </div>
+              <Button type="button" onClick={() => saveCurrentAsTemplate(newTemplateName)}>
+                Zapisz szablon
+              </Button>
+            </div>
+
+            {/* Lista */}
+            <div className="space-y-2">
+              <div className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+                Zapisane szablony ({exportTemplates.length})
+              </div>
+              {exportTemplates.length === 0 ? (
+                <p className="text-sm text-muted-foreground italic px-2">Brak zapisanych szablonów.</p>
+              ) : (
+                <div className="max-h-[40vh] overflow-y-auto space-y-1.5">
+                  {exportTemplates.map((tpl) => (
+                    <div key={tpl.id} className="flex items-center gap-2 rounded-md border border-border bg-card/40 px-3 py-2">
+                      <div className="flex-1 min-w-0">
+                        <div className="font-medium text-sm truncate">{tpl.name}</div>
+                        <div className="text-[11px] text-muted-foreground">
+                          {tpl.format.toUpperCase()} · {tpl.columns.length} kol. · grupowanie: {groupByLabel[tpl.groupBy]}
+                          {tpl.groupBy !== "none" && <> ({tpl.groupOutput === "files" ? "pliki" : "sekcje"})</>}
+                          {tpl.includeMeta && " · z meta"}
+                        </div>
+                      </div>
+                      <Button type="button" size="sm" variant="outline" onClick={() => applyTemplate(tpl)}>
+                        Wczytaj
+                      </Button>
+                      <Button type="button" size="sm" onClick={() => { setTemplatesDialogOpen(false); runTemplate(tpl); }}>
+                        Eksportuj
+                      </Button>
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="ghost"
+                        className="text-destructive hover:text-destructive"
+                        onClick={() => deleteTemplate(tpl.id)}
+                        title="Usuń szablon"
+                      >
+                        ✕
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button type="button" variant="outline" onClick={() => setTemplatesDialogOpen(false)}>
+              Zamknij
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
