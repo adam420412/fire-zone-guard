@@ -1404,7 +1404,7 @@ export default function KanbanPage() {
                     <span className="text-muted-foreground">Grupowanie:</span>{" "}
                     <b>{groupByLabel[exportGroupBy]}</b>
                     {exportGroupBy !== "none" && (
-                      <> · <b>{totalGroups}</b> grup · tryb: <b>{exportGroupOutput === "files" ? "osobne pliki (.zip)" : "sekcje w jednym pliku"}</b></>
+                      <> · <b>{totalGroups}</b> grup · tryb: <b>{groupOutputLabel[exportGroupOutput]}</b></>
                     )}
                   </div>
                   {activeColumnDefs.length === 0 && (
