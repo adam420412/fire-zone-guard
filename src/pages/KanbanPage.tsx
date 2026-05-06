@@ -774,13 +774,19 @@ export default function KanbanPage() {
     filename: string,
     asSingleDoc: boolean,
   ): Promise<{ buildMs: number; buildCalls: number; totalPages: number }> => {
-    const [{ default: jsPDF }, autoTableMod, { buildKanbanPdf }, perfMod] =
-      await Promise.all([
-        import("jspdf"),
-        import("jspdf-autotable"),
-        import("@/lib/kanbanPdfExport"),
-        import("@/lib/pdfExportPerf"),
-      ]);
+    const [
+      { default: jsPDF },
+      autoTableMod,
+      { buildKanbanPdf },
+      perfMod,
+      { serializeKanbanLayoutToJsonString },
+    ] = await Promise.all([
+      import("jspdf"),
+      import("jspdf-autotable"),
+      import("@/lib/kanbanPdfExport"),
+      import("@/lib/pdfExportPerf"),
+      import("@/lib/kanbanLayoutExport"),
+    ]);
     const autoTable = (autoTableMod as any).default ?? (autoTableMod as any);
     const { measure } = perfMod;
 
@@ -814,10 +820,18 @@ export default function KanbanPage() {
       return value;
     };
 
+    // Eksport raportu układu — świadomy trybu diagnostycznego.
+    // `forceMode` przekazujemy jawnie (na podstawie flagi z UI), żeby uniknąć
+    // dwuznaczności heurystyki na wynikach z pustym `pages` ale niezerowymi totals
+    // (np. eksport jednogrupowy bez gapów).
+    const layoutExportMode: "diagnostic" | "raw" = diagnosticsForRun ? "diagnostic" : "raw";
     const layoutJsonBlob = (layout: any) =>
-      new Blob([JSON.stringify(layout, null, 2)], {
-        type: "application/json;charset=utf-8",
-      });
+      new Blob(
+        [serializeKanbanLayoutToJsonString(layout, { forceMode: layoutExportMode })],
+        { type: "application/json;charset=utf-8" },
+      );
+    const layoutJsonString = (layout: any) =>
+      serializeKanbanLayoutToJsonString(layout, { forceMode: layoutExportMode });
     const layoutJsonName = (pdfFilename: string) =>
       pdfFilename.replace(/\.pdf$/i, "") + ".layout.json";
 
@@ -839,7 +853,7 @@ export default function KanbanPage() {
       const baseName = `${exportFileBase}__${sanitizeFileName(g.label)}`;
       zip.file(`${baseName}.pdf`, ab);
       if (pdfDownloadLayoutJson) {
-        zip.file(`${baseName}.layout.json`, JSON.stringify(layout, null, 2));
+        zip.file(`${baseName}.layout.json`, layoutJsonString(layout));
       }
     }
     const blob = await zip.generateAsync({ type: "blob" });
