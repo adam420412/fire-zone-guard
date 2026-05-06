@@ -1040,6 +1040,14 @@ export default function KanbanPage() {
                 >
                   Debug układu PDF (marginesy + wolne miejsce)
                 </DropdownMenuCheckboxItem>
+                <DropdownMenuCheckboxItem
+                  checked={pdfDownloadLayoutJson}
+                  onCheckedChange={(v) => setPdfDownloadLayoutJson(!!v)}
+                  onSelect={(e) => e.preventDefault()}
+                  title="Po eksporcie PDF pobiera dodatkowo plik .layout.json z pełnym KanbanPdfLayoutReport (sekcje + per-strona)."
+                >
+                  Pobierz raport układu (.layout.json) razem z PDF
+                </DropdownMenuCheckboxItem>
                 <DropdownMenuItem
                   onSelect={(e) => { e.preventDefault(); setPdfDebugDialogOpen(true); }}
                   title="Pokaż wygenerowany PDF obok strukturalnego raportu KanbanPdfLayoutReport (sekcja po sekcji + per-strona)."
