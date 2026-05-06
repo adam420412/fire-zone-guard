@@ -751,7 +751,7 @@ export default function KanbanPage() {
     ]);
     const autoTable = (autoTableMod as any).default ?? (autoTableMod as any);
 
-    const buildDoc = (grps: { label: string; tasks: any[] }[]) =>
+    const buildDocAndLayout = (grps: { label: string; tasks: any[] }[]) =>
       buildKanbanPdf(
         { jsPDF, autoTable },
         {
@@ -763,11 +763,21 @@ export default function KanbanPage() {
           debug: pdfDebugLayout,
           spacing: pdfSpacing,
         },
-      ).doc;
+      );
+
+    const layoutJsonBlob = (layout: any) =>
+      new Blob([JSON.stringify(layout, null, 2)], {
+        type: "application/json;charset=utf-8",
+      });
+    const layoutJsonName = (pdfFilename: string) =>
+      pdfFilename.replace(/\.pdf$/i, "") + ".layout.json";
 
     if (asSingleDoc) {
-      const doc = buildDoc(groups);
+      const { doc, layout } = buildDocAndLayout(groups);
       doc.save(filename);
+      if (pdfDownloadLayoutJson) {
+        downloadBlob(layoutJsonBlob(layout), layoutJsonName(filename));
+      }
       return;
     }
 
@@ -775,9 +785,13 @@ export default function KanbanPage() {
     const JSZip = (await import("jszip")).default;
     const zip = new JSZip();
     for (const g of groups) {
-      const doc = buildDoc([g]);
+      const { doc, layout } = buildDocAndLayout([g]);
       const ab = doc.output("arraybuffer");
-      zip.file(`${exportFileBase}__${sanitizeFileName(g.label)}.pdf`, ab);
+      const baseName = `${exportFileBase}__${sanitizeFileName(g.label)}`;
+      zip.file(`${baseName}.pdf`, ab);
+      if (pdfDownloadLayoutJson) {
+        zip.file(`${baseName}.layout.json`, JSON.stringify(layout, null, 2));
+      }
     }
     const blob = await zip.generateAsync({ type: "blob" });
     downloadBlob(blob, filename);
