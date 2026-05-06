@@ -164,29 +164,179 @@ export default function KanbanPage() {
     [baseFilteredTasks, matchesRecency]
   );
 
+  // Etykiety dla aktywnych filtrów / sortowania — używane w nagłówku eksportu i nazwie pliku.
+  const exportContext = useMemo(() => {
+    const sortLabels: Record<SortMode, string> = {
+      deadline: "Termin",
+      priority: "Priorytet",
+      created: "Data utworzenia",
+      title: "Tytuł A-Z",
+      updated: "Ostatnia aktywność",
+      quoteStatus: "Status oferty",
+      quoteCount: "Liczba ofert",
+    };
+    const dueLabels: Record<DueFilter, string> = {
+      all: "Wszystkie",
+      overdue: "Przeterminowane",
+      today: "Dziś",
+      week: "Najbliższe 7 dni",
+    };
+    const quoteLabels: Record<QuoteFilter, string> = {
+      all: "Wszystkie", any: "Dowolna", none: "Brak",
+      draft: "Wersja robocza", sent: "Wysłana",
+      accepted: "Zaakceptowana", rejected: "Odrzucona", expired: "Wygasła",
+    };
+    const recencyLabels: Record<RecencyFilter, string> = {
+      all: "Wszystkie", "24h": "Ostatnie 24h", "7d": "Ostatnie 7 dni", "30d": "Ostatnie 30 dni",
+    };
+    const filters: { label: string; value: string }[] = [];
+    if (search) filters.push({ label: "Szukaj", value: search });
+    if (filterPriority !== "all") filters.push({ label: "Priorytet", value: filterPriority });
+    filters.push({ label: "Termin", value: dueLabels[dueFilter] });
+    filters.push({ label: "Oferta", value: quoteLabels[quoteFilter] });
+    filters.push({ label: "Aktywność", value: recencyLabels[recencyFilter] });
+    if (groupMode !== "none" && groupValueFilter !== "all") {
+      filters.push({ label: groupMode === "building" ? "Obiekt" : "Wykonawca", value: groupValueFilter });
+    }
+    const slug = [
+      `sort-${sortMode}`,
+      quoteFilter !== "all" ? `q-${quoteFilter}` : null,
+      recencyFilter !== "all" ? `r-${recencyFilter}` : null,
+      dueFilter !== "all" ? `d-${dueFilter}` : null,
+      filterPriority !== "all" ? `p-${filterPriority}` : null,
+    ].filter(Boolean).join("_");
+    return {
+      filters,
+      sortLabel: sortLabels[sortMode],
+      slug,
+    };
+  }, [search, filterPriority, dueFilter, quoteFilter, recencyFilter, groupMode, groupValueFilter, sortMode]);
+
+  // Wiersze do eksportu — uwzględniają filtry I sortowanie (te same co w widoku listy).
+  const exportRows = useMemo(() => {
+    return sortTasks(filteredTasks).map((t: any) => ({
+      id: t.id.slice(0, 8),
+      title: t.title || "",
+      building: t.buildingName || "",
+      company: t.companyName || "",
+      assignee: t.assigneeName || "",
+      priority: t.priority || "",
+      status: t.status || "",
+      type: t.type || "",
+      deadline: t.deadline ? new Date(t.deadline).toLocaleDateString("pl-PL") : "",
+      quoteStatus: t.quoteStatus || "",
+      quoteCount: t.quoteCount ?? 0,
+      lastActivity: (() => {
+        const ms = Math.max(
+          t.created_at ? new Date(t.created_at).getTime() : 0,
+          t.quoteUpdatedAt ? new Date(t.quoteUpdatedAt).getTime() : 0
+        );
+        return ms ? new Date(ms).toLocaleString("pl-PL") : "";
+      })(),
+    }));
+  }, [filteredTasks, sortTasks]);
+
+  const exportFileBase = useMemo(() => {
+    const date = new Date().toISOString().split("T")[0];
+    return `firezone_zadania_${date}${exportContext.slug ? `__${exportContext.slug}` : ""}`;
+  }, [exportContext.slug]);
+
   const handleExportCSV = () => {
-    const headers = ["ID", "Tytul", "Obiekt", "Przypisany", "Priorytet", "Status", "Deadline", "Typ"];
-    const rows = filteredTasks.map((t: any) => [
-      t.id.slice(0, 8),
-      `"${t.title.replace(/"/g, '""')}"`,
-      `"${(t.buildingName || "").replace(/"/g, '""')}"`,
-      `"${(t.assigneeName || "").replace(/"/g, '""')}"`,
-      t.priority,
-      t.status,
-      t.deadline || "",
-      t.type
-    ]);
-    
-    const csvContent = [headers, ...rows].map(e => e.join(";")).join("\n");
-    const blob = new Blob(["\ufeff" + csvContent], { type: 'text/csv;charset=utf-8' });
+    const headers = [
+      "ID", "Tytuł", "Obiekt", "Firma", "Przypisany", "Priorytet", "Status", "Typ",
+      "Deadline", "Oferta — status", "Oferta — liczba", "Ostatnia aktywność",
+    ];
+    const escape = (v: any) => `"${String(v ?? "").replace(/"/g, '""')}"`;
+    const meta = [
+      `# Eksport: ${new Date().toLocaleString("pl-PL")}`,
+      `# Sort: ${exportContext.sortLabel}`,
+      `# Filtry: ${exportContext.filters.map(f => `${f.label}=${f.value}`).join(" | ")}`,
+      `# Liczba zadań: ${exportRows.length}`,
+    ].join("\n");
+    const body = [headers.map(escape).join(";")]
+      .concat(exportRows.map(r => [
+        r.id, r.title, r.building, r.company, r.assignee, r.priority, r.status, r.type,
+        r.deadline, r.quoteStatus, r.quoteCount, r.lastActivity,
+      ].map(escape).join(";")))
+      .join("\n");
+    const csvContent = `${meta}\n${body}`;
+    const blob = new Blob(["\ufeff" + csvContent], { type: "text/csv;charset=utf-8" });
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
     link.setAttribute("href", url);
-    link.setAttribute("download", `firezone_zadania_${new Date().toISOString().split('T')[0]}.csv`);
+    link.setAttribute("download", `${exportFileBase}.csv`);
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
+    URL.revokeObjectURL(url);
   };
+
+  const handleExportPDF = async () => {
+    const [{ default: jsPDF }, autoTableMod] = await Promise.all([
+      import("jspdf"),
+      import("jspdf-autotable"),
+    ]);
+    const autoTable = (autoTableMod as any).default ?? (autoTableMod as any);
+
+    const doc = new jsPDF({ orientation: "landscape", unit: "pt", format: "a4" });
+    const pageWidth = doc.internal.pageSize.getWidth();
+
+    doc.setFontSize(14);
+    doc.text("Fire Zone — Eksport zadań (Kanban)", 40, 36);
+    doc.setFontSize(9);
+    doc.setTextColor(110);
+    const metaLines = [
+      `Wygenerowano: ${new Date().toLocaleString("pl-PL")}`,
+      `Sortowanie: ${exportContext.sortLabel}`,
+      `Filtry: ${exportContext.filters.map(f => `${f.label}=${f.value}`).join("  |  ")}`,
+      `Liczba zadań: ${exportRows.length}`,
+    ];
+    metaLines.forEach((line, i) => doc.text(line, 40, 54 + i * 12));
+
+    autoTable(doc, {
+      startY: 54 + metaLines.length * 12 + 8,
+      head: [[
+        "ID", "Tytuł", "Obiekt / Firma", "Wykonawca",
+        "Pr.", "Status", "Termin", "Oferta", "Akt.",
+      ]],
+      body: exportRows.map(r => [
+        r.id,
+        r.title,
+        r.building + (r.company ? `\n${r.company}` : ""),
+        r.assignee,
+        r.priority,
+        r.status,
+        r.deadline,
+        r.quoteStatus
+          ? `${r.quoteStatus}${r.quoteCount > 1 ? ` ×${r.quoteCount}` : ""}`
+          : (r.quoteCount ? `×${r.quoteCount}` : "—"),
+        r.lastActivity,
+      ]),
+      styles: { fontSize: 8, cellPadding: 3, overflow: "linebreak" },
+      headStyles: { fillColor: [220, 38, 38], textColor: 255 },
+      alternateRowStyles: { fillColor: [248, 248, 248] },
+      columnStyles: {
+        0: { cellWidth: 50 },
+        1: { cellWidth: 180 },
+        2: { cellWidth: 140 },
+        3: { cellWidth: 80 },
+        4: { cellWidth: 45 },
+        5: { cellWidth: 70 },
+        6: { cellWidth: 60 },
+        7: { cellWidth: 80 },
+        8: { cellWidth: 90 },
+      },
+      didDrawPage: (data: any) => {
+        const str = `Strona ${doc.getNumberOfPages()}`;
+        doc.setFontSize(8);
+        doc.setTextColor(150);
+        doc.text(str, pageWidth - 60, doc.internal.pageSize.getHeight() - 14);
+      },
+    });
+
+    doc.save(`${exportFileBase}.pdf`);
+  };
+
 
   const sortTasks = useCallback((arr: any[]) => {
     const sorted = [...arr];
