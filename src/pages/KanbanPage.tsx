@@ -396,6 +396,7 @@ export default function KanbanPage() {
       toast.error("Wybierz przynajmniej jedną kolumnę do eksportu");
       return;
     }
+    setLastExportFormat("csv");
     const headers = activeColumnDefs.map((c) => c.label);
     const escape = (v: any) => `"${String(v ?? "").replace(/"/g, '""')}"`;
     const meta = includeExportMeta
