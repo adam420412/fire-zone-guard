@@ -256,9 +256,12 @@ export function buildKanbanPdf(
   const GROUP_HEADER_FONT = 11;
   // ── Sztywne odstępy pionowe (pt). Stałe i niezależne od pomiarów. ──
   /** Odstęp między końcem POPRZEDNIEJ tabeli a górą nagłówka KOLEJNEJ grupy. */
-  const GAP_BETWEEN_TABLE_AND_NEXT_HEADER = 18;
+  // ── Sztywne odstępy pionowe (pt) — konfigurowalne, z domyślnymi 8 / 18. ──
+  const resolvedSpacing = clampSpacing(spacing);
+  /** Odstęp między końcem POPRZEDNIEJ tabeli a górą nagłówka KOLEJNEJ grupy. */
+  const GAP_BETWEEN_TABLE_AND_NEXT_HEADER = resolvedSpacing.tableToNextHeader;
   /** Odstęp między dolną krawędzią nagłówka grupy a pierwszym wierszem tabeli. */
-  const GAP_BETWEEN_HEADER_AND_TABLE = 8;
+  const GAP_BETWEEN_HEADER_AND_TABLE = resolvedSpacing.headerToTable;
   // Aliasy zachowane dla czytelności w istniejącym kodzie.
   const GROUP_HEADER_GAP_BEFORE = GAP_BETWEEN_TABLE_AND_NEXT_HEADER;
   const GROUP_HEADER_GAP_AFTER = GAP_BETWEEN_HEADER_AND_TABLE;
