@@ -1,4 +1,5 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
+import { useSearchParams } from "react-router-dom";
 import { useQuotes, useQuoteItems, useServices, useContacts, useCreateQuote, useCreateQuoteItem, useUpdateQuote, useSalesOpportunities, useCreateOpportunity, useUpdateOpportunity, useDeleteOpportunity } from "@/hooks/useCrmData";
 import { useCompanies, useCreateCompany, useTaskFinanceSummary } from "@/hooks/useSupabaseData";
 import { useAuth } from "@/hooks/useAuth";
@@ -469,18 +470,45 @@ export default function FinancePage() {
   const [oppStatusFilter, setOppStatusFilter] = useState("active");
   const [convertOpp, setConvertOpp] = useState<any | null>(null);
 
+  const [searchParams, setSearchParams] = useSearchParams();
+  const tabParam = searchParams.get("tab");
+  const taskParam = searchParams.get("task");
+  const quoteParam = searchParams.get("q");
+  const [activeTab, setActiveTab] = useState<string>(tabParam ?? "opportunities");
+
+  // Sync tab when URL changes (e.g. external navigation from TaskCard)
+  useEffect(() => {
+    if (tabParam && tabParam !== activeTab) setActiveTab(tabParam);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tabParam]);
+
   const isSuperAdmin = role === "super_admin";
 
   const filteredQuotes = useMemo(() => {
     if (!quotes) return [];
     let list = quotes;
+    if (taskParam) list = list.filter((q: any) => q.task_id === taskParam);
     if (statusFilter !== "all") list = list.filter((q: any) => q.status === statusFilter);
     if (search.trim()) {
       const q = search.toLowerCase();
       list = list.filter((r: any) => r.quote_number.toLowerCase().includes(q) || r.company_name.toLowerCase().includes(q));
     }
     return list;
-  }, [quotes, statusFilter, search]);
+  }, [quotes, statusFilter, search, taskParam]);
+
+  // Auto-open quote when ?q=<quote_number> is in the URL
+  useEffect(() => {
+    if (!quoteParam || !quotes || selectedQuote) return;
+    const match = (quotes as any[]).find((x) => x.quote_number === quoteParam);
+    if (match) setSelectedQuote(match);
+  }, [quoteParam, quotes, selectedQuote]);
+
+  const clearTaskFilter = () => {
+    const next = new URLSearchParams(searchParams);
+    next.delete("task");
+    next.delete("q");
+    setSearchParams(next, { replace: true });
+  };
 
   const filteredOpps = useMemo(() => {
     if (!opportunities) return [];
@@ -546,7 +574,7 @@ export default function FinancePage() {
         <Card><CardContent className="pt-5 pb-4"><div className="flex items-center justify-between"><div><p className="text-xs text-muted-foreground font-medium">Marża</p><p className="text-2xl font-bold">{financeSummary ? `${Math.round(financeSummary.margin)}%` : "0%"}</p><p className="text-xs text-muted-foreground">Na podstawie pozycji finansowych</p></div><div className="h-10 w-10 rounded-lg bg-secondary flex items-center justify-center"><Percent className="h-5 w-5 text-foreground" /></div></div></CardContent></Card>
       </div>
 
-      <Tabs defaultValue="opportunities" className="w-full">
+      <Tabs value={activeTab} onValueChange={(v) => { setActiveTab(v); const next = new URLSearchParams(searchParams); next.set("tab", v); setSearchParams(next, { replace: true }); }} className="w-full">
         <TabsList className="bg-secondary p-1 rounded-xl">
           <TabsTrigger value="opportunities" className="rounded-lg data-[state=active]:bg-card data-[state=active]:shadow-sm font-semibold">
             <Target className="h-4 w-4 mr-1.5" /> Szanse ({(opportunities ?? []).filter((o: any) => o.status !== "archiwum").length})
@@ -666,6 +694,17 @@ export default function FinancePage() {
                   </Select>
                 </div>
               </div>
+              {taskParam && (
+                <div className="mt-3 flex items-center gap-2">
+                  <Badge variant="outline" className="gap-1">
+                    <FileText className="h-3 w-3" />
+                    Filtr: oferty zadania {taskParam.slice(0, 8)}
+                  </Badge>
+                  <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={clearTaskFilter}>
+                    <XCircle className="mr-1 h-3 w-3" /> Wyczyść filtr
+                  </Button>
+                </div>
+              )}
             </CardHeader>
             <CardContent>
               {filteredQuotes.length === 0 ? (
