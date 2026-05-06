@@ -523,13 +523,26 @@ export default function KanbanPage() {
               <ListIcon className="h-3.5 w-3.5" /> Lista
             </button>
           </div>
-          <button
-            onClick={handleExportCSV}
-            className="flex items-center gap-2 rounded-md border border-border bg-card px-3 py-1.5 text-sm font-medium hover:bg-secondary transition-colors"
-          >
-            <Download className="h-4 w-4" />
-            Eksportuj
-          </button>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <button
+                className="flex items-center gap-2 rounded-md border border-border bg-card px-3 py-1.5 text-sm font-medium hover:bg-secondary transition-colors"
+                title={`Eksport ${exportRows.length} zadań · sort: ${exportContext.sortLabel}`}
+              >
+                <Download className="h-4 w-4" />
+                Eksportuj ({exportRows.length})
+              </button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-56">
+              <DropdownMenuLabel className="text-[10px] uppercase">Z aktualnymi filtrami</DropdownMenuLabel>
+              <DropdownMenuItem onClick={handleExportCSV}>
+                <FileText className="h-3.5 w-3.5 mr-2" /> CSV (.csv)
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={handleExportPDF}>
+                <FileText className="h-3.5 w-3.5 mr-2" /> PDF (.pdf)
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
           <button
             onClick={() => setShowCreate(true)}
             className="flex items-center gap-2 rounded-md fire-gradient px-3 py-1.5 text-sm font-medium text-primary-foreground hover:opacity-90 transition-opacity"
