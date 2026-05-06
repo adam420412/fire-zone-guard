@@ -70,9 +70,42 @@ export default function KanbanPage() {
     document.body.removeChild(link);
   };
 
+  const sortTasks = useCallback((arr: any[]) => {
+    const sorted = [...arr];
+    if (sortMode === "deadline") {
+      sorted.sort((a, b) => {
+        const ad = a.deadline ? new Date(a.deadline).getTime() : Infinity;
+        const bd = b.deadline ? new Date(b.deadline).getTime() : Infinity;
+        return ad - bd;
+      });
+    } else if (sortMode === "priority") {
+      sorted.sort((a, b) => (PRIORITY_RANK[a.priority] ?? 9) - (PRIORITY_RANK[b.priority] ?? 9));
+    } else if (sortMode === "title") {
+      sorted.sort((a, b) => (a.title || "").localeCompare(b.title || "", "pl"));
+    } else {
+      sorted.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+    }
+    return sorted;
+  }, [sortMode]);
+
   const getTasksForStatus = useCallback((status: TaskStatus) => {
-    return filteredTasks.filter((t: any) => t.status === status);
-  }, [filteredTasks]);
+    return sortTasks(filteredTasks.filter((t: any) => t.status === status));
+  }, [filteredTasks, sortTasks]);
+
+  // Group rendering helper — returns sections [{key, label, tasks}]
+  const groupTasks = useCallback((statusTasks: any[]) => {
+    if (groupMode === "none") return [{ key: "_all", label: "", tasks: statusTasks }];
+    const map = new Map<string, { key: string; label: string; tasks: any[] }>();
+    statusTasks.forEach((t) => {
+      const key = groupMode === "building"
+        ? (t.buildingName || "— bez obiektu —")
+        : (t.assigneeName || "— nieprzypisane —");
+      const entry = map.get(key) ?? { key, label: key, tasks: [] };
+      entry.tasks.push(t);
+      map.set(key, entry);
+    });
+    return Array.from(map.values()).sort((a, b) => a.label.localeCompare(b.label, "pl"));
+  }, [groupMode]);
 
   const onDragEnd = (result: DropResult) => {
     const { destination, source, draggableId } = result;
