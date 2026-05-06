@@ -101,11 +101,42 @@ export function buildKanbanPdf(
     if (c.pdfWidth) columnStyles[i] = { cellWidth: c.pdfWidth };
   });
 
+  // ── Pomiary rzeczywistej wysokości elementów (zamiast stałych przybliżeń) ──
+  // Style tabeli (zsynchronizowane z autoTable poniżej):
+  const TABLE_FONT_SIZE = 8;
+  const TABLE_CELL_PADDING = 3;
   const GROUP_HEADER_FONT = 11;
-  const GROUP_HEADER_HEIGHT = GROUP_HEADER_FONT * 1.25;
   const GROUP_HEADER_GAP_BEFORE = 16;
   const GROUP_HEADER_GAP_AFTER = 6;
-  const MIN_SECTION_HEIGHT = GROUP_HEADER_HEIGHT + 16 + 14;
+
+  /** Wysokość pojedynczej linii tekstu przy danym rozmiarze fontu (pt). */
+  const measureLineHeight = (fontSize: number): number => {
+    const prevSize = doc.getFontSize();
+    doc.setFontSize(fontSize);
+    // jsPDF: getLineHeight() = fontSize * lineHeightFactor; w razie braku — fallback.
+    const lh =
+      typeof doc.getLineHeight === "function"
+        ? doc.getLineHeight()
+        : fontSize * (doc.getLineHeightFactor?.() ?? 1.15);
+    doc.setFontSize(prevSize);
+    return lh;
+  };
+
+  /** Realna wysokość bloku tekstu nagłówka grupy (z marginesem na descender). */
+  const measureGroupHeaderHeight = (text: string): number => {
+    const prevSize = doc.getFontSize();
+    doc.setFontSize(GROUP_HEADER_FONT);
+    const dims =
+      typeof doc.getTextDimensions === "function"
+        ? doc.getTextDimensions(text)
+        : { h: GROUP_HEADER_FONT * 1.25 };
+    doc.setFontSize(prevSize);
+    return dims.h;
+  };
+
+  /** Wysokość wiersza tabeli (head lub body) — autoTable: lineHeight + 2 * cellPadding. */
+  const measureTableRowHeight = (): number =>
+    measureLineHeight(TABLE_FONT_SIZE) + 2 * TABLE_CELL_PADDING;
 
   const sections: KanbanPdfLayoutSection[] = [];
 
@@ -115,32 +146,39 @@ export function buildKanbanPdf(
       cursorY = (typeof lastY === "number" ? lastY : cursorY) + GROUP_HEADER_GAP_BEFORE;
     }
 
+    const groupHeaderText =
+      groupBy !== "none"
+        ? `${groupByLabel[groupBy] ?? groupBy}: ${g.label}  (${g.tasks.length})`
+        : "";
+    const groupHeaderHeight = groupBy !== "none" ? measureGroupHeaderHeight(groupHeaderText) : 0;
+    const tableHeaderHeight = measureTableRowHeight();
+    const tableRowHeight = measureTableRowHeight();
+    // Minimum potrzebne, by w ogóle warto było zaczynać sekcję na bieżącej stronie:
+    // nagłówek grupy (+ gap po) + nagłówek tabeli + co najmniej 1 wiersz danych.
+    const minSectionHeight =
+      (groupBy !== "none" ? groupHeaderHeight + GROUP_HEADER_GAP_AFTER : 0) +
+      tableHeaderHeight +
+      tableRowHeight;
+
     let headerTop = cursorY;
     let headerBottom = cursorY;
 
+    if (cursorY + minSectionHeight > pageHeight - marginBottom) {
+      doc.addPage();
+      drawFooter();
+      cursorY = marginTop;
+    }
+
     if (groupBy !== "none") {
-      if (cursorY + MIN_SECTION_HEIGHT > pageHeight - marginBottom) {
-        doc.addPage();
-        drawFooter();
-        cursorY = marginTop;
-      }
       doc.setFontSize(GROUP_HEADER_FONT);
       doc.setTextColor(40);
-      const headerBaseline = cursorY + GROUP_HEADER_HEIGHT;
-      doc.text(
-        `${groupByLabel[groupBy] ?? groupBy}: ${g.label}  (${g.tasks.length})`,
-        marginLeft,
-        headerBaseline,
-      );
+      // Baseline = top + wysokość bloku tekstu (descender uwzględniony przez getTextDimensions).
+      const headerBaseline = cursorY + groupHeaderHeight;
+      doc.text(groupHeaderText, marginLeft, headerBaseline);
       headerTop = cursorY;
       headerBottom = headerBaseline + GROUP_HEADER_GAP_AFTER;
       cursorY = headerBottom;
     } else {
-      if (cursorY + MIN_SECTION_HEIGHT > pageHeight - marginBottom) {
-        doc.addPage();
-        drawFooter();
-        cursorY = marginTop;
-      }
       headerTop = cursorY;
       headerBottom = cursorY;
     }
