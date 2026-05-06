@@ -664,13 +664,13 @@ export default function KanbanPage() {
             <DropdownMenuTrigger asChild>
               <button
                 className="flex items-center gap-2 rounded-md border border-border bg-card px-3 py-1.5 text-sm font-medium hover:bg-secondary transition-colors"
-                title={`Eksport ${exportRows.length} zadań · sort: ${exportContext.sortLabel}`}
+                title={`Eksport ${exportRowCount} zadań · ${activeColumnDefs.length} kolumn · sort: ${exportContext.sortLabel}`}
               >
                 <Download className="h-4 w-4" />
-                Eksportuj ({exportRows.length})
+                Eksportuj ({exportRowCount})
               </button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-56">
+            <DropdownMenuContent align="end" className="w-64">
               <DropdownMenuLabel className="text-[10px] uppercase">Z aktualnymi filtrami</DropdownMenuLabel>
               <DropdownMenuItem onClick={handleExportCSV}>
                 <FileText className="h-3.5 w-3.5 mr-2" /> CSV (.csv)
@@ -682,6 +682,10 @@ export default function KanbanPage() {
                 <FileText className="h-3.5 w-3.5 mr-2" /> PDF (.pdf)
               </DropdownMenuItem>
               <DropdownMenuSeparator />
+              <DropdownMenuItem onSelect={(e) => { e.preventDefault(); setColumnsDialogOpen(true); }}>
+                <Settings2 className="h-3.5 w-3.5 mr-2" />
+                Wybierz kolumny ({activeColumnDefs.length}/{EXPORT_COLUMNS.length})
+              </DropdownMenuItem>
               <DropdownMenuCheckboxItem
                 checked={includeExportMeta}
                 onCheckedChange={(v) => setIncludeExportMeta(!!v)}
