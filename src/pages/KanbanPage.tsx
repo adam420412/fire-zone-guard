@@ -230,6 +230,21 @@ export default function KanbanPage() {
             <option value="building">Grupuj: Obiekt</option>
             <option value="assignee">Grupuj: Wykonawca</option>
           </select>
+          {groupMode !== "none" && groupValueOptions.length > 0 && (
+            <select
+              value={groupValueFilter}
+              onChange={(e) => setGroupValueFilter(e.target.value)}
+              className="rounded-md border border-border bg-card px-3 py-1.5 text-sm outline-none cursor-pointer max-w-[220px]"
+              title={groupMode === "building" ? "Filtr: Obiekt" : "Filtr: Wykonawca"}
+            >
+              <option value="all">
+                {groupMode === "building" ? "Obiekt: Wszystkie" : "Wykonawca: Wszyscy"}
+              </option>
+              {groupValueOptions.map((g) => (
+                <option key={g.label} value={g.label}>{g.label} ({g.count})</option>
+              ))}
+            </select>
+          )}
           <button
             onClick={handleExportCSV}
             className="flex items-center gap-2 rounded-md border border-border bg-card px-3 py-1.5 text-sm font-medium hover:bg-secondary transition-colors"
