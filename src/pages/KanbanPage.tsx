@@ -1012,7 +1012,14 @@ export default function KanbanPage() {
                       onCheckedChange={() => setExportGroupOutput("sections")}
                       onSelect={(e) => e.preventDefault()}
                     >
-                      Sekcje w jednym pliku
+                      Sekcje{lastExportFormat === "xlsx" ? " (osobne arkusze)" : " w jednym pliku"}
+                    </DropdownMenuCheckboxItem>
+                    <DropdownMenuCheckboxItem
+                      checked={exportGroupOutput === "single-sheet"}
+                      onCheckedChange={() => setExportGroupOutput("single-sheet")}
+                      onSelect={(e) => e.preventDefault()}
+                    >
+                      Sekcje w jednym arkuszu (XLSX)
                     </DropdownMenuCheckboxItem>
                     <DropdownMenuCheckboxItem
                       checked={exportGroupOutput === "files"}
