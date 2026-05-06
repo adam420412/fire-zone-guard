@@ -152,6 +152,12 @@ export interface TaskWithDetails extends Tables<"tasks"> {
   hasReminders?: boolean;
   slaData?: any;
   costs?: number;
+  // K1 progress indicators
+  subtasksTotal?: number;
+  subtasksDone?: number;
+  quoteStatus?: string | null;
+  quoteCount?: number;
+  financialBalance?: number;
 }
 
 export function useTasks() {
@@ -182,6 +188,52 @@ export function useTasks() {
         // task_reminders table not yet migrated — safe to ignore
       }
 
+      // Subtask progress per task
+      const taskIds = (data ?? []).map((t: any) => t.id);
+      const subtaskAgg: Record<string, { total: number; done: number }> = {};
+      const quoteAgg: Record<string, { count: number; latestStatus: string | null }> = {};
+      const finAgg: Record<string, number> = {};
+
+      if (taskIds.length > 0) {
+        try {
+          const { data: subs } = await supabase
+            .from("subtasks")
+            .select("task_id, status")
+            .in("task_id", taskIds);
+          (subs ?? []).forEach((s: any) => {
+            const a = subtaskAgg[s.task_id] ?? { total: 0, done: 0 };
+            a.total += 1;
+            if (s.status === "Zamknięte") a.done += 1;
+            subtaskAgg[s.task_id] = a;
+          });
+        } catch { /* ignore */ }
+
+        try {
+          const { data: quotes } = await supabase
+            .from("quotes")
+            .select("task_id, status, created_at")
+            .in("task_id", taskIds)
+            .order("created_at", { ascending: false });
+          (quotes ?? []).forEach((q: any) => {
+            const a = quoteAgg[q.task_id] ?? { count: 0, latestStatus: null };
+            a.count += 1;
+            if (a.latestStatus === null) a.latestStatus = q.status;
+            quoteAgg[q.task_id] = a;
+          });
+        } catch { /* ignore */ }
+
+        try {
+          const { data: fins } = await supabase
+            .from("task_financial_items")
+            .select("task_id, type, amount")
+            .in("task_id", taskIds);
+          (fins ?? []).forEach((f: any) => {
+            const sign = f.type === "income" ? 1 : -1;
+            finAgg[f.task_id] = (finAgg[f.task_id] ?? 0) + sign * Number(f.amount || 0);
+          });
+        } catch { /* ignore */ }
+      }
+
       return (data ?? []).map((t: any) => ({
         ...t,
         companyName: t.companies?.name ?? "",
@@ -197,6 +249,11 @@ export function useTasks() {
         assigneeName: t.profiles?.name ?? "Nieprzypisany",
         isOverdue: t.deadline && new Date(t.deadline) < new Date() && t.status !== "Zamknięte",
         hasReminders: (reminderCounts[t.id] ?? 0) > 0,
+        subtasksTotal: subtaskAgg[t.id]?.total ?? 0,
+        subtasksDone: subtaskAgg[t.id]?.done ?? 0,
+        quoteCount: quoteAgg[t.id]?.count ?? 0,
+        quoteStatus: quoteAgg[t.id]?.latestStatus ?? null,
+        financialBalance: finAgg[t.id] ?? 0,
       })) as TaskWithDetails[];
     },
   });

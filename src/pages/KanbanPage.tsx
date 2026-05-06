@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback, useEffect, useMemo } from "react";
 import { useTasks, useUpdateTask } from "@/hooks/useSupabaseData";
 import { kanbanStatuses, statusColors } from "@/lib/constants";
 import type { TaskStatus } from "@/lib/constants";
@@ -6,10 +6,15 @@ import TaskCard from "@/components/TaskCard";
 import TaskDetailDialog from "@/components/TaskDetailDialog";
 import CreateTaskDialog from "@/components/CreateTaskDialog";
 import { cn } from "@/lib/utils";
-import { Filter, Search, Plus, Download } from "lucide-react";
+import { Filter, Search, Plus, Download, ArrowUpDown, LayoutGrid } from "lucide-react";
 import { KanbanSkeleton } from "@/components/PageSkeleton";
 import { DragDropContext, Droppable, Draggable, DropResult } from "@hello-pangea/dnd";
 import { toast } from "sonner";
+
+type SortMode = "deadline" | "priority" | "created" | "title";
+type GroupMode = "none" | "building" | "assignee";
+
+const PRIORITY_RANK: Record<string, number> = { krytyczny: 0, wysoki: 1, "średni": 2, niski: 3 };
 
 export default function KanbanPage() {
   const { data: tasks, isLoading } = useTasks();
@@ -17,6 +22,8 @@ export default function KanbanPage() {
   
   const [search, setSearch] = useState("");
   const [filterPriority, setFilterPriority] = useState("all");
+  const [sortMode, setSortMode] = useState<SortMode>("deadline");
+  const [groupMode, setGroupMode] = useState<GroupMode>("none");
   const [showCreate, setShowCreate] = useState(false);
   const [selectedTask, setSelectedTask] = useState<any>(null);
   
@@ -63,9 +70,42 @@ export default function KanbanPage() {
     document.body.removeChild(link);
   };
 
+  const sortTasks = useCallback((arr: any[]) => {
+    const sorted = [...arr];
+    if (sortMode === "deadline") {
+      sorted.sort((a, b) => {
+        const ad = a.deadline ? new Date(a.deadline).getTime() : Infinity;
+        const bd = b.deadline ? new Date(b.deadline).getTime() : Infinity;
+        return ad - bd;
+      });
+    } else if (sortMode === "priority") {
+      sorted.sort((a, b) => (PRIORITY_RANK[a.priority] ?? 9) - (PRIORITY_RANK[b.priority] ?? 9));
+    } else if (sortMode === "title") {
+      sorted.sort((a, b) => (a.title || "").localeCompare(b.title || "", "pl"));
+    } else {
+      sorted.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+    }
+    return sorted;
+  }, [sortMode]);
+
   const getTasksForStatus = useCallback((status: TaskStatus) => {
-    return filteredTasks.filter((t: any) => t.status === status);
-  }, [filteredTasks]);
+    return sortTasks(filteredTasks.filter((t: any) => t.status === status));
+  }, [filteredTasks, sortTasks]);
+
+  // Group rendering helper — returns sections [{key, label, tasks}]
+  const groupTasks = useCallback((statusTasks: any[]) => {
+    if (groupMode === "none") return [{ key: "_all", label: "", tasks: statusTasks }];
+    const map = new Map<string, { key: string; label: string; tasks: any[] }>();
+    statusTasks.forEach((t) => {
+      const key = groupMode === "building"
+        ? (t.buildingName || "— bez obiektu —")
+        : (t.assigneeName || "— nieprzypisane —");
+      const entry = map.get(key) ?? { key, label: key, tasks: [] };
+      entry.tasks.push(t);
+      map.set(key, entry);
+    });
+    return Array.from(map.values()).sort((a, b) => a.label.localeCompare(b.label, "pl"));
+  }, [groupMode]);
 
   const onDragEnd = (result: DropResult) => {
     const { destination, source, draggableId } = result;
@@ -122,6 +162,27 @@ export default function KanbanPage() {
             <option value="średni">Średni</option>
             <option value="niski">Niski</option>
           </select>
+          <select
+            value={sortMode}
+            onChange={(e) => setSortMode(e.target.value as SortMode)}
+            className="rounded-md border border-border bg-card px-3 py-1.5 text-sm outline-none cursor-pointer"
+            title="Sortowanie kart w kolumnie"
+          >
+            <option value="deadline">Sort: Termin</option>
+            <option value="priority">Sort: Priorytet</option>
+            <option value="created">Sort: Data utworzenia</option>
+            <option value="title">Sort: Tytuł A-Z</option>
+          </select>
+          <select
+            value={groupMode}
+            onChange={(e) => setGroupMode(e.target.value as GroupMode)}
+            className="rounded-md border border-border bg-card px-3 py-1.5 text-sm outline-none cursor-pointer"
+            title="Grupowanie zadań w kolumnie"
+          >
+            <option value="none">Grupuj: brak</option>
+            <option value="building">Grupuj: Obiekt</option>
+            <option value="assignee">Grupuj: Wykonawca</option>
+          </select>
           <button
             onClick={handleExportCSV}
             className="flex items-center gap-2 rounded-md border border-border bg-card px-3 py-1.5 text-sm font-medium hover:bg-secondary transition-colors"
@@ -163,26 +224,43 @@ export default function KanbanPage() {
                           snapshot.isDraggingOver && "bg-secondary/30"
                         )}
                       >
-                        {columnTasks.map((task: any, index: number) => (
-                          <Draggable key={task.id} draggableId={task.id} index={index}>
-                            {(provided, snapshot) => (
-                              <div
-                                ref={provided.innerRef}
-                                {...provided.draggableProps}
-                                {...provided.dragHandleProps}
-                                className={cn(
-                                  "transition-transform",
-                                  snapshot.isDragging && "opacity-90 shadow-2xl scale-105 z-50 ring-2 ring-primary/50"
-                                )}
-                                style={{
-                                  ...provided.draggableProps.style,
-                                }}
-                              >
-                                <TaskCard task={task} onClick={() => setSelectedTask(task)} />
-                              </div>
-                            )}
-                          </Draggable>
-                        ))}
+                        {groupTasks(columnTasks).map((group, gIdx) => {
+                          let runningIndex = 0;
+                          // compute starting index for stable Draggable indices
+                          const prevGroups = groupTasks(columnTasks).slice(0, gIdx);
+                          runningIndex = prevGroups.reduce((sum, g) => sum + g.tasks.length, 0);
+                          return (
+                            <div key={group.key} className="space-y-2">
+                              {groupMode !== "none" && (
+                                <div className="sticky top-0 z-10 flex items-center justify-between bg-card/80 backdrop-blur px-2 py-1 rounded text-[10px] font-bold uppercase tracking-wider text-muted-foreground border-b border-border">
+                                  <span className="truncate">{group.label}</span>
+                                  <span className="ml-2 shrink-0">{group.tasks.length}</span>
+                                </div>
+                              )}
+                              {group.tasks.map((task: any, idxInGroup: number) => {
+                                const realIndex = runningIndex + idxInGroup;
+                                return (
+                                  <Draggable key={task.id} draggableId={task.id} index={realIndex}>
+                                    {(provided, snapshot) => (
+                                      <div
+                                        ref={provided.innerRef}
+                                        {...provided.draggableProps}
+                                        {...provided.dragHandleProps}
+                                        className={cn(
+                                          "transition-transform",
+                                          snapshot.isDragging && "opacity-90 shadow-2xl scale-105 z-50 ring-2 ring-primary/50"
+                                        )}
+                                        style={{ ...provided.draggableProps.style }}
+                                      >
+                                        <TaskCard task={task} onClick={() => setSelectedTask(task)} />
+                                      </div>
+                                    )}
+                                  </Draggable>
+                                );
+                              })}
+                            </div>
+                          );
+                        })}
                         {provided.placeholder}
                         {columnTasks.length === 0 && !snapshot.isDraggingOver && (
                           <div className="flex flex-col items-center justify-center py-10 opacity-30 text-center">
