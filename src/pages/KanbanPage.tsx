@@ -1462,6 +1462,18 @@ export default function KanbanPage() {
         </DialogContent>
       </Dialog>
 
+      {/* === Debug układu PDF — PDF obok strukturalnego raportu === */}
+      <PdfLayoutDebugDialog
+        open={pdfDebugDialogOpen}
+        onOpenChange={setPdfDebugDialogOpen}
+        groups={groupTasksForExport(sortedFilteredTasks, exportGroupBy)}
+        columns={activeColumnDefs as any}
+        groupBy={exportGroupBy}
+        groupByLabel={groupByLabel}
+        metaLines={includeExportMeta ? buildMetaLines() : []}
+        spacing={pdfSpacing}
+      />
+
       {/* === Podgląd eksportu === */}
       <Dialog open={previewDialogOpen} onOpenChange={setPreviewDialogOpen}>
         <DialogContent className="max-w-5xl">
