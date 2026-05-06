@@ -1135,11 +1135,22 @@ export default function KanbanPage() {
                 </DropdownMenuCheckboxItem>
                 <DropdownMenuCheckboxItem
                   checked={pdfDownloadLayoutJson}
-                  onCheckedChange={(v) => setPdfDownloadLayoutJson(!!v)}
+                  onCheckedChange={(v) => {
+                    const next = !!v;
+                    setPdfDownloadLayoutJson(next);
+                    // INWARIANT UI: pobranie .layout.json wymaga diagnostyki.
+                    // Włączamy ją automatycznie i informujemy użytkownika.
+                    if (next && !pdfDiagnostics) {
+                      setPdfDiagnostics(true);
+                      toast.info(
+                        "Włączono tryb diagnostyczny PDF — wymagany do pełnego raportu .layout.json",
+                      );
+                    }
+                  }}
                   onSelect={(e) => e.preventDefault()}
                   title={
                     "Po eksporcie PDF pobiera dodatkowo plik .layout.json z pełnym KanbanPdfLayoutReport (sekcje + per-strona)." +
-                    "\n\nUWAGA: gdy zaznaczysz tę opcję, tryb diagnostyczny PDF zostanie automatycznie wymuszony — inaczej JSON byłby pusty (sections=[], pages=[], totals=0)."
+                    "\n\nUWAGA: gdy zaznaczysz tę opcję, tryb diagnostyczny PDF zostanie automatycznie włączony — inaczej JSON byłby pusty (sections=[], pages=[], totals=0)."
                   }
                 >
                   Pobierz raport układu (.layout.json) razem z PDF
