@@ -193,6 +193,18 @@ export default function KanbanPage() {
       sorted.sort((a, b) => (a.title || "").localeCompare(b.title || "", "pl"));
     } else if (sortMode === "updated") {
       sorted.sort((a, b) => taskLastActivityMs(b) - taskLastActivityMs(a));
+    } else if (sortMode === "quoteStatus") {
+      sorted.sort((a, b) => {
+        const r = quoteStatusRank(a.quoteStatus) - quoteStatusRank(b.quoteStatus);
+        if (r !== 0) return r;
+        return taskLastActivityMs(b) - taskLastActivityMs(a);
+      });
+    } else if (sortMode === "quoteCount") {
+      sorted.sort((a, b) => {
+        const d = (b.quoteCount ?? 0) - (a.quoteCount ?? 0);
+        if (d !== 0) return d;
+        return taskLastActivityMs(b) - taskLastActivityMs(a);
+      });
     } else {
       sorted.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
     }
