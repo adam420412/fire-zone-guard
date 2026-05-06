@@ -6,7 +6,7 @@ import TaskCard from "@/components/TaskCard";
 import TaskDetailDialog from "@/components/TaskDetailDialog";
 import CreateTaskDialog from "@/components/CreateTaskDialog";
 import { cn } from "@/lib/utils";
-import { Filter, Search, Plus, Download, ArrowUpDown, LayoutGrid, List as ListIcon, FileText, Settings2 } from "lucide-react";
+import { Filter, Search, Plus, Download, ArrowUpDown, LayoutGrid, List as ListIcon, FileText, Settings2, ChevronDown } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Button } from "@/components/ui/button";
@@ -179,6 +179,19 @@ export default function KanbanPage() {
     }
   }, [exportColumns]);
   const [columnsDialogOpen, setColumnsDialogOpen] = useState(false);
+
+  // Ostatnio użyty format eksportu (CSV/XLSX/PDF) — pozwala szybko powtórzyć
+  type ExportFormat = "csv" | "xlsx" | "pdf";
+  const [lastExportFormat, setLastExportFormat] = useState<ExportFormat>(() => {
+    if (typeof window === "undefined") return "csv";
+    const v = window.localStorage.getItem("kanban.lastExportFormat");
+    return v === "xlsx" || v === "pdf" || v === "csv" ? v : "csv";
+  });
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      window.localStorage.setItem("kanban.lastExportFormat", lastExportFormat);
+    }
+  }, [lastExportFormat]);
 
   // Aktywne definicje kolumn w kolejności wyboru
   const activeColumnDefs = useMemo(
@@ -383,6 +396,7 @@ export default function KanbanPage() {
       toast.error("Wybierz przynajmniej jedną kolumnę do eksportu");
       return;
     }
+    setLastExportFormat("csv");
     const headers = activeColumnDefs.map((c) => c.label);
     const escape = (v: any) => `"${String(v ?? "").replace(/"/g, '""')}"`;
     const meta = includeExportMeta
@@ -418,6 +432,7 @@ export default function KanbanPage() {
       toast.error("Wybierz przynajmniej jedną kolumnę do eksportu");
       return;
     }
+    setLastExportFormat("xlsx");
     const XLSX = await import("xlsx");
     const headers = activeColumnDefs.map((c) => c.label);
     const metaRows: any[][] = includeExportMeta
@@ -446,6 +461,7 @@ export default function KanbanPage() {
       toast.error("Wybierz przynajmniej jedną kolumnę do eksportu");
       return;
     }
+    setLastExportFormat("pdf");
     const [{ default: jsPDF }, autoTableMod] = await Promise.all([
       import("jspdf"),
       import("jspdf-autotable"),
@@ -660,41 +676,57 @@ export default function KanbanPage() {
               <ListIcon className="h-3.5 w-3.5" /> Lista
             </button>
           </div>
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <button
-                className="flex items-center gap-2 rounded-md border border-border bg-card px-3 py-1.5 text-sm font-medium hover:bg-secondary transition-colors"
-                title={`Eksport ${exportRowCount} zadań · ${activeColumnDefs.length} kolumn · sort: ${exportContext.sortLabel}`}
-              >
-                <Download className="h-4 w-4" />
-                Eksportuj ({exportRowCount})
-              </button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-64">
-              <DropdownMenuLabel className="text-[10px] uppercase">Z aktualnymi filtrami</DropdownMenuLabel>
-              <DropdownMenuItem onClick={handleExportCSV}>
-                <FileText className="h-3.5 w-3.5 mr-2" /> CSV (.csv)
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={handleExportXLSX}>
-                <FileText className="h-3.5 w-3.5 mr-2" /> Excel (.xlsx)
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={handleExportPDF}>
-                <FileText className="h-3.5 w-3.5 mr-2" /> PDF (.pdf)
-              </DropdownMenuItem>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem onSelect={(e) => { e.preventDefault(); setColumnsDialogOpen(true); }}>
-                <Settings2 className="h-3.5 w-3.5 mr-2" />
-                Wybierz kolumny ({activeColumnDefs.length}/{EXPORT_COLUMNS.length})
-              </DropdownMenuItem>
-              <DropdownMenuCheckboxItem
-                checked={includeExportMeta}
-                onCheckedChange={(v) => setIncludeExportMeta(!!v)}
-                onSelect={(e) => e.preventDefault()}
-              >
-                Dołącz metadane (filtry, sort)
-              </DropdownMenuCheckboxItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
+          <div className="flex items-stretch rounded-md border border-border overflow-hidden bg-card">
+            <button
+              onClick={() => {
+                if (lastExportFormat === "csv") handleExportCSV();
+                else if (lastExportFormat === "xlsx") handleExportXLSX();
+                else handleExportPDF();
+              }}
+              className="flex items-center gap-2 px-3 py-1.5 text-sm font-medium hover:bg-secondary transition-colors"
+              title={`Powtórz ostatni eksport (${lastExportFormat.toUpperCase()}) · ${exportRowCount} zadań · ${activeColumnDefs.length} kolumn · sort: ${exportContext.sortLabel}${includeExportMeta ? " · z metadanymi" : ""}`}
+            >
+              <Download className="h-4 w-4" />
+              Eksportuj {lastExportFormat.toUpperCase()} ({exportRowCount})
+            </button>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <button
+                  className="flex items-center px-2 border-l border-border hover:bg-secondary transition-colors"
+                  title="Opcje eksportu"
+                  aria-label="Opcje eksportu"
+                >
+                  <ChevronDown className="h-4 w-4" />
+                </button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-64">
+                <DropdownMenuLabel className="text-[10px] uppercase">
+                  Z aktualnymi filtrami · ostatnio: {lastExportFormat.toUpperCase()}
+                </DropdownMenuLabel>
+                <DropdownMenuItem onClick={handleExportCSV}>
+                  <FileText className="h-3.5 w-3.5 mr-2" /> CSV (.csv){lastExportFormat === "csv" ? " ✓" : ""}
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={handleExportXLSX}>
+                  <FileText className="h-3.5 w-3.5 mr-2" /> Excel (.xlsx){lastExportFormat === "xlsx" ? " ✓" : ""}
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={handleExportPDF}>
+                  <FileText className="h-3.5 w-3.5 mr-2" /> PDF (.pdf){lastExportFormat === "pdf" ? " ✓" : ""}
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onSelect={(e) => { e.preventDefault(); setColumnsDialogOpen(true); }}>
+                  <Settings2 className="h-3.5 w-3.5 mr-2" />
+                  Wybierz kolumny ({activeColumnDefs.length}/{EXPORT_COLUMNS.length})
+                </DropdownMenuItem>
+                <DropdownMenuCheckboxItem
+                  checked={includeExportMeta}
+                  onCheckedChange={(v) => setIncludeExportMeta(!!v)}
+                  onSelect={(e) => e.preventDefault()}
+                >
+                  Dołącz metadane (filtry, sort)
+                </DropdownMenuCheckboxItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
           <button
             onClick={() => setShowCreate(true)}
             className="flex items-center gap-2 rounded-md fire-gradient px-3 py-1.5 text-sm font-medium text-primary-foreground hover:opacity-90 transition-opacity"
