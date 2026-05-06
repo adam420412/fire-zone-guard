@@ -180,6 +180,19 @@ export default function KanbanPage() {
   }, [exportColumns]);
   const [columnsDialogOpen, setColumnsDialogOpen] = useState(false);
 
+  // Ostatnio użyty format eksportu (CSV/XLSX/PDF) — pozwala szybko powtórzyć
+  type ExportFormat = "csv" | "xlsx" | "pdf";
+  const [lastExportFormat, setLastExportFormat] = useState<ExportFormat>(() => {
+    if (typeof window === "undefined") return "csv";
+    const v = window.localStorage.getItem("kanban.lastExportFormat");
+    return v === "xlsx" || v === "pdf" || v === "csv" ? v : "csv";
+  });
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      window.localStorage.setItem("kanban.lastExportFormat", lastExportFormat);
+    }
+  }, [lastExportFormat]);
+
   // Aktywne definicje kolumn w kolejności wyboru
   const activeColumnDefs = useMemo(
     () => exportColumns
