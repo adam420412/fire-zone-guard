@@ -6,7 +6,7 @@ import TaskCard from "@/components/TaskCard";
 import TaskDetailDialog from "@/components/TaskDetailDialog";
 import CreateTaskDialog from "@/components/CreateTaskDialog";
 import { cn } from "@/lib/utils";
-import { Filter, Search, Plus, Download, ArrowUpDown, LayoutGrid, List as ListIcon, FileText, Settings2, ChevronDown, Bug } from "lucide-react";
+import { Filter, Search, Plus, Download, ArrowUpDown, LayoutGrid, List as ListIcon, FileText, Settings2, ChevronDown, Bug, AlertTriangle } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Button } from "@/components/ui/button";
@@ -1065,7 +1065,10 @@ export default function KanbanPage() {
                   checked={pdfDownloadLayoutJson}
                   onCheckedChange={(v) => setPdfDownloadLayoutJson(!!v)}
                   onSelect={(e) => e.preventDefault()}
-                  title="Po eksporcie PDF pobiera dodatkowo plik .layout.json z pełnym KanbanPdfLayoutReport (sekcje + per-strona)."
+                  title={
+                    "Po eksporcie PDF pobiera dodatkowo plik .layout.json z pełnym KanbanPdfLayoutReport (sekcje + per-strona)." +
+                    "\n\nUWAGA: gdy zaznaczysz tę opcję, tryb diagnostyczny PDF zostanie automatycznie wymuszony — inaczej JSON byłby pusty (sections=[], pages=[], totals=0)."
+                  }
                 >
                   Pobierz raport układu (.layout.json) razem z PDF
                 </DropdownMenuCheckboxItem>
@@ -1074,10 +1077,32 @@ export default function KanbanPage() {
                   disabled={pdfDownloadLayoutJson}
                   onCheckedChange={(v) => setPdfDiagnostics(!!v)}
                   onSelect={(e) => e.preventDefault()}
-                  title="Gdy wyłączone, buildKanbanPdf pomija liczenie pól diagnostycznych: per-section derived, per-page summary, totals. Pobranie raportu .layout.json automatycznie wymusza tryb diagnostyczny."
+                  title={
+                    "Gdy wyłączone, buildKanbanPdf pomija liczenie pól diagnostycznych: per-section derived (headerHeight, tableHeightFirstPage, sectionHeightOnStartPage, gapBeforeHeader, startsNewPage, indexOnPage, tablePageSpan), per-page summary i totals." +
+                    "\n\nKonsekwencja dla eksportu .layout.json:" +
+                    "\n  • sections[] zawiera tylko surowe pomiary z renderu (bez wyliczonych wysokości i flag)" +
+                    "\n  • pages = []" +
+                    "\n  • totals = { sectionsCount, 0, 0, 0, 0 }" +
+                    "\n\nDlatego włączenie 'Pobierz raport układu (.layout.json) razem z PDF' automatycznie wymusza tryb diagnostyczny."
+                  }
                 >
                   Tryb diagnostyczny PDF (pola raportu układu)
                 </DropdownMenuCheckboxItem>
+                {!pdfDiagnostics && !pdfDownloadLayoutJson && (
+                  <div
+                    className="px-2 py-1.5 mx-1 mb-1 rounded-md border border-amber-500/40 bg-amber-500/10 text-[11px] leading-snug text-amber-200 flex gap-1.5"
+                    onClick={(e) => e.stopPropagation()}
+                    onPointerDown={(e) => e.stopPropagation()}
+                    title="Włącz tryb diagnostyczny zanim pobierzesz raport układu — inaczej JSON nie będzie miał wysokości sekcji, page-summary ani totals."
+                  >
+                    <AlertTriangle className="h-3.5 w-3.5 shrink-0 mt-0.5" />
+                    <span>
+                      Tryb diagnostyczny wyłączony — eksportowany <code className="px-1 rounded bg-amber-500/20">.layout.json</code> miałby
+                      puste <code className="px-1 rounded bg-amber-500/20">sections</code>, <code className="px-1 rounded bg-amber-500/20">pages=[]</code> i zerowe <code className="px-1 rounded bg-amber-500/20">totals</code>.
+                      Włącz go, jeśli chcesz pełny raport.
+                    </span>
+                  </div>
+                )}
                 <DropdownMenuItem
                   onSelect={(e) => { e.preventDefault(); setPdfDebugDialogOpen(true); }}
                   title="Pokaż wygenerowany PDF obok strukturalnego raportu KanbanPdfLayoutReport (sekcja po sekcji + per-strona)."
