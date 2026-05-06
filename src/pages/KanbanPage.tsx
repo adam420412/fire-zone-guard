@@ -556,3 +556,100 @@ export default function KanbanPage() {
     </div>
   );
 }
+
+// ---------- LIST VIEW ----------
+const QUOTE_BADGE_CLS: Record<string, string> = {
+  "wersja robocza": "bg-muted text-muted-foreground border-border",
+  "wysłana":        "bg-blue-500/15 text-blue-400 border-blue-500/30",
+  "wyslana":        "bg-blue-500/15 text-blue-400 border-blue-500/30",
+  "zaakceptowana":  "bg-success/15 text-success border-success/30",
+  "odrzucona":      "bg-destructive/15 text-destructive border-destructive/30",
+  "wygasła":        "bg-warning/15 text-warning border-warning/30",
+  "wygasla":        "bg-warning/15 text-warning border-warning/30",
+};
+
+function TaskListView({ tasks, onSelect }: { tasks: any[]; onSelect: (t: any) => void }) {
+  if (tasks.length === 0) {
+    return (
+      <div className="flex-1 flex flex-col items-center justify-center py-20 text-muted-foreground opacity-60">
+        <Filter className="h-10 w-10 mb-3" />
+        <p className="text-sm font-medium">Brak zadań spełniających filtry</p>
+      </div>
+    );
+  }
+  return (
+    <div className="flex-1 overflow-auto pb-4 rounded-xl border border-border bg-card/40">
+      <table className="w-full text-sm">
+        <thead className="sticky top-0 bg-card/95 backdrop-blur z-10 border-b border-border">
+          <tr className="text-left text-[11px] uppercase tracking-wider text-muted-foreground">
+            <th className="px-3 py-2 font-semibold">Zadanie</th>
+            <th className="px-3 py-2 font-semibold hidden md:table-cell">Obiekt / Firma</th>
+            <th className="px-3 py-2 font-semibold">Status</th>
+            <th className="px-3 py-2 font-semibold hidden sm:table-cell">Priorytet</th>
+            <th className="px-3 py-2 font-semibold hidden md:table-cell">Wykonawca</th>
+            <th className="px-3 py-2 font-semibold hidden lg:table-cell">Termin</th>
+            <th className="px-3 py-2 font-semibold">Oferta</th>
+            <th className="px-3 py-2 font-semibold hidden md:table-cell">Aktywność</th>
+          </tr>
+        </thead>
+        <tbody>
+          {tasks.map((t) => {
+            const lastMs = taskLastActivityMs(t);
+            const lastIso = lastMs ? new Date(lastMs).toISOString() : null;
+            const lastRel = formatRelative(lastIso);
+            const quoteCls = t.quoteStatus ? (QUOTE_BADGE_CLS[String(t.quoteStatus).toLowerCase()] ?? "bg-secondary text-secondary-foreground border-border") : "";
+            return (
+              <tr
+                key={t.id}
+                onClick={() => onSelect(t)}
+                className={cn(
+                  "border-b border-border/60 hover:bg-secondary/40 cursor-pointer transition-colors",
+                  t.isOverdue && "bg-critical/5"
+                )}
+              >
+                <td className="px-3 py-2.5 max-w-[360px]">
+                  <div className="font-medium text-foreground line-clamp-1">{t.title}</div>
+                  <div className="text-[10px] font-mono text-muted-foreground">{t.id.slice(0, 8)}</div>
+                </td>
+                <td className="px-3 py-2.5 hidden md:table-cell text-muted-foreground">
+                  <div className="line-clamp-1">{t.buildingName || "—"}</div>
+                  {t.companyName && <div className="text-[11px] opacity-70 line-clamp-1">{t.companyName}</div>}
+                </td>
+                <td className="px-3 py-2.5">
+                  <span className={cn("rounded-full px-2 py-0.5 text-[10px] font-bold uppercase", statusColors[t.status as TaskStatus])}>
+                    {t.status}
+                  </span>
+                </td>
+                <td className="px-3 py-2.5 hidden sm:table-cell">
+                  <span className="text-xs capitalize">{t.priority}</span>
+                </td>
+                <td className="px-3 py-2.5 hidden md:table-cell text-muted-foreground text-xs line-clamp-1">
+                  {t.assigneeName}
+                </td>
+                <td className="px-3 py-2.5 hidden lg:table-cell text-xs">
+                  {t.deadline ? (
+                    <span className={cn(t.isOverdue && "text-critical font-semibold")}>
+                      {new Date(t.deadline).toLocaleDateString("pl-PL")}
+                    </span>
+                  ) : <span className="text-muted-foreground">—</span>}
+                </td>
+                <td className="px-3 py-2.5">
+                  {(t.quoteCount ?? 0) > 0 && t.quoteStatus ? (
+                    <span className={cn("inline-flex items-center gap-1 rounded border px-1.5 py-0.5 text-[10px] font-medium", quoteCls)}>
+                      <FileText className="h-2.5 w-2.5" />
+                      <span className="capitalize">{t.quoteStatus}</span>
+                      {(t.quoteCount ?? 0) > 1 && <span className="opacity-70">×{t.quoteCount}</span>}
+                    </span>
+                  ) : <span className="text-muted-foreground text-xs">—</span>}
+                </td>
+                <td className="px-3 py-2.5 hidden md:table-cell text-xs text-muted-foreground">
+                  {lastRel ?? "—"}
+                </td>
+              </tr>
+            );
+          })}
+        </tbody>
+      </table>
+    </div>
+  );
+}
