@@ -167,6 +167,33 @@ export default function KanbanPage() {
     }
   }, [pdfDebugLayout]);
 
+  // Konfigurowalne odstępy pionowe w PDF (pt). Domyślnie 8 / 18.
+  const PDF_SPACING_DEFAULTS = { headerToTable: 8, tableToNextHeader: 18 };
+  const [pdfSpacing, setPdfSpacing] = useState<{
+    headerToTable: number;
+    tableToNextHeader: number;
+  }>(() => {
+    if (typeof window === "undefined") return PDF_SPACING_DEFAULTS;
+    try {
+      const raw = window.localStorage.getItem("kanban.exportPdfSpacing");
+      if (!raw) return PDF_SPACING_DEFAULTS;
+      const parsed = JSON.parse(raw);
+      const num = (v: any, fallback: number) =>
+        typeof v === "number" && Number.isFinite(v) ? v : fallback;
+      return {
+        headerToTable: num(parsed.headerToTable, PDF_SPACING_DEFAULTS.headerToTable),
+        tableToNextHeader: num(parsed.tableToNextHeader, PDF_SPACING_DEFAULTS.tableToNextHeader),
+      };
+    } catch {
+      return PDF_SPACING_DEFAULTS;
+    }
+  });
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      window.localStorage.setItem("kanban.exportPdfSpacing", JSON.stringify(pdfSpacing));
+    }
+  }, [pdfSpacing]);
+
   // Wybór kolumn eksportu (CSV/XLSX/PDF)
   const [exportColumns, setExportColumns] = useState<ExportColumnKey[]>(() => {
     if (typeof window === "undefined") return DEFAULT_EXPORT_COLUMNS;
