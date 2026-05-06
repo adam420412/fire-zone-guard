@@ -476,6 +476,9 @@ export function buildKanbanPdf(
       tableFinalY,
       tableEndPage,
     });
+
+    prevTableFinalY = tableFinalY;
+    prevTableEndPage = tableEndPage;
   });
 
   // Sweep końcowy: gwarancja, że KAŻDA strona ma stopkę dokładnie raz
