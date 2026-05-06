@@ -872,6 +872,10 @@ export default function KanbanPage() {
                   <FileText className="h-3.5 w-3.5 mr-2" /> PDF (.pdf){lastExportFormat === "pdf" ? " ✓" : ""}
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
+                <DropdownMenuItem onSelect={(e) => { e.preventDefault(); setPreviewDialogOpen(true); }}>
+                  <Search className="h-3.5 w-3.5 mr-2" />
+                  Podgląd eksportu
+                </DropdownMenuItem>
                 <DropdownMenuItem onSelect={(e) => { e.preventDefault(); setColumnsDialogOpen(true); }}>
                   <Settings2 className="h-3.5 w-3.5 mr-2" />
                   Wybierz kolumny ({activeColumnDefs.length}/{EXPORT_COLUMNS.length})
