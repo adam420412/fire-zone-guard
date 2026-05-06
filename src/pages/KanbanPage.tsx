@@ -13,7 +13,7 @@ import { toast } from "sonner";
 import { formatRelative, formatLocalDateTime } from "@/lib/relativeTime";
 import {
   DropdownMenu, DropdownMenuTrigger, DropdownMenuContent,
-  DropdownMenuItem, DropdownMenuLabel,
+  DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuCheckboxItem,
 } from "@/components/ui/dropdown-menu";
 import { buildLastActivityTooltip } from "@/lib/lastActivity";
 
