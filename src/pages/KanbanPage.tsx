@@ -401,19 +401,66 @@ export default function KanbanPage() {
             </button>
           );
         })}
-        {(dueFilter !== "all" || groupValueFilter !== "all" || filterPriority !== "all" || search) && (
+        {(dueFilter !== "all" || groupValueFilter !== "all" || filterPriority !== "all" || search || quoteFilter !== "all" || recencyFilter !== "all") && (
           <button
             onClick={() => {
               setDueFilter("all");
               setGroupValueFilter("all");
               setFilterPriority("all");
               setSearch("");
+              setQuoteFilter("all");
+              setRecencyFilter("all");
             }}
             className="ml-2 text-[11px] text-muted-foreground hover:text-foreground underline-offset-2 hover:underline"
           >
             Wyczyść filtry
           </button>
         )}
+      </div>
+
+      {/* Quick recency (last activity) chips */}
+      <div className="mb-4 flex items-center gap-2 flex-wrap">
+        <span className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground mr-1">
+          Aktywność:
+        </span>
+        {([
+          { key: "all", label: "Wszystkie" },
+          { key: "24h", label: "Ostatnie 24h" },
+          { key: "7d",  label: "Ostatnie 7 dni" },
+          { key: "30d", label: "Ostatnie 30 dni" },
+        ] as { key: RecencyFilter; label: string }[]).map((opt) => {
+          const active = recencyFilter === opt.key;
+          const count = (() => {
+            if (opt.key === "all") return localTasks.length;
+            const hour = 3_600_000;
+            const limit = opt.key === "24h" ? 24 * hour : opt.key === "7d" ? 7 * 24 * hour : 30 * 24 * hour;
+            return localTasks.filter((t: any) => {
+              const last = taskLastActivityMs(t);
+              return last && (Date.now() - last) <= limit;
+            }).length;
+          })();
+          return (
+            <button
+              key={opt.key}
+              onClick={() => setRecencyFilter(opt.key)}
+              className={cn(
+                "inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-[11px] font-medium transition-colors",
+                active
+                  ? "border-primary/50 bg-primary/15 text-primary"
+                  : "border-border bg-card hover:bg-secondary text-muted-foreground"
+              )}
+              title="Ostatnia aktywność = nowsze z: data utworzenia / aktualizacja oferty"
+            >
+              {opt.label}
+              <span className={cn(
+                "rounded-full px-1.5 py-0.5 text-[10px]",
+                active ? "bg-background/40" : "bg-muted/60"
+              )}>
+                {count}
+              </span>
+            </button>
+          );
+        })}
       </div>
 
       <div className="flex-1 overflow-x-auto pb-4 select-none">
