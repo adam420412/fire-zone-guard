@@ -432,6 +432,7 @@ export default function KanbanPage() {
       toast.error("Wybierz przynajmniej jedną kolumnę do eksportu");
       return;
     }
+    setLastExportFormat("xlsx");
     const XLSX = await import("xlsx");
     const headers = activeColumnDefs.map((c) => c.label);
     const metaRows: any[][] = includeExportMeta
