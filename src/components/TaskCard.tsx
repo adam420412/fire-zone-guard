@@ -183,11 +183,13 @@ export default function TaskCard({ task, onClick }: TaskCardProps) {
         {(task.quoteCount ?? 0) > 0 && task.quoteStatus && (() => {
           const meta = quoteStatusBadge[task.quoteStatus] ?? { label: task.quoteStatus, cls: "bg-secondary text-secondary-foreground border border-border" };
           const rel = formatRelative(task.quoteUpdatedAt);
+          const event = task.quoteLastEvent ? quoteEventMeta[task.quoteLastEvent] : null;
+          const EventIcon = event?.Icon ?? FileText;
           const tooltip = [
             `Oferta: ${meta.label}`,
             task.quoteNumber ? `Nr ${task.quoteNumber}` : null,
             (task.quoteCount ?? 0) > 1 ? `${task.quoteCount} ofert` : null,
-            rel ? `Aktualizacja: ${rel}` : null,
+            event ? `Ostatnio: ${event.verb}${rel ? ` (${rel})` : ""}` : (rel ? `Aktualizacja: ${rel}` : null),
           ].filter(Boolean).join(" · ");
           return (
             <button
@@ -205,11 +207,20 @@ export default function TaskCard({ task, onClick }: TaskCardProps) {
                 meta.cls
               )}
               title={`${tooltip} — kliknij, aby ${(task.quoteCount ?? 0) > 1 ? "zobaczyć listę ofert" : "otworzyć ofertę"}`}
+              aria-label={tooltip}
             >
               <FileText className="h-2.5 w-2.5" />
               <span>{meta.label}</span>
               {(task.quoteCount ?? 0) > 1 && (
                 <span className="opacity-70">×{task.quoteCount}</span>
+              )}
+              {event && (
+                <span
+                  className={cn("inline-flex items-center gap-0.5 ml-0.5 pl-1 border-l border-current/30", event.cls)}
+                  title={`${event.verb}${rel ? ` · ${rel}` : ""}`}
+                >
+                  <EventIcon className="h-2.5 w-2.5" />
+                </span>
               )}
               {rel && <span className="opacity-70">· {rel}</span>}
             </button>
