@@ -39,18 +39,7 @@ const quoteEventMeta: Record<NonNullable<TaskWithDetails["quoteLastEvent"]>, { l
   created:  { label: "Utworzona",    verb: "Utworzono",    Icon: FilePlus2,    cls: "text-muted-foreground" },
 };
 
-function formatRelative(iso?: string | null): string | null {
-  if (!iso) return null;
-  const d = new Date(iso);
-  const diffMs = Date.now() - d.getTime();
-  const day = 24 * 60 * 60 * 1000;
-  const diffDays = Math.floor(diffMs / day);
-  if (diffDays <= 0) return "dziś";
-  if (diffDays === 1) return "wczoraj";
-  if (diffDays < 7) return `${diffDays} dni temu`;
-  if (diffDays < 30) return `${Math.floor(diffDays / 7)} tyg. temu`;
-  return d.toLocaleDateString("pl-PL", { day: "2-digit", month: "2-digit", year: "2-digit" });
-}
+import { formatRelative, formatLocalDateTime } from "@/lib/relativeTime";
 
 export default function TaskCard({ task, onClick }: TaskCardProps) {
   const priority = task.priority as TaskPriority;
