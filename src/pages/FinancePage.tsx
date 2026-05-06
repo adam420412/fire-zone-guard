@@ -574,7 +574,7 @@ export default function FinancePage() {
         <Card><CardContent className="pt-5 pb-4"><div className="flex items-center justify-between"><div><p className="text-xs text-muted-foreground font-medium">Marża</p><p className="text-2xl font-bold">{financeSummary ? `${Math.round(financeSummary.margin)}%` : "0%"}</p><p className="text-xs text-muted-foreground">Na podstawie pozycji finansowych</p></div><div className="h-10 w-10 rounded-lg bg-secondary flex items-center justify-center"><Percent className="h-5 w-5 text-foreground" /></div></div></CardContent></Card>
       </div>
 
-      <Tabs defaultValue="opportunities" className="w-full">
+      <Tabs value={activeTab} onValueChange={(v) => { setActiveTab(v); const next = new URLSearchParams(searchParams); next.set("tab", v); setSearchParams(next, { replace: true }); }} className="w-full">
         <TabsList className="bg-secondary p-1 rounded-xl">
           <TabsTrigger value="opportunities" className="rounded-lg data-[state=active]:bg-card data-[state=active]:shadow-sm font-semibold">
             <Target className="h-4 w-4 mr-1.5" /> Szanse ({(opportunities ?? []).filter((o: any) => o.status !== "archiwum").length})
