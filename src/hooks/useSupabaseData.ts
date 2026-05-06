@@ -157,6 +157,8 @@ export interface TaskWithDetails extends Tables<"tasks"> {
   subtasksDone?: number;
   quoteStatus?: string | null;
   quoteCount?: number;
+  quoteUpdatedAt?: string | null;
+  quoteNumber?: string | null;
   financialBalance?: number;
 }
 
