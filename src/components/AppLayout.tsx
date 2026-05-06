@@ -4,7 +4,7 @@ import {
   Shield, Settings, Flame, ChevronLeft, ChevronRight,
   User, LogOut, Menu, X, ClipboardCheck, FileText, Users, UsersRound, Search, Command, BarChart2, CalendarDays, Factory, Contact, DollarSign,
   Siren, Wrench, CalendarClock, BookOpen, BarChart3, History, Gauge, ListChecks,
-  Map, Sliders
+  Map, Sliders, Activity
 } from "lucide-react";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { useState, useEffect } from "react";
@@ -34,6 +34,7 @@ const adminNavItems = [
   { icon: Users, label: "Spotkania", path: "/meetings" },
   { icon: UsersRound, label: "Zespół", path: "/employees" },
   { icon: BarChart2, label: "Analityka", path: "/analytics" },
+  { icon: Activity, label: "Audyt Systemu", path: "/system-audit" },
   { icon: CalendarDays, label: "Kalendarz", path: "/calendar" },
   { icon: Factory, label: "Producenci", path: "/manufacturers" },
   { icon: Contact, label: "CRM", path: "/crm" },
