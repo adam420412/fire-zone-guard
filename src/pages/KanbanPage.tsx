@@ -292,19 +292,21 @@ export default function KanbanPage() {
       "Deadline", "Oferta — status", "Oferta — liczba", "Ostatnia aktywność",
     ];
     const escape = (v: any) => `"${String(v ?? "").replace(/"/g, '""')}"`;
-    const meta = [
-      `# Eksport: ${new Date().toLocaleString("pl-PL")}`,
-      `# Sort: ${exportContext.sortLabel}`,
-      `# Filtry: ${exportContext.filters.map(f => `${f.label}=${f.value}`).join(" | ")}`,
-      `# Liczba zadań: ${exportRows.length}`,
-    ].join("\n");
+    const meta = includeExportMeta
+      ? [
+          `# Eksport: ${new Date().toLocaleString("pl-PL")}`,
+          `# Sort: ${exportContext.sortLabel}`,
+          `# Filtry: ${exportContext.filters.map(f => `${f.label}=${f.value}`).join(" | ") || "—"}`,
+          `# Liczba zadań: ${exportRows.length}`,
+        ].join("\n") + "\n"
+      : "";
     const body = [headers.map(escape).join(";")]
       .concat(exportRows.map(r => [
         r.id, r.title, r.building, r.company, r.assignee, r.priority, r.status, r.type,
         r.deadline, r.quoteStatus, r.quoteCount, r.lastActivity,
       ].map(escape).join(";")))
       .join("\n");
-    const csvContent = `${meta}\n${body}`;
+    const csvContent = `${meta}${body}`;
     const blob = new Blob(["\ufeff" + csvContent], { type: "text/csv;charset=utf-8" });
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
@@ -322,13 +324,15 @@ export default function KanbanPage() {
       "ID", "Tytuł", "Obiekt", "Firma", "Przypisany", "Priorytet", "Status", "Typ",
       "Deadline", "Oferta — status", "Oferta — liczba", "Ostatnia aktywność",
     ];
-    const metaRows: any[][] = [
-      [`Eksport: ${new Date().toLocaleString("pl-PL")}`],
-      [`Sortowanie: ${exportContext.sortLabel}`],
-      [`Filtry: ${exportContext.filters.map(f => `${f.label}=${f.value}`).join(" | ") || "—"}`],
-      [`Liczba zadań: ${exportRows.length}`],
-      [],
-    ];
+    const metaRows: any[][] = includeExportMeta
+      ? [
+          [`Eksport: ${new Date().toLocaleString("pl-PL")}`],
+          [`Sortowanie: ${exportContext.sortLabel}`],
+          [`Filtry: ${exportContext.filters.map(f => `${f.label}=${f.value}`).join(" | ") || "—"}`],
+          [`Liczba zadań: ${exportRows.length}`],
+          [],
+        ]
+      : [];
     const dataRows = exportRows.map(r => [
       r.id, r.title, r.building, r.company, r.assignee, r.priority, r.status, r.type,
       r.deadline, r.quoteStatus, r.quoteCount, r.lastActivity,
