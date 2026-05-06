@@ -972,6 +972,14 @@ export default function KanbanPage() {
                 >
                   Dołącz metadane (filtry, sort)
                 </DropdownMenuCheckboxItem>
+                <DropdownMenuCheckboxItem
+                  checked={pdfDebugLayout}
+                  onCheckedChange={(v) => setPdfDebugLayout(!!v)}
+                  onSelect={(e) => e.preventDefault()}
+                  title="Rysuje w PDF obrysy marginesów i wyliczane 'miejsce do końca strony'. Tylko dla diagnostyki paginacji."
+                >
+                  Debug układu PDF (marginesy + wolne miejsce)
+                </DropdownMenuCheckboxItem>
                 <DropdownMenuSeparator />
                 <DropdownMenuLabel className="text-[10px] uppercase">
                   Grupuj eksport wg
