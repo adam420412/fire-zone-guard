@@ -1010,6 +1010,66 @@ export default function KanbanPage() {
                 >
                   Debug układu PDF (marginesy + wolne miejsce)
                 </DropdownMenuCheckboxItem>
+                <DropdownMenuLabel className="text-[10px] uppercase mt-1">
+                  Odstępy w PDF (pt)
+                </DropdownMenuLabel>
+                <div
+                  className="px-2 py-1.5 space-y-2"
+                  onClick={(e) => e.stopPropagation()}
+                  onPointerDown={(e) => e.stopPropagation()}
+                >
+                  <div className="grid grid-cols-[1fr_72px] items-center gap-2">
+                    <Label htmlFor="pdf-gap-h2t" className="text-xs font-normal">
+                      Nagłówek → tabela
+                    </Label>
+                    <Input
+                      id="pdf-gap-h2t"
+                      type="number"
+                      min={0}
+                      max={60}
+                      step={1}
+                      className="h-7 text-xs"
+                      value={pdfSpacing.headerToTable}
+                      onChange={(e) => {
+                        const v = Number(e.target.value);
+                        setPdfSpacing((s) => ({
+                          ...s,
+                          headerToTable: Number.isFinite(v) ? Math.min(60, Math.max(0, v)) : s.headerToTable,
+                        }));
+                      }}
+                    />
+                  </div>
+                  <div className="grid grid-cols-[1fr_72px] items-center gap-2">
+                    <Label htmlFor="pdf-gap-t2h" className="text-xs font-normal">
+                      Tabela → kolejny nagłówek
+                    </Label>
+                    <Input
+                      id="pdf-gap-t2h"
+                      type="number"
+                      min={0}
+                      max={120}
+                      step={1}
+                      className="h-7 text-xs"
+                      value={pdfSpacing.tableToNextHeader}
+                      onChange={(e) => {
+                        const v = Number(e.target.value);
+                        setPdfSpacing((s) => ({
+                          ...s,
+                          tableToNextHeader: Number.isFinite(v) ? Math.min(120, Math.max(0, v)) : s.tableToNextHeader,
+                        }));
+                      }}
+                    />
+                  </div>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    className="h-6 w-full text-[10px] text-muted-foreground"
+                    onClick={() => setPdfSpacing(PDF_SPACING_DEFAULTS)}
+                  >
+                    Przywróć domyślne (8 / 18)
+                  </Button>
+                </div>
                 <DropdownMenuSeparator />
                 <DropdownMenuLabel className="text-[10px] uppercase">
                   Grupuj eksport wg
