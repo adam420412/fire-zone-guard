@@ -70,6 +70,15 @@ export default function KanbanPage() {
   const [quoteFilter, setQuoteFilter] = useState<QuoteFilter>("all");
   const [recencyFilter, setRecencyFilter] = useState<RecencyFilter>("all");
   const [viewMode, setViewMode] = useState<ViewMode>("kanban");
+  const [includeExportMeta, setIncludeExportMeta] = useState<boolean>(() => {
+    if (typeof window === "undefined") return false;
+    return window.localStorage.getItem("kanban.exportIncludeMeta") === "1";
+  });
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      window.localStorage.setItem("kanban.exportIncludeMeta", includeExportMeta ? "1" : "0");
+    }
+  }, [includeExportMeta]);
   const [showCreate, setShowCreate] = useState(false);
   const [selectedTask, setSelectedTask] = useState<any>(null);
   
