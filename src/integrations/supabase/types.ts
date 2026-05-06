@@ -1912,6 +1912,84 @@ export type Database = {
           },
         ]
       }
+      task_attachments: {
+        Row: {
+          created_at: string
+          file_path: string
+          file_size: number | null
+          file_type: string | null
+          id: string
+          kind: string
+          name: string
+          task_id: string
+          uploaded_by: string | null
+        }
+        Insert: {
+          created_at?: string
+          file_path: string
+          file_size?: number | null
+          file_type?: string | null
+          id?: string
+          kind?: string
+          name: string
+          task_id: string
+          uploaded_by?: string | null
+        }
+        Update: {
+          created_at?: string
+          file_path?: string
+          file_size?: number | null
+          file_type?: string | null
+          id?: string
+          kind?: string
+          name?: string
+          task_id?: string
+          uploaded_by?: string | null
+        }
+        Relationships: []
+      }
+      task_communications: {
+        Row: {
+          author_id: string | null
+          body: string
+          channel: string
+          created_at: string
+          direction: string
+          external_ref: string | null
+          id: string
+          payload: Json
+          recipient: string | null
+          subject: string | null
+          task_id: string
+        }
+        Insert: {
+          author_id?: string | null
+          body: string
+          channel: string
+          created_at?: string
+          direction?: string
+          external_ref?: string | null
+          id?: string
+          payload?: Json
+          recipient?: string | null
+          subject?: string | null
+          task_id: string
+        }
+        Update: {
+          author_id?: string | null
+          body?: string
+          channel?: string
+          created_at?: string
+          direction?: string
+          external_ref?: string | null
+          id?: string
+          payload?: Json
+          recipient?: string | null
+          subject?: string | null
+          task_id?: string
+        }
+        Relationships: []
+      }
       task_financial_items: {
         Row: {
           amount: number
