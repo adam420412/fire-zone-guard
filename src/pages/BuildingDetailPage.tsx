@@ -45,6 +45,7 @@ import { Button } from "@/components/ui/button";
 import { BUILDING_DOCUMENT_CATEGORIES, BUILDING_DOCUMENT_CATEGORY_LABELS, type BuildingDocumentCategory } from "@/lib/constants";
 import CreateTaskDialog from "@/components/CreateTaskDialog";
 import BuildingTrainingsTab from "@/components/BuildingTrainingsTab";
+import ReportFaultButton from "@/components/ReportFaultButton";
 
 function EditBuildingDialog({ building, open, onOpenChange }: { building: any, open: boolean, onOpenChange: (o: boolean) => void }) {
   const { data: companies } = useCompanies();
@@ -688,11 +689,15 @@ export default function BuildingDetailPage() {
               <p className="text-sm font-medium text-muted-foreground">{building.companyName}</p>
             </div>
             
-            {isSuperAdmin && (
-              <button onClick={() => setShowEditBuilding(true)} className="rounded-full bg-secondary p-2.5 hover:bg-primary/20 hover:text-primary transition-colors">
-                <Edit className="h-4 w-4" />
-              </button>
-            )}
+
+            <div className="flex items-center gap-2">
+              <ReportFaultButton buildingId={building.id} variant="prominent" />
+              {isSuperAdmin && (
+                <button onClick={() => setShowEditBuilding(true)} className="rounded-full bg-secondary p-2.5 hover:bg-primary/20 hover:text-primary transition-colors">
+                  <Edit className="h-4 w-4" />
+                </button>
+              )}
+            </div>
           </div>
           <div className="mt-4 flex flex-wrap items-center gap-4 text-xs font-medium text-muted-foreground">
             <div className="flex items-center gap-1.5">
