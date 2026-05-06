@@ -40,6 +40,7 @@ import LibraryPage from "@/pages/LibraryPage";
 import ReportsPage from "@/pages/ReportsPage";
 import SlaAuditLogPage from "@/pages/SlaAuditLogPage";
 import SlaKpiPage from "@/pages/SlaKpiPage";
+import SystemAuditPage from "@/pages/SystemAuditPage";
 import PublicSlaIntakePage from "@/pages/PublicSlaIntakePage";
 import NotFound from "./pages/NotFound";
 import { Loader2 } from "lucide-react";
@@ -115,6 +116,7 @@ function ProtectedRoutes() {
             <Route path="/manufacturers" element={<ManufacturersPage />} />
             <Route path="/crm" element={<CrmPage />} />
             <Route path="/finance" element={<FinancePage />} />
+            <Route path="/system-audit" element={<SystemAuditPage />} />
             <Route path="/settings" element={<SettingsPage />} />
             <Route path="/admin" element={<AdminPage />} />
             <Route path="/admin/import" element={<BulkImportPage />} />
