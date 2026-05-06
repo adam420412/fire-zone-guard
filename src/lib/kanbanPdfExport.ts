@@ -356,6 +356,17 @@ export function buildKanbanPdf(
     });
   });
 
+  // Sweep końcowy: gwarancja, że KAŻDA strona ma stopkę dokładnie raz
+  // (np. gdy autoTable dodał stronę bez wywołania didDrawPage, albo gdy
+  // pierwsza strona została utworzona implicite przez konstruktor jsPDF).
+  const totalPagesFinal = doc.getNumberOfPages();
+  for (let p = 1; p <= totalPagesFinal; p++) {
+    if (footeredPages.has(p)) continue;
+    doc.setPage(p);
+    drawFooter();
+  }
+  doc.setPage(totalPagesFinal);
+
   return {
     doc,
     layout: {
