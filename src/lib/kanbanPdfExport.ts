@@ -58,6 +58,8 @@ export type BuildKanbanPdfOptions = {
   groupByLabel: Record<string, string>;
   metaLines?: string[];
   title?: string;
+  /** Rysuje obrysy marginesów, oś dolnego marginesu i adnotacje "miejsce do końca strony". */
+  debug?: boolean;
 };
 
 export function buildKanbanPdf(
