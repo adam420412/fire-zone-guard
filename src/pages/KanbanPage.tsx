@@ -266,7 +266,21 @@ export default function KanbanPage() {
             <option value="deadline">Sort: Termin</option>
             <option value="priority">Sort: Priorytet</option>
             <option value="created">Sort: Data utworzenia</option>
+            <option value="updated">Sort: Ostatnia aktywność</option>
             <option value="title">Sort: Tytuł A-Z</option>
+          </select>
+          <select
+            value={quoteFilter}
+            onChange={(e) => setQuoteFilter(e.target.value as QuoteFilter)}
+            className="rounded-md border border-border bg-card px-3 py-1.5 text-sm outline-none cursor-pointer"
+            title="Filtr po statusie oferty powiązanej z zadaniem"
+          >
+            <option value="all">Oferta: Wszystkie</option>
+            <option value="any">Oferta: Dowolna</option>
+            <option value="none">Oferta: Bez oferty</option>
+            {(Object.keys(QUOTE_FILTER_LABELS) as Array<keyof typeof QUOTE_FILTER_LABELS>).map((k) => (
+              <option key={k} value={k}>Oferta: {QUOTE_FILTER_LABELS[k]}</option>
+            ))}
           </select>
           <select
             value={groupMode}
