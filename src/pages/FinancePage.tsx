@@ -470,18 +470,45 @@ export default function FinancePage() {
   const [oppStatusFilter, setOppStatusFilter] = useState("active");
   const [convertOpp, setConvertOpp] = useState<any | null>(null);
 
+  const [searchParams, setSearchParams] = useSearchParams();
+  const tabParam = searchParams.get("tab");
+  const taskParam = searchParams.get("task");
+  const quoteParam = searchParams.get("q");
+  const [activeTab, setActiveTab] = useState<string>(tabParam ?? "opportunities");
+
+  // Sync tab when URL changes (e.g. external navigation from TaskCard)
+  useEffect(() => {
+    if (tabParam && tabParam !== activeTab) setActiveTab(tabParam);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tabParam]);
+
   const isSuperAdmin = role === "super_admin";
 
   const filteredQuotes = useMemo(() => {
     if (!quotes) return [];
     let list = quotes;
+    if (taskParam) list = list.filter((q: any) => q.task_id === taskParam);
     if (statusFilter !== "all") list = list.filter((q: any) => q.status === statusFilter);
     if (search.trim()) {
       const q = search.toLowerCase();
       list = list.filter((r: any) => r.quote_number.toLowerCase().includes(q) || r.company_name.toLowerCase().includes(q));
     }
     return list;
-  }, [quotes, statusFilter, search]);
+  }, [quotes, statusFilter, search, taskParam]);
+
+  // Auto-open quote when ?q=<quote_number> is in the URL
+  useEffect(() => {
+    if (!quoteParam || !quotes || selectedQuote) return;
+    const match = (quotes as any[]).find((x) => x.quote_number === quoteParam);
+    if (match) setSelectedQuote(match);
+  }, [quoteParam, quotes, selectedQuote]);
+
+  const clearTaskFilter = () => {
+    const next = new URLSearchParams(searchParams);
+    next.delete("task");
+    next.delete("q");
+    setSearchParams(next, { replace: true });
+  };
 
   const filteredOpps = useMemo(() => {
     if (!opportunities) return [];
