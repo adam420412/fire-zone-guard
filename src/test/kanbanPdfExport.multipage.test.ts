@@ -101,14 +101,19 @@ const SCENARIOS: Array<{ name: string; groups: KanbanPdfGroup[] }> = [
   {
     name: "scenariusz z pustymi grupami między pełnymi",
     groups: [
-      { label: "Pełna-1", tasks: makeTasks(15, "P1") },
+      { label: "Pełna-1", tasks: makeTasks(25, "P1") },
       { label: "Pusta-A", tasks: [] },
-      { label: "Pełna-2", tasks: makeTasks(20, "P2") },
+      { label: "Pełna-2", tasks: makeTasks(30, "P2") },
       { label: "Pusta-B", tasks: [] },
-      { label: "Pełna-3", tasks: makeTasks(18, "P3") },
+      { label: "Pełna-3", tasks: makeTasks(28, "P3") },
+      { label: "Pusta-C", tasks: [] },
+      { label: "Pełna-4", tasks: makeTasks(22, "P4") },
     ],
   },
 ];
+
+/** Tolerancja na zaokrąglenia metryk fontów jsPDF (~1e-14, ale podnosimy do 0.01pt). */
+const EPS = 0.01;
 
 describe("buildKanbanPdf — regresja stałych odstępów na page-breakach", () => {
   for (const scenario of SCENARIOS) {
