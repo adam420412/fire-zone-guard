@@ -157,6 +157,16 @@ export default function KanbanPage() {
     }
   }, [includeExportMeta]);
 
+  const [pdfDebugLayout, setPdfDebugLayout] = useState<boolean>(() => {
+    if (typeof window === "undefined") return false;
+    return window.localStorage.getItem("kanban.exportPdfDebug") === "1";
+  });
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      window.localStorage.setItem("kanban.exportPdfDebug", pdfDebugLayout ? "1" : "0");
+    }
+  }, [pdfDebugLayout]);
+
   // Wybór kolumn eksportu (CSV/XLSX/PDF)
   const [exportColumns, setExportColumns] = useState<ExportColumnKey[]>(() => {
     if (typeof window === "undefined") return DEFAULT_EXPORT_COLUMNS;
