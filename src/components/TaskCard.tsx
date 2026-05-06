@@ -15,6 +15,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import { useNavigate } from "react-router-dom";
+import { formatRelative, formatLocalDateTime } from "@/lib/relativeTime";
 
 interface TaskCardProps {
   task: TaskWithDetails;
@@ -39,18 +40,6 @@ const quoteEventMeta: Record<NonNullable<TaskWithDetails["quoteLastEvent"]>, { l
   created:  { label: "Utworzona",    verb: "Utworzono",    Icon: FilePlus2,    cls: "text-muted-foreground" },
 };
 
-function formatRelative(iso?: string | null): string | null {
-  if (!iso) return null;
-  const d = new Date(iso);
-  const diffMs = Date.now() - d.getTime();
-  const day = 24 * 60 * 60 * 1000;
-  const diffDays = Math.floor(diffMs / day);
-  if (diffDays <= 0) return "dziś";
-  if (diffDays === 1) return "wczoraj";
-  if (diffDays < 7) return `${diffDays} dni temu`;
-  if (diffDays < 30) return `${Math.floor(diffDays / 7)} tyg. temu`;
-  return d.toLocaleDateString("pl-PL", { day: "2-digit", month: "2-digit", year: "2-digit" });
-}
 
 export default function TaskCard({ task, onClick }: TaskCardProps) {
   const priority = task.priority as TaskPriority;
@@ -183,13 +172,16 @@ export default function TaskCard({ task, onClick }: TaskCardProps) {
         {(task.quoteCount ?? 0) > 0 && task.quoteStatus && (() => {
           const meta = quoteStatusBadge[task.quoteStatus] ?? { label: task.quoteStatus, cls: "bg-secondary text-secondary-foreground border border-border" };
           const rel = formatRelative(task.quoteUpdatedAt);
+          const exact = formatLocalDateTime(task.quoteUpdatedAt);
           const event = task.quoteLastEvent ? quoteEventMeta[task.quoteLastEvent] : null;
           const EventIcon = event?.Icon ?? FileText;
           const tooltip = [
             `Oferta: ${meta.label}`,
             task.quoteNumber ? `Nr ${task.quoteNumber}` : null,
             (task.quoteCount ?? 0) > 1 ? `${task.quoteCount} ofert` : null,
-            event ? `Ostatnio: ${event.verb}${rel ? ` (${rel})` : ""}` : (rel ? `Aktualizacja: ${rel}` : null),
+            event
+              ? `Ostatnio: ${event.verb}${rel ? ` (${rel})` : ""}${exact ? ` — ${exact}` : ""}`
+              : (rel ? `Aktualizacja: ${rel}${exact ? ` (${exact})` : ""}` : null),
           ].filter(Boolean).join(" · ");
           return (
             <button
