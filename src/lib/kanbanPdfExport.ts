@@ -130,6 +130,14 @@ export type BuildKanbanPdfOptions = {
   debug?: boolean;
   /** Nadpisanie domyślnych odstępów pionowych. */
   spacing?: KanbanPdfSpacing;
+  /**
+   * Tryb diagnostyczny — gdy `true` (domyślnie), liczone i zwracane są pola
+   * diagnostyczne raportu układu (pochodne pól sekcji, agregaty per-strona,
+   * globalne sumy). Gdy `false`, sekcje zawierają tylko surowe pomiary z renderu,
+   * `pages` jest puste, a `totals` zwraca zera. Pozwala oszczędzić pracę CPU
+   * w hot-pathach eksportu, gdy raport nie będzie czytany.
+   */
+  diagnostics?: boolean;
 };
 
 function clampSpacing(s?: KanbanPdfSpacing): Required<KanbanPdfSpacing> {
