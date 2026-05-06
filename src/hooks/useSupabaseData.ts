@@ -259,6 +259,8 @@ export function useTasks() {
         subtasksDone: subtaskAgg[t.id]?.done ?? 0,
         quoteCount: quoteAgg[t.id]?.count ?? 0,
         quoteStatus: quoteAgg[t.id]?.latestStatus ?? null,
+        quoteUpdatedAt: quoteAgg[t.id]?.latestUpdatedAt ?? null,
+        quoteNumber: quoteAgg[t.id]?.latestNumber ?? null,
         financialBalance: finAgg[t.id] ?? 0,
       })) as TaskWithDetails[];
     },
