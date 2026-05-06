@@ -1001,6 +1001,31 @@ export default function KanbanPage() {
                     </DropdownMenuCheckboxItem>
                   </>
                 )}
+                <DropdownMenuSeparator />
+                <DropdownMenuLabel className="text-[10px] uppercase">
+                  Szablony eksportu
+                </DropdownMenuLabel>
+                {exportTemplates.length === 0 ? (
+                  <div className="px-2 py-1.5 text-[11px] text-muted-foreground italic">
+                    Brak zapisanych szablonów
+                  </div>
+                ) : (
+                  exportTemplates.slice(0, 6).map((tpl) => (
+                    <DropdownMenuItem
+                      key={tpl.id}
+                      onSelect={(e) => { e.preventDefault(); runTemplate(tpl); }}
+                      title={`${tpl.format.toUpperCase()} · ${tpl.columns.length} kol. · grupowanie: ${groupByLabel[tpl.groupBy]}${tpl.groupBy !== "none" ? ` (${tpl.groupOutput === "files" ? "pliki" : "sekcje"})` : ""}${tpl.includeMeta ? " · z meta" : ""}`}
+                    >
+                      <Download className="h-3.5 w-3.5 mr-2" />
+                      <span className="truncate">{tpl.name}</span>
+                      <span className="ml-auto text-[10px] text-muted-foreground">{tpl.format.toUpperCase()}</span>
+                    </DropdownMenuItem>
+                  ))
+                )}
+                <DropdownMenuItem onSelect={(e) => { e.preventDefault(); setTemplatesDialogOpen(true); }}>
+                  <Settings2 className="h-3.5 w-3.5 mr-2" />
+                  Zarządzaj szablonami…
+                </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
           </div>
