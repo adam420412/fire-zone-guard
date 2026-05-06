@@ -470,10 +470,10 @@ export default function KanbanPage() {
         ] as { key: RecencyFilter; label: string }[]).map((opt) => {
           const active = recencyFilter === opt.key;
           const count = (() => {
-            if (opt.key === "all") return localTasks.length;
+            if (opt.key === "all") return baseFilteredTasks.length;
             const hour = 3_600_000;
             const limit = opt.key === "24h" ? 24 * hour : opt.key === "7d" ? 7 * 24 * hour : 30 * 24 * hour;
-            return localTasks.filter((t: any) => {
+            return baseFilteredTasks.filter((t: any) => {
               const last = taskLastActivityMs(t);
               return last && (Date.now() - last) <= limit;
             }).length;
