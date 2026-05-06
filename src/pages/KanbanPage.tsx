@@ -432,40 +432,106 @@ export default function KanbanPage() {
     return `firezone_zadania_${date}${exportContext.slug ? `__${exportContext.slug}` : ""}`;
   }, [exportContext.slug]);
 
-  const handleExportCSV = () => {
+  const buildMetaLines = (groupLabel?: string) => {
+    const lines = [
+      `Eksport: ${new Date().toLocaleString("pl-PL")}`,
+      `Sortowanie: ${exportContext.sortLabel}`,
+      `Filtry: ${exportContext.filters.map(f => `${f.label}=${f.value}`).join(" | ") || "—"}`,
+      `Liczba zadań: ${exportRowCount}`,
+      `Kolumny: ${activeColumnDefs.map(c => c.label).join(", ")}`,
+    ];
+    if (exportGroupBy !== "none") {
+      lines.push(`Grupowanie: ${groupByLabel[exportGroupBy]} (${exportGroupOutput === "files" ? "osobne pliki" : "sekcje"})`);
+      if (groupLabel) lines.push(`Grupa: ${groupLabel}`);
+    }
+    return lines;
+  };
+
+  const downloadBlob = (blob: Blob, filename: string) => {
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.setAttribute("href", url);
+    link.setAttribute("download", filename);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  };
+
+  // ====== CSV ======
+  const buildCSVForTasks = (tasks: any[], groupLabel?: string) => {
+    const headers = activeColumnDefs.map((c) => c.label);
+    const escape = (v: any) => `"${String(v ?? "").replace(/"/g, '""')}"`;
+    const meta = includeExportMeta
+      ? buildMetaLines(groupLabel).map(l => `# ${l}`).join("\n") + "\n"
+      : "";
+    const body = [headers.map(escape).join(";")]
+      .concat(tasks.map((t: any) =>
+        activeColumnDefs.map((c) => escape(c.accessor(t))).join(";")
+      ))
+      .join("\n");
+    return `${meta}${body}`;
+  };
+
+  const handleExportCSV = async () => {
     if (!activeColumnDefs.length) {
       toast.error("Wybierz przynajmniej jedną kolumnę do eksportu");
       return;
     }
     setLastExportFormat("csv");
-    const headers = activeColumnDefs.map((c) => c.label);
+    const groups = groupTasksForExport(sortedFilteredTasks, exportGroupBy);
+
+    if (exportGroupBy === "none") {
+      const csv = buildCSVForTasks(sortedFilteredTasks);
+      downloadBlob(new Blob(["\ufeff" + csv], { type: "text/csv;charset=utf-8" }), `${exportFileBase}.csv`);
+      return;
+    }
+
+    if (exportGroupOutput === "files") {
+      const JSZip = (await import("jszip")).default;
+      const zip = new JSZip();
+      groups.forEach(g => {
+        const csv = buildCSVForTasks(g.tasks, g.label);
+        zip.file(`${exportFileBase}__${sanitizeFileName(g.label)}.csv`, "\ufeff" + csv);
+      });
+      const blob = await zip.generateAsync({ type: "blob" });
+      downloadBlob(blob, `${exportFileBase}__by-${exportGroupBy}.zip`);
+      return;
+    }
+
+    // sekcje w jednym pliku
     const escape = (v: any) => `"${String(v ?? "").replace(/"/g, '""')}"`;
-    const meta = includeExportMeta
-      ? [
-          `# Eksport: ${new Date().toLocaleString("pl-PL")}`,
-          `# Sort: ${exportContext.sortLabel}`,
-          `# Filtry: ${exportContext.filters.map(f => `${f.label}=${f.value}`).join(" | ") || "—"}`,
-          `# Liczba zadań: ${exportRowCount}`,
-          `# Kolumny: ${activeColumnDefs.map(c => c.label).join(", ")}`,
-        ].join("\n") + "\n"
-      : "";
-    const body = [headers.map(escape).join(";")]
-      .concat(
-        sortedFilteredTasks.map((t: any) =>
-          activeColumnDefs.map((c) => escape(c.accessor(t))).join(";")
-        )
-      )
-      .join("\n");
-    const csvContent = `${meta}${body}`;
-    const blob = new Blob(["\ufeff" + csvContent], { type: "text/csv;charset=utf-8" });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement("a");
-    link.setAttribute("href", url);
-    link.setAttribute("download", `${exportFileBase}.csv`);
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    URL.revokeObjectURL(url);
+    const headers = activeColumnDefs.map((c) => c.label);
+    const parts: string[] = [];
+    if (includeExportMeta) {
+      parts.push(buildMetaLines().map(l => `# ${l}`).join("\n"));
+    }
+    groups.forEach((g, idx) => {
+      const sectionLines = [
+        `# === Grupa: ${groupByLabel[exportGroupBy]} = ${g.label} (${g.tasks.length}) ===`,
+        headers.map(escape).join(";"),
+        ...g.tasks.map((t: any) => activeColumnDefs.map((c) => escape(c.accessor(t))).join(";")),
+      ];
+      parts.push((idx > 0 ? "\n" : "") + sectionLines.join("\n"));
+    });
+    downloadBlob(
+      new Blob(["\ufeff" + parts.join("\n")], { type: "text/csv;charset=utf-8" }),
+      `${exportFileBase}__by-${exportGroupBy}.csv`
+    );
+  };
+
+  // ====== XLSX ======
+  const buildXLSXSheet = async (tasks: any[], groupLabel?: string) => {
+    const XLSX = await import("xlsx");
+    const headers = activeColumnDefs.map((c) => c.label);
+    const metaRows: any[][] = includeExportMeta
+      ? [...buildMetaLines(groupLabel).map(l => [l]), []]
+      : [];
+    const dataRows = tasks.map((t: any) => activeColumnDefs.map((c) => c.accessor(t)));
+    const aoa = [...metaRows, headers, ...dataRows];
+    const ws = XLSX.utils.aoa_to_sheet(aoa);
+    ws["!cols"] = activeColumnDefs.map((c) => ({ wch: c.xlsxWidth ?? 16 }));
+    return ws;
   };
 
   const handleExportXLSX = async () => {
@@ -475,26 +541,114 @@ export default function KanbanPage() {
     }
     setLastExportFormat("xlsx");
     const XLSX = await import("xlsx");
-    const headers = activeColumnDefs.map((c) => c.label);
-    const metaRows: any[][] = includeExportMeta
-      ? [
-          [`Eksport: ${new Date().toLocaleString("pl-PL")}`],
-          [`Sortowanie: ${exportContext.sortLabel}`],
-          [`Filtry: ${exportContext.filters.map(f => `${f.label}=${f.value}`).join(" | ") || "—"}`],
-          [`Liczba zadań: ${exportRowCount}`],
-          [`Kolumny: ${activeColumnDefs.map(c => c.label).join(", ")}`],
-          [],
-        ]
-      : [];
-    const dataRows = sortedFilteredTasks.map((t: any) =>
-      activeColumnDefs.map((c) => c.accessor(t))
-    );
-    const aoa = [...metaRows, headers, ...dataRows];
-    const ws = XLSX.utils.aoa_to_sheet(aoa);
-    ws["!cols"] = activeColumnDefs.map((c) => ({ wch: c.xlsxWidth ?? 16 }));
+    const groups = groupTasksForExport(sortedFilteredTasks, exportGroupBy);
+
+    if (exportGroupBy === "none") {
+      const ws = await buildXLSXSheet(sortedFilteredTasks);
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, "Zadania");
+      XLSX.writeFile(wb, `${exportFileBase}.xlsx`);
+      return;
+    }
+
+    if (exportGroupOutput === "files") {
+      const JSZip = (await import("jszip")).default;
+      const zip = new JSZip();
+      for (const g of groups) {
+        const ws = await buildXLSXSheet(g.tasks, g.label);
+        const wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, ws, "Zadania");
+        const buf = XLSX.write(wb, { type: "array", bookType: "xlsx" });
+        zip.file(`${exportFileBase}__${sanitizeFileName(g.label)}.xlsx`, buf);
+      }
+      const blob = await zip.generateAsync({ type: "blob" });
+      downloadBlob(blob, `${exportFileBase}__by-${exportGroupBy}.zip`);
+      return;
+    }
+
+    // sekcje = osobne arkusze w jednym skoroszycie
     const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, "Zadania");
-    XLSX.writeFile(wb, `${exportFileBase}.xlsx`);
+    const usedNames = new Set<string>();
+    for (const g of groups) {
+      const ws = await buildXLSXSheet(g.tasks, g.label);
+      // Excel limit 31 znaków, unikalna nazwa
+      let base = sanitizeFileName(g.label).slice(0, 28).replace(/_+$/, "") || "Grupa";
+      let name = base, i = 1;
+      while (usedNames.has(name)) { name = `${base}_${i++}`.slice(0, 31); }
+      usedNames.add(name);
+      XLSX.utils.book_append_sheet(wb, ws, name);
+    }
+    XLSX.writeFile(wb, `${exportFileBase}__by-${exportGroupBy}.xlsx`);
+  };
+
+  // ====== PDF ======
+  const renderPDF = async (groups: { label: string; tasks: any[] }[], filename: string, asSingleDoc: boolean) => {
+    const [{ default: jsPDF }, autoTableMod] = await Promise.all([
+      import("jspdf"),
+      import("jspdf-autotable"),
+    ]);
+    const autoTable = (autoTableMod as any).default ?? (autoTableMod as any);
+
+    const buildDoc = (grps: { label: string; tasks: any[] }[]) => {
+      const doc = new jsPDF({ orientation: "landscape", unit: "pt", format: "a4" });
+      const pageWidth = doc.internal.pageSize.getWidth();
+      doc.setFontSize(14);
+      doc.text("Fire Zone — Eksport zadań (Kanban)", 40, 36);
+      doc.setFontSize(9);
+      doc.setTextColor(110);
+      const meta = includeExportMeta ? buildMetaLines() : [];
+      meta.forEach((line, i) => doc.text(line, 40, 54 + i * 12));
+      let cursorY = meta.length ? 54 + meta.length * 12 + 8 : 50;
+
+      const columnStyles: Record<number, { cellWidth: number }> = {};
+      activeColumnDefs.forEach((c, i) => {
+        if (c.pdfWidth) columnStyles[i] = { cellWidth: c.pdfWidth };
+      });
+
+      grps.forEach((g, idx) => {
+        if (exportGroupBy !== "none") {
+          if (idx > 0) cursorY = (doc as any).lastAutoTable?.finalY ? (doc as any).lastAutoTable.finalY + 18 : cursorY + 18;
+          doc.setFontSize(11);
+          doc.setTextColor(40);
+          doc.text(`${groupByLabel[exportGroupBy]}: ${g.label}  (${g.tasks.length})`, 40, cursorY);
+          cursorY += 8;
+        }
+        autoTable(doc, {
+          startY: cursorY,
+          head: [activeColumnDefs.map((c) => c.pdfShort ?? c.label)],
+          body: g.tasks.map((t: any) => activeColumnDefs.map((c) => String(c.accessor(t) ?? ""))),
+          styles: { fontSize: 8, cellPadding: 3, overflow: "linebreak" },
+          headStyles: { fillColor: [220, 38, 38], textColor: 255 },
+          alternateRowStyles: { fillColor: [248, 248, 248] },
+          columnStyles,
+          didDrawPage: () => {
+            const str = `Strona ${doc.getNumberOfPages()}`;
+            doc.setFontSize(8);
+            doc.setTextColor(150);
+            doc.text(str, pageWidth - 60, doc.internal.pageSize.getHeight() - 14);
+          },
+        });
+        cursorY = (doc as any).lastAutoTable?.finalY ?? cursorY;
+      });
+      return doc;
+    };
+
+    if (asSingleDoc) {
+      const doc = buildDoc(groups);
+      doc.save(filename);
+      return;
+    }
+
+    // osobne pliki -> zip
+    const JSZip = (await import("jszip")).default;
+    const zip = new JSZip();
+    for (const g of groups) {
+      const doc = buildDoc([g]);
+      const ab = doc.output("arraybuffer");
+      zip.file(`${exportFileBase}__${sanitizeFileName(g.label)}.pdf`, ab);
+    }
+    const blob = await zip.generateAsync({ type: "blob" });
+    downloadBlob(blob, filename);
   };
 
   const handleExportPDF = async () => {
@@ -503,53 +657,16 @@ export default function KanbanPage() {
       return;
     }
     setLastExportFormat("pdf");
-    const [{ default: jsPDF }, autoTableMod] = await Promise.all([
-      import("jspdf"),
-      import("jspdf-autotable"),
-    ]);
-    const autoTable = (autoTableMod as any).default ?? (autoTableMod as any);
-
-    const doc = new jsPDF({ orientation: "landscape", unit: "pt", format: "a4" });
-    const pageWidth = doc.internal.pageSize.getWidth();
-
-    doc.setFontSize(14);
-    doc.text("Fire Zone — Eksport zadań (Kanban)", 40, 36);
-    doc.setFontSize(9);
-    doc.setTextColor(110);
-    const metaLines = includeExportMeta
-      ? [
-          `Wygenerowano: ${new Date().toLocaleString("pl-PL")}`,
-          `Sortowanie: ${exportContext.sortLabel}`,
-          `Filtry: ${exportContext.filters.map(f => `${f.label}=${f.value}`).join("  |  ") || "—"}`,
-          `Liczba zadań: ${exportRowCount}`,
-        ]
-      : [];
-    metaLines.forEach((line, i) => doc.text(line, 40, 54 + i * 12));
-
-    const columnStyles: Record<number, { cellWidth: number }> = {};
-    activeColumnDefs.forEach((c, i) => {
-      if (c.pdfWidth) columnStyles[i] = { cellWidth: c.pdfWidth };
-    });
-
-    autoTable(doc, {
-      startY: metaLines.length ? 54 + metaLines.length * 12 + 8 : 50,
-      head: [activeColumnDefs.map((c) => c.pdfShort ?? c.label)],
-      body: sortedFilteredTasks.map((t: any) =>
-        activeColumnDefs.map((c) => String(c.accessor(t) ?? ""))
-      ),
-      styles: { fontSize: 8, cellPadding: 3, overflow: "linebreak" },
-      headStyles: { fillColor: [220, 38, 38], textColor: 255 },
-      alternateRowStyles: { fillColor: [248, 248, 248] },
-      columnStyles,
-      didDrawPage: () => {
-        const str = `Strona ${doc.getNumberOfPages()}`;
-        doc.setFontSize(8);
-        doc.setTextColor(150);
-        doc.text(str, pageWidth - 60, doc.internal.pageSize.getHeight() - 14);
-      },
-    });
-
-    doc.save(`${exportFileBase}.pdf`);
+    const groups = groupTasksForExport(sortedFilteredTasks, exportGroupBy);
+    if (exportGroupBy === "none") {
+      await renderPDF(groups, `${exportFileBase}.pdf`, true);
+      return;
+    }
+    if (exportGroupOutput === "files") {
+      await renderPDF(groups, `${exportFileBase}__by-${exportGroupBy}.zip`, false);
+    } else {
+      await renderPDF(groups, `${exportFileBase}__by-${exportGroupBy}.pdf`, true);
+    }
   };
 
   // Toggle pojedynczej kolumny (zachowuje kolejność z EXPORT_COLUMNS)
