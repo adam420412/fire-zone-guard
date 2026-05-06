@@ -6,16 +6,36 @@ import TaskCard from "@/components/TaskCard";
 import TaskDetailDialog from "@/components/TaskDetailDialog";
 import CreateTaskDialog from "@/components/CreateTaskDialog";
 import { cn } from "@/lib/utils";
-import { Filter, Search, Plus, Download, ArrowUpDown, LayoutGrid } from "lucide-react";
+import { Filter, Search, Plus, Download, ArrowUpDown, LayoutGrid, List as ListIcon, FileText } from "lucide-react";
 import { KanbanSkeleton } from "@/components/PageSkeleton";
 import { DragDropContext, Droppable, Draggable, DropResult } from "@hello-pangea/dnd";
 import { toast } from "sonner";
+import { formatRelative } from "@/lib/relativeTime";
 
-type SortMode = "deadline" | "priority" | "created" | "title";
+type SortMode = "deadline" | "priority" | "created" | "title" | "updated";
 type GroupMode = "none" | "building" | "assignee";
 type DueFilter = "all" | "overdue" | "today" | "week";
+type QuoteFilter = "all" | "any" | "none" | "draft" | "sent" | "accepted" | "rejected" | "expired";
+type RecencyFilter = "all" | "24h" | "7d" | "30d";
+type ViewMode = "kanban" | "list";
 
 const PRIORITY_RANK: Record<string, number> = { krytyczny: 0, wysoki: 1, "średni": 2, niski: 3 };
+
+// Skróty statusów ofert (zgodnie z TaskCard)
+const QUOTE_FILTER_LABELS: Record<Exclude<QuoteFilter, "all" | "any" | "none">, string> = {
+  draft: "Wersja robocza",
+  sent: "Wysłana",
+  accepted: "Zaakceptowana",
+  rejected: "Odrzucona",
+  expired: "Wygasła",
+};
+
+// "Ostatnia aktywność" zadania = max(created_at, quoteUpdatedAt)
+function taskLastActivityMs(t: any): number {
+  const created = t.created_at ? new Date(t.created_at).getTime() : 0;
+  const quote = t.quoteUpdatedAt ? new Date(t.quoteUpdatedAt).getTime() : 0;
+  return Math.max(created, quote);
+}
 
 export default function KanbanPage() {
   const { data: tasks, isLoading } = useTasks();
