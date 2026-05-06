@@ -10,6 +10,8 @@ import { Filter, Search, Plus, Download, ArrowUpDown, LayoutGrid, List as ListIc
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { KanbanSkeleton } from "@/components/PageSkeleton";
 import { DragDropContext, Droppable, Draggable, DropResult } from "@hello-pangea/dnd";
 import { toast } from "sonner";
@@ -166,6 +168,33 @@ export default function KanbanPage() {
       window.localStorage.setItem("kanban.exportPdfDebug", pdfDebugLayout ? "1" : "0");
     }
   }, [pdfDebugLayout]);
+
+  // Konfigurowalne odstępy pionowe w PDF (pt). Domyślnie 8 / 18.
+  const PDF_SPACING_DEFAULTS = { headerToTable: 8, tableToNextHeader: 18 };
+  const [pdfSpacing, setPdfSpacing] = useState<{
+    headerToTable: number;
+    tableToNextHeader: number;
+  }>(() => {
+    if (typeof window === "undefined") return PDF_SPACING_DEFAULTS;
+    try {
+      const raw = window.localStorage.getItem("kanban.exportPdfSpacing");
+      if (!raw) return PDF_SPACING_DEFAULTS;
+      const parsed = JSON.parse(raw);
+      const num = (v: any, fallback: number) =>
+        typeof v === "number" && Number.isFinite(v) ? v : fallback;
+      return {
+        headerToTable: num(parsed.headerToTable, PDF_SPACING_DEFAULTS.headerToTable),
+        tableToNextHeader: num(parsed.tableToNextHeader, PDF_SPACING_DEFAULTS.tableToNextHeader),
+      };
+    } catch {
+      return PDF_SPACING_DEFAULTS;
+    }
+  });
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      window.localStorage.setItem("kanban.exportPdfSpacing", JSON.stringify(pdfSpacing));
+    }
+  }, [pdfSpacing]);
 
   // Wybór kolumn eksportu (CSV/XLSX/PDF)
   const [exportColumns, setExportColumns] = useState<ExportColumnKey[]>(() => {
@@ -716,6 +745,7 @@ export default function KanbanPage() {
           groupByLabel,
           metaLines: includeExportMeta ? buildMetaLines() : [],
           debug: pdfDebugLayout,
+          spacing: pdfSpacing,
         },
       ).doc;
 
@@ -980,6 +1010,66 @@ export default function KanbanPage() {
                 >
                   Debug układu PDF (marginesy + wolne miejsce)
                 </DropdownMenuCheckboxItem>
+                <DropdownMenuLabel className="text-[10px] uppercase mt-1">
+                  Odstępy w PDF (pt)
+                </DropdownMenuLabel>
+                <div
+                  className="px-2 py-1.5 space-y-2"
+                  onClick={(e) => e.stopPropagation()}
+                  onPointerDown={(e) => e.stopPropagation()}
+                >
+                  <div className="grid grid-cols-[1fr_72px] items-center gap-2">
+                    <Label htmlFor="pdf-gap-h2t" className="text-xs font-normal">
+                      Nagłówek → tabela
+                    </Label>
+                    <Input
+                      id="pdf-gap-h2t"
+                      type="number"
+                      min={0}
+                      max={60}
+                      step={1}
+                      className="h-7 text-xs"
+                      value={pdfSpacing.headerToTable}
+                      onChange={(e) => {
+                        const v = Number(e.target.value);
+                        setPdfSpacing((s) => ({
+                          ...s,
+                          headerToTable: Number.isFinite(v) ? Math.min(60, Math.max(0, v)) : s.headerToTable,
+                        }));
+                      }}
+                    />
+                  </div>
+                  <div className="grid grid-cols-[1fr_72px] items-center gap-2">
+                    <Label htmlFor="pdf-gap-t2h" className="text-xs font-normal">
+                      Tabela → kolejny nagłówek
+                    </Label>
+                    <Input
+                      id="pdf-gap-t2h"
+                      type="number"
+                      min={0}
+                      max={120}
+                      step={1}
+                      className="h-7 text-xs"
+                      value={pdfSpacing.tableToNextHeader}
+                      onChange={(e) => {
+                        const v = Number(e.target.value);
+                        setPdfSpacing((s) => ({
+                          ...s,
+                          tableToNextHeader: Number.isFinite(v) ? Math.min(120, Math.max(0, v)) : s.tableToNextHeader,
+                        }));
+                      }}
+                    />
+                  </div>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    className="h-6 w-full text-[10px] text-muted-foreground"
+                    onClick={() => setPdfSpacing(PDF_SPACING_DEFAULTS)}
+                  >
+                    Przywróć domyślne (8 / 18)
+                  </Button>
+                </div>
                 <DropdownMenuSeparator />
                 <DropdownMenuLabel className="text-[10px] uppercase">
                   Grupuj eksport wg

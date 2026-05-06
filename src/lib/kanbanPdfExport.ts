@@ -51,6 +51,26 @@ export type BuildKanbanPdfDeps = {
   autoTable: (doc: any, options: any) => void;
 };
 
+/** Konfigurowalne sztywne odstępy pionowe w punktach (pt). */
+export type KanbanPdfSpacing = {
+  /** Odstęp między dolną krawędzią nagłówka grupy a pierwszym wierszem tabeli. */
+  headerToTable?: number;
+  /** Odstęp między końcem tabeli a górą nagłówka kolejnej grupy (na tej samej stronie). */
+  tableToNextHeader?: number;
+};
+
+/** Domyślne wartości stałych odstępów. */
+export const DEFAULT_KANBAN_PDF_SPACING: Required<KanbanPdfSpacing> = {
+  headerToTable: 8,
+  tableToNextHeader: 18,
+};
+
+/** Bezpieczny zakres wartości — chroni layout przed absurdami z UI. */
+export const KANBAN_PDF_SPACING_BOUNDS = {
+  headerToTable: { min: 0, max: 60 },
+  tableToNextHeader: { min: 0, max: 120 },
+} as const;
+
 export type BuildKanbanPdfOptions = {
   groups: KanbanPdfGroup[];
   columns: KanbanPdfColumn[];
@@ -60,7 +80,26 @@ export type BuildKanbanPdfOptions = {
   title?: string;
   /** Rysuje obrysy marginesów, oś dolnego marginesu i adnotacje "miejsce do końca strony". */
   debug?: boolean;
+  /** Nadpisanie domyślnych odstępów pionowych. */
+  spacing?: KanbanPdfSpacing;
 };
+
+function clampSpacing(s?: KanbanPdfSpacing): Required<KanbanPdfSpacing> {
+  const clamp = (v: number, min: number, max: number) =>
+    Math.min(max, Math.max(min, v));
+  return {
+    headerToTable: clamp(
+      s?.headerToTable ?? DEFAULT_KANBAN_PDF_SPACING.headerToTable,
+      KANBAN_PDF_SPACING_BOUNDS.headerToTable.min,
+      KANBAN_PDF_SPACING_BOUNDS.headerToTable.max,
+    ),
+    tableToNextHeader: clamp(
+      s?.tableToNextHeader ?? DEFAULT_KANBAN_PDF_SPACING.tableToNextHeader,
+      KANBAN_PDF_SPACING_BOUNDS.tableToNextHeader.min,
+      KANBAN_PDF_SPACING_BOUNDS.tableToNextHeader.max,
+    ),
+  };
+}
 
 export function buildKanbanPdf(
   deps: BuildKanbanPdfDeps,
@@ -75,6 +114,7 @@ export function buildKanbanPdf(
     metaLines = [],
     title = "Fire Zone — Eksport zadań (Kanban)",
     debug = false,
+    spacing,
   } = opts;
 
   const doc = new jsPDF({ orientation: "landscape", unit: "pt", format: "a4" });
@@ -214,11 +254,12 @@ export function buildKanbanPdf(
   const TABLE_FONT_SIZE = 8;
   const TABLE_CELL_PADDING = 3;
   const GROUP_HEADER_FONT = 11;
-  // ── Sztywne odstępy pionowe (pt). Stałe i niezależne od pomiarów. ──
+  // ── Sztywne odstępy pionowe (pt) — konfigurowalne, z domyślnymi 8 / 18. ──
+  const resolvedSpacing = clampSpacing(spacing);
   /** Odstęp między końcem POPRZEDNIEJ tabeli a górą nagłówka KOLEJNEJ grupy. */
-  const GAP_BETWEEN_TABLE_AND_NEXT_HEADER = 18;
+  const GAP_BETWEEN_TABLE_AND_NEXT_HEADER = resolvedSpacing.tableToNextHeader;
   /** Odstęp między dolną krawędzią nagłówka grupy a pierwszym wierszem tabeli. */
-  const GAP_BETWEEN_HEADER_AND_TABLE = 8;
+  const GAP_BETWEEN_HEADER_AND_TABLE = resolvedSpacing.headerToTable;
   // Aliasy zachowane dla czytelności w istniejącym kodzie.
   const GROUP_HEADER_GAP_BEFORE = GAP_BETWEEN_TABLE_AND_NEXT_HEADER;
   const GROUP_HEADER_GAP_AFTER = GAP_BETWEEN_HEADER_AND_TABLE;
