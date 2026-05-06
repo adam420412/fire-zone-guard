@@ -1069,6 +1069,15 @@ export default function KanbanPage() {
                 >
                   Pobierz raport układu (.layout.json) razem z PDF
                 </DropdownMenuCheckboxItem>
+                <DropdownMenuCheckboxItem
+                  checked={pdfDiagnostics || pdfDownloadLayoutJson}
+                  disabled={pdfDownloadLayoutJson}
+                  onCheckedChange={(v) => setPdfDiagnostics(!!v)}
+                  onSelect={(e) => e.preventDefault()}
+                  title="Gdy wyłączone, buildKanbanPdf pomija liczenie pól diagnostycznych: per-section derived, per-page summary, totals. Pobranie raportu .layout.json automatycznie wymusza tryb diagnostyczny."
+                >
+                  Tryb diagnostyczny PDF (pola raportu układu)
+                </DropdownMenuCheckboxItem>
                 <DropdownMenuItem
                   onSelect={(e) => { e.preventDefault(); setPdfDebugDialogOpen(true); }}
                   title="Pokaż wygenerowany PDF obok strukturalnego raportu KanbanPdfLayoutReport (sekcja po sekcji + per-strona)."
