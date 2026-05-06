@@ -234,6 +234,54 @@ export function buildKanbanPdf(
     doc.setFontSize(prevSize);
   };
 
+  /**
+   * Wizualizacja sztywnego odstępu pionowego: poziome linie graniczne
+   * + pionowa strzałka po lewej stronie (w marginesie) + etykieta z nazwą i wartością.
+   */
+  const drawDebugGap = (
+    yTop: number,
+    yBottom: number,
+    constName: string,
+    pt: number,
+  ) => {
+    if (!debug) return;
+    if (yBottom - yTop <= 0.1) return; // 0pt — nic nie rysujemy
+    const prevDraw = (doc.getDrawColor?.() as string) ?? "0";
+    const prevText = (doc.getTextColor?.() as string) ?? "0";
+    const prevSize = doc.getFontSize();
+    const prevLW = doc.getLineWidth?.() ?? 0.2;
+
+    const color: [number, number, number] = [120, 60, 200]; // fiolet — odróżnia od ramki/cursora
+
+    // Poziome linie graniczne (krótkie, wewnątrz obszaru użytkowego).
+    doc.setLineWidth(0.3);
+    doc.setDrawColor(...color);
+    doc.setLineDashPattern?.([1.5, 1.5], 0);
+    doc.line(marginLeft, yTop, pageWidth - marginLeft, yTop);
+    doc.line(marginLeft, yBottom, pageWidth - marginLeft, yBottom);
+
+    // Pionowa strzałka w lewym marginesie.
+    doc.setLineDashPattern?.([], 0);
+    doc.setLineWidth(0.4);
+    const x = marginLeft - 8;
+    doc.line(x, yTop, x, yBottom);
+    doc.line(x - 2, yTop + 2, x, yTop);
+    doc.line(x + 2, yTop + 2, x, yTop);
+    doc.line(x - 2, yBottom - 2, x, yBottom);
+    doc.line(x + 2, yBottom - 2, x, yBottom);
+
+    // Etykieta z nazwą stałej i wartością — z prawej strony, by nie kolidowała z tabelą.
+    doc.setFontSize(6);
+    doc.setTextColor(...color);
+    const labelY = (yTop + yBottom) / 2 + 2;
+    doc.text(`${constName} = ${pt.toFixed(0)}pt`, pageWidth - marginLeft - 110, labelY);
+
+    doc.setLineWidth(prevLW);
+    doc.setDrawColor(prevDraw as any);
+    doc.setTextColor(prevText as any);
+    doc.setFontSize(prevSize);
+  };
+
   drawDebugFrame();
 
   doc.setFontSize(14);
