@@ -598,6 +598,7 @@ function TaskListView({ tasks, onSelect }: { tasks: any[]; onSelect: (t: any) =>
             const lastMs = taskLastActivityMs(t);
             const lastIso = lastMs ? new Date(lastMs).toISOString() : null;
             const lastRel = formatRelative(lastIso);
+            const activity = buildLastActivityTooltip(t);
             const quoteCls = t.quoteStatus ? (QUOTE_BADGE_CLS[String(t.quoteStatus).toLowerCase()] ?? "bg-secondary text-secondary-foreground border-border") : "";
             return (
               <tr
