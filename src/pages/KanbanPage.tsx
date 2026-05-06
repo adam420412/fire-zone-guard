@@ -13,6 +13,7 @@ import { toast } from "sonner";
 
 type SortMode = "deadline" | "priority" | "created" | "title";
 type GroupMode = "none" | "building" | "assignee";
+type DueFilter = "all" | "overdue" | "today" | "week";
 
 const PRIORITY_RANK: Record<string, number> = { krytyczny: 0, wysoki: 1, "średni": 2, niski: 3 };
 
@@ -24,6 +25,8 @@ export default function KanbanPage() {
   const [filterPriority, setFilterPriority] = useState("all");
   const [sortMode, setSortMode] = useState<SortMode>("deadline");
   const [groupMode, setGroupMode] = useState<GroupMode>("none");
+  const [dueFilter, setDueFilter] = useState<DueFilter>("all");
+  const [groupValueFilter, setGroupValueFilter] = useState<string>("all");
   const [showCreate, setShowCreate] = useState(false);
   const [selectedTask, setSelectedTask] = useState<any>(null);
   
@@ -36,6 +39,44 @@ export default function KanbanPage() {
     }
   }, [tasks]);
 
+  // Reset value filter when group mode changes
+  useEffect(() => {
+    setGroupValueFilter("all");
+  }, [groupMode]);
+
+  // Compute available group values (buildings or assignees) from current dataset
+  const groupValueOptions = useMemo(() => {
+    if (groupMode === "none") return [];
+    const set = new Map<string, number>();
+    localTasks.forEach((t: any) => {
+      const key = groupMode === "building"
+        ? (t.buildingName || "— bez obiektu —")
+        : (t.assigneeName || "— nieprzypisane —");
+      set.set(key, (set.get(key) ?? 0) + 1);
+    });
+    return Array.from(set.entries())
+      .sort((a, b) => a[0].localeCompare(b[0], "pl"))
+      .map(([label, count]) => ({ label, count }));
+  }, [localTasks, groupMode]);
+
+  const isWithinRange = (deadline: string | null | undefined, status: string) => {
+    if (dueFilter === "all") return true;
+    if (!deadline) return false;
+    const d = new Date(deadline);
+    const now = new Date();
+    const isClosed = status === "Zamknięte";
+    if (dueFilter === "overdue") return !isClosed && d < now;
+    if (dueFilter === "today") {
+      return d.toDateString() === now.toDateString();
+    }
+    if (dueFilter === "week") {
+      const in7 = new Date();
+      in7.setDate(in7.getDate() + 7);
+      return d >= now && d <= in7;
+    }
+    return true;
+  };
+
   const filteredTasks = localTasks.filter((t: any) => {
     const matchesSearch =
       search === "" ||
@@ -43,7 +84,13 @@ export default function KanbanPage() {
       (t.assigneeName ?? "").toLowerCase().includes(search.toLowerCase()) ||
       (t.buildingName ?? "").toLowerCase().includes(search.toLowerCase());
     const matchesPriority = filterPriority === "all" || t.priority === filterPriority;
-    return matchesSearch && matchesPriority;
+    const matchesDue = isWithinRange(t.deadline, t.status);
+    const matchesGroupValue = groupValueFilter === "all" || groupMode === "none" || (
+      groupMode === "building"
+        ? (t.buildingName || "— bez obiektu —") === groupValueFilter
+        : (t.assigneeName || "— nieprzypisane —") === groupValueFilter
+    );
+    return matchesSearch && matchesPriority && matchesDue && matchesGroupValue;
   });
 
   const handleExportCSV = () => {
@@ -183,6 +230,21 @@ export default function KanbanPage() {
             <option value="building">Grupuj: Obiekt</option>
             <option value="assignee">Grupuj: Wykonawca</option>
           </select>
+          {groupMode !== "none" && groupValueOptions.length > 0 && (
+            <select
+              value={groupValueFilter}
+              onChange={(e) => setGroupValueFilter(e.target.value)}
+              className="rounded-md border border-border bg-card px-3 py-1.5 text-sm outline-none cursor-pointer max-w-[220px]"
+              title={groupMode === "building" ? "Filtr: Obiekt" : "Filtr: Wykonawca"}
+            >
+              <option value="all">
+                {groupMode === "building" ? "Obiekt: Wszystkie" : "Wykonawca: Wszyscy"}
+              </option>
+              {groupValueOptions.map((g) => (
+                <option key={g.label} value={g.label}>{g.label} ({g.count})</option>
+              ))}
+            </select>
+          )}
           <button
             onClick={handleExportCSV}
             className="flex items-center gap-2 rounded-md border border-border bg-card px-3 py-1.5 text-sm font-medium hover:bg-secondary transition-colors"
@@ -198,6 +260,72 @@ export default function KanbanPage() {
             Nowe zadanie
           </button>
         </div>
+      </div>
+
+      {/* Quick due-date filter chips */}
+      <div className="mb-4 flex items-center gap-2 flex-wrap">
+        <span className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground mr-1">
+          Termin:
+        </span>
+        {([
+          { key: "all", label: "Wszystkie" },
+          { key: "overdue", label: "Przeterminowane" },
+          { key: "today", label: "Dziś" },
+          { key: "week", label: "7 dni" },
+        ] as { key: DueFilter; label: string }[]).map((opt) => {
+          const active = dueFilter === opt.key;
+          const count = (() => {
+            if (opt.key === "all") return localTasks.length;
+            return localTasks.filter((t: any) => {
+              if (!t.deadline) return false;
+              const d = new Date(t.deadline);
+              const now = new Date();
+              const closed = t.status === "Zamknięte";
+              if (opt.key === "overdue") return !closed && d < now;
+              if (opt.key === "today") return d.toDateString() === now.toDateString();
+              if (opt.key === "week") {
+                const in7 = new Date(); in7.setDate(in7.getDate() + 7);
+                return d >= now && d <= in7;
+              }
+              return false;
+            }).length;
+          })();
+          return (
+            <button
+              key={opt.key}
+              onClick={() => setDueFilter(opt.key)}
+              className={cn(
+                "inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-[11px] font-medium transition-colors",
+                active
+                  ? opt.key === "overdue"
+                    ? "border-critical/50 bg-critical/15 text-critical"
+                    : "border-primary/50 bg-primary/15 text-primary"
+                  : "border-border bg-card hover:bg-secondary text-muted-foreground"
+              )}
+            >
+              {opt.label}
+              <span className={cn(
+                "rounded-full px-1.5 py-0.5 text-[10px]",
+                active ? "bg-background/40" : "bg-muted/60"
+              )}>
+                {count}
+              </span>
+            </button>
+          );
+        })}
+        {(dueFilter !== "all" || groupValueFilter !== "all" || filterPriority !== "all" || search) && (
+          <button
+            onClick={() => {
+              setDueFilter("all");
+              setGroupValueFilter("all");
+              setFilterPriority("all");
+              setSearch("");
+            }}
+            className="ml-2 text-[11px] text-muted-foreground hover:text-foreground underline-offset-2 hover:underline"
+          >
+            Wyczyść filtry
+          </button>
+        )}
       </div>
 
       <div className="flex-1 overflow-x-auto pb-4 select-none">
