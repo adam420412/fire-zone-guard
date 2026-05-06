@@ -35,6 +35,37 @@ export type KanbanPdfLayoutSection = {
   tableFinalY: number;
   /** Page number where the table finished. */
   tableEndPage: number;
+  // ── Pola diagnostyczne (dodane dla debug/regresji) ───────────────────────
+  /** Wysokość pasa nagłówka grupy (headerBottom - headerTop). 0 gdy groupBy='none'. */
+  headerHeight: number;
+  /** Wysokość tabeli na stronie startowej (tableFinalY - tableStartY jeśli ta sama strona, inaczej do dolnego marginesu). */
+  tableHeightFirstPage: number;
+  /** Łączna liczba stron, przez które rozciąga się tabela tej sekcji (tableEndPage - page + 1). */
+  tablePageSpan: number;
+  /** Sumaryczna wysokość sekcji na stronie startowej: headerHeight + tableHeightFirstPage. */
+  sectionHeightOnStartPage: number;
+  /** Pionowy odstęp od końca poprzedniej sekcji do nagłówka tej sekcji (>=0; null dla pierwszej sekcji). */
+  gapBeforeHeader: number | null;
+  /** Czy ta sekcja otwiera nową stronę (page > poprzednia tableEndPage albo idx===0). */
+  startsNewPage: boolean;
+  /** Indeks tej sekcji na swojej stronie startowej (0 dla pierwszej sekcji na danej stronie). */
+  indexOnPage: number;
+  /** Liczba pustych zadań w grupie (0 = niepusta). */
+  taskCount: number;
+};
+
+export type KanbanPdfPageSummary = {
+  page: number;
+  /** Liczba sekcji rozpoczynających się na tej stronie. */
+  sectionsStarting: number;
+  /** Liczba sekcji kończących tabelę na tej stronie. */
+  sectionsEnding: number;
+  /** Pierwsze użyte Y (najmniejszy headerTop / tableStartY na tej stronie). */
+  firstUsedY: number | null;
+  /** Ostatnie użyte Y (największy tableFinalY na tej stronie). */
+  lastUsedY: number | null;
+  /** Wysokość białej przestrzeni od lastUsedY do dolnego marginesu (>=0). */
+  trailingWhitespace: number;
 };
 
 export type KanbanPdfLayoutReport = {
@@ -42,8 +73,25 @@ export type KanbanPdfLayoutReport = {
   pageHeight: number;
   marginTop: number;
   marginBottom: number;
+  marginLeft: number;
+  /** Rozwiązane (po clampie) wartości odstępów użyte przy renderze. */
+  spacing: Required<KanbanPdfSpacing>;
   totalPages: number;
   sections: KanbanPdfLayoutSection[];
+  /** Agregaty per-strona — pomocne przy diagnozie pustych miejsc / niedopełnionych stron. */
+  pages: KanbanPdfPageSummary[];
+  /** Globalne agregaty po wszystkich sekcjach. */
+  totals: {
+    sectionsCount: number;
+    /** Suma wysokości pasów nagłówków grup. */
+    totalHeaderHeight: number;
+    /** Suma wysokości tabel na stronach startowych (przybliżenie obciążenia treścią). */
+    totalTableHeightOnStartPage: number;
+    /** Suma odstępów "tabela → kolejny nagłówek" zaaplikowanych w renderze. */
+    totalGapBeforeHeader: number;
+    /** Średnia trailing-whitespace na stronę. */
+    avgTrailingWhitespace: number;
+  };
 };
 
 export type BuildKanbanPdfDeps = {
