@@ -213,13 +213,17 @@ export function useTasks() {
         try {
           const { data: quotes } = await supabase
             .from("quotes")
-            .select("task_id, status, created_at")
+            .select("task_id, status, created_at, sent_at, accepted_at, rejected_at, quote_number")
             .in("task_id", taskIds)
             .order("created_at", { ascending: false });
           (quotes ?? []).forEach((q: any) => {
-            const a = quoteAgg[q.task_id] ?? { count: 0, latestStatus: null };
+            const a = quoteAgg[q.task_id] ?? { count: 0, latestStatus: null, latestUpdatedAt: null, latestNumber: null };
             a.count += 1;
-            if (a.latestStatus === null) a.latestStatus = q.status;
+            if (a.latestStatus === null) {
+              a.latestStatus = q.status;
+              a.latestNumber = q.quote_number ?? null;
+              a.latestUpdatedAt = q.accepted_at ?? q.rejected_at ?? q.sent_at ?? q.created_at ?? null;
+            }
             quoteAgg[q.task_id] = a;
           });
         } catch { /* ignore */ }
