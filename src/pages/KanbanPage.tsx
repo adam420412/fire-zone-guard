@@ -759,32 +759,50 @@ export default function KanbanPage() {
   };
 
   // ====== PDF ======
-  const renderPDF = async (groups: { label: string; tasks: any[] }[], filename: string, asSingleDoc: boolean) => {
-    const [{ default: jsPDF }, autoTableMod, { buildKanbanPdf }] = await Promise.all([
-      import("jspdf"),
-      import("jspdf-autotable"),
-      import("@/lib/kanbanPdfExport"),
-    ]);
+  const renderPDF = async (
+    groups: { label: string; tasks: any[] }[],
+    filename: string,
+    asSingleDoc: boolean,
+  ): Promise<{ buildMs: number; buildCalls: number; totalPages: number }> => {
+    const [{ default: jsPDF }, autoTableMod, { buildKanbanPdf }, perfMod] =
+      await Promise.all([
+        import("jspdf"),
+        import("jspdf-autotable"),
+        import("@/lib/kanbanPdfExport"),
+        import("@/lib/pdfExportPerf"),
+      ]);
     const autoTable = (autoTableMod as any).default ?? (autoTableMod as any);
+    const { measure } = perfMod;
 
     // Diagnostyka jest niezbędna, gdy użytkownik chce pobrać raport JSON —
     // inaczej `pages`/`totals` byłyby puste/zerowe. Stąd OR z preferencją.
     const diagnosticsForRun = pdfDiagnostics || pdfDownloadLayoutJson;
 
-    const buildDocAndLayout = (grps: { label: string; tasks: any[] }[]) =>
-      buildKanbanPdf(
-        { jsPDF, autoTable },
-        {
-          groups: grps,
-          columns: activeColumnDefs as any,
-          groupBy: exportGroupBy,
-          groupByLabel,
-          metaLines: includeExportMeta ? buildMetaLines() : [],
-          debug: pdfDebugLayout,
-          spacing: pdfSpacing,
-          diagnostics: diagnosticsForRun,
-        },
+    let buildMs = 0;
+    let buildCalls = 0;
+    let totalPages = 0;
+
+    const buildDocAndLayout = (grps: { label: string; tasks: any[] }[]) => {
+      const { value, ms } = measure(() =>
+        buildKanbanPdf(
+          { jsPDF, autoTable },
+          {
+            groups: grps,
+            columns: activeColumnDefs as any,
+            groupBy: exportGroupBy,
+            groupByLabel,
+            metaLines: includeExportMeta ? buildMetaLines() : [],
+            debug: pdfDebugLayout,
+            spacing: pdfSpacing,
+            diagnostics: diagnosticsForRun,
+          },
+        ),
       );
+      buildMs += ms;
+      buildCalls += 1;
+      totalPages += value.layout.totalPages;
+      return value;
+    };
 
     const layoutJsonBlob = (layout: any) =>
       new Blob([JSON.stringify(layout, null, 2)], {
@@ -799,7 +817,7 @@ export default function KanbanPage() {
       if (pdfDownloadLayoutJson) {
         downloadBlob(layoutJsonBlob(layout), layoutJsonName(filename));
       }
-      return;
+      return { buildMs, buildCalls, totalPages };
     }
 
     // osobne pliki -> zip
@@ -816,6 +834,7 @@ export default function KanbanPage() {
     }
     const blob = await zip.generateAsync({ type: "blob" });
     downloadBlob(blob, filename);
+    return { buildMs, buildCalls, totalPages };
   };
 
   const handleExportPDF = async () => {
@@ -825,14 +844,57 @@ export default function KanbanPage() {
     }
     setLastExportFormat("pdf");
     const groups = groupTasksForExport(sortedFilteredTasks, exportGroupBy);
-    if (exportGroupBy === "none") {
-      await renderPDF(groups, `${exportFileBase}.pdf`, true);
-      return;
-    }
-    if (exportGroupOutput === "files") {
-      await renderPDF(groups, `${exportFileBase}__by-${exportGroupBy}.zip`, false);
-    } else {
-      await renderPDF(groups, `${exportFileBase}__by-${exportGroupBy}.pdf`, true);
+    const tasksCount = groups.reduce((a, g) => a + g.tasks.length, 0);
+    const diagnosticsForRun = pdfDiagnostics || pdfDownloadLayoutJson;
+
+    const t0 =
+      typeof performance !== "undefined" ? performance.now() : Date.now();
+    let outcome: { buildMs: number; buildCalls: number; totalPages: number } = {
+      buildMs: 0,
+      buildCalls: 0,
+      totalPages: 0,
+    };
+    let label = `${exportFileBase}.pdf`;
+    let singleDoc = true;
+
+    try {
+      if (exportGroupBy === "none") {
+        outcome = await renderPDF(groups, `${exportFileBase}.pdf`, true);
+      } else if (exportGroupOutput === "files") {
+        label = `${exportFileBase}__by-${exportGroupBy}.zip (×${groups.length})`;
+        singleDoc = false;
+        outcome = await renderPDF(
+          groups,
+          `${exportFileBase}__by-${exportGroupBy}.zip`,
+          false,
+        );
+      } else {
+        label = `${exportFileBase}__by-${exportGroupBy}.pdf`;
+        outcome = await renderPDF(
+          groups,
+          `${exportFileBase}__by-${exportGroupBy}.pdf`,
+          true,
+        );
+      }
+    } finally {
+      const t1 =
+        typeof performance !== "undefined" ? performance.now() : Date.now();
+      try {
+        const { recordPdfExportPerf } = await import("@/lib/pdfExportPerf");
+        recordPdfExportPerf({
+          label,
+          diagnostics: diagnosticsForRun,
+          totalMs: t1 - t0,
+          buildMs: outcome.buildMs,
+          buildCalls: outcome.buildCalls,
+          groupsCount: groups.length,
+          tasksCount,
+          totalPages: outcome.totalPages,
+          singleDoc,
+        });
+      } catch {
+        /* perf logging nie może wywalić eksportu */
+      }
     }
   };
 
