@@ -262,6 +262,77 @@ export default function KanbanPage() {
         </div>
       </div>
 
+      {/* Quick due-date filter chips */}
+      <div className="mb-4 flex items-center gap-2 flex-wrap">
+        <span className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground mr-1">
+          Termin:
+        </span>
+        {([
+          { key: "all", label: "Wszystkie" },
+          { key: "overdue", label: "Przeterminowane" },
+          { key: "today", label: "Dziś" },
+          { key: "week", label: "7 dni" },
+        ] as { key: DueFilter; label: string }[]).map((opt) => {
+          const active = dueFilter === opt.key;
+          const count = opt.key === "all"
+            ? localTasks.length
+            : localTasks.filter((t: any) => isWithinRange(t.deadline, t.status) && (
+                opt.key === "all"
+                  ? true
+                  : (() => {
+                      const prev = dueFilter;
+                      // simulate: re-check using opt.key
+                      if (!t.deadline) return false;
+                      const d = new Date(t.deadline);
+                      const now = new Date();
+                      const closed = t.status === "Zamknięte";
+                      if (opt.key === "overdue") return !closed && d < now;
+                      if (opt.key === "today") return d.toDateString() === now.toDateString();
+                      if (opt.key === "week") {
+                        const in7 = new Date(); in7.setDate(in7.getDate() + 7);
+                        return d >= now && d <= in7;
+                      }
+                      return true;
+                    })()
+              )).length;
+          return (
+            <button
+              key={opt.key}
+              onClick={() => setDueFilter(opt.key)}
+              className={cn(
+                "inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-[11px] font-medium transition-colors",
+                active
+                  ? opt.key === "overdue"
+                    ? "border-critical/50 bg-critical/15 text-critical"
+                    : "border-primary/50 bg-primary/15 text-primary"
+                  : "border-border bg-card hover:bg-secondary text-muted-foreground"
+              )}
+            >
+              {opt.label}
+              <span className={cn(
+                "rounded-full px-1.5 py-0.5 text-[10px]",
+                active ? "bg-background/40" : "bg-muted/60"
+              )}>
+                {count}
+              </span>
+            </button>
+          );
+        })}
+        {(dueFilter !== "all" || groupValueFilter !== "all" || filterPriority !== "all" || search) && (
+          <button
+            onClick={() => {
+              setDueFilter("all");
+              setGroupValueFilter("all");
+              setFilterPriority("all");
+              setSearch("");
+            }}
+            className="ml-2 text-[11px] text-muted-foreground hover:text-foreground underline-offset-2 hover:underline"
+          >
+            Wyczyść filtry
+          </button>
+        )}
+      </div>
+
       <div className="flex-1 overflow-x-auto pb-4 select-none">
         <DragDropContext onDragEnd={onDragEnd}>
           <div className="flex gap-4 min-w-max h-full">
