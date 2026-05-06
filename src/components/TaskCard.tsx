@@ -40,6 +40,27 @@ const quoteEventMeta: Record<NonNullable<TaskWithDetails["quoteLastEvent"]>, { l
   created:  { label: "Utworzona",    verb: "Utworzono",    Icon: FilePlus2,    cls: "text-muted-foreground" },
 };
 
+type QuoteCountKey = keyof NonNullable<TaskWithDetails["quoteStatusCounts"]>;
+
+const quoteCountMeta: Record<QuoteCountKey, { short: string; label: string; cls: string }> = {
+  draft:    { short: "D", label: "Wersja robocza", cls: "text-muted-foreground" },
+  sent:     { short: "W", label: "Wysłane",        cls: "text-blue-400" },
+  accepted: { short: "Z", label: "Zaakceptowane",  cls: "text-success" },
+  rejected: { short: "O", label: "Odrzucone",      cls: "text-destructive" },
+  expired:  { short: "E", label: "Wygasłe",        cls: "text-warning" },
+};
+
+// Mapowanie quoteStatus → klucz licznika, by móc wykluczyć status "latest" z chipsa „pozostałe”.
+function quoteStatusToCountKey(status?: string | null): QuoteCountKey | null {
+  const s = String(status ?? "").toLowerCase();
+  if (s === "zaakceptowana") return "accepted";
+  if (s === "odrzucona") return "rejected";
+  if (s === "wysłana" || s === "wyslana") return "sent";
+  if (s === "wygasła" || s === "wygasla") return "expired";
+  if (s === "wersja robocza") return "draft";
+  return null;
+}
+
 
 export default function TaskCard({ task, onClick }: TaskCardProps) {
   const priority = task.priority as TaskPriority;
