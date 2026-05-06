@@ -274,27 +274,22 @@ export default function KanbanPage() {
           { key: "week", label: "7 dni" },
         ] as { key: DueFilter; label: string }[]).map((opt) => {
           const active = dueFilter === opt.key;
-          const count = opt.key === "all"
-            ? localTasks.length
-            : localTasks.filter((t: any) => isWithinRange(t.deadline, t.status) && (
-                opt.key === "all"
-                  ? true
-                  : (() => {
-                      const prev = dueFilter;
-                      // simulate: re-check using opt.key
-                      if (!t.deadline) return false;
-                      const d = new Date(t.deadline);
-                      const now = new Date();
-                      const closed = t.status === "Zamknięte";
-                      if (opt.key === "overdue") return !closed && d < now;
-                      if (opt.key === "today") return d.toDateString() === now.toDateString();
-                      if (opt.key === "week") {
-                        const in7 = new Date(); in7.setDate(in7.getDate() + 7);
-                        return d >= now && d <= in7;
-                      }
-                      return true;
-                    })()
-              )).length;
+          const count = (() => {
+            if (opt.key === "all") return localTasks.length;
+            return localTasks.filter((t: any) => {
+              if (!t.deadline) return false;
+              const d = new Date(t.deadline);
+              const now = new Date();
+              const closed = t.status === "Zamknięte";
+              if (opt.key === "overdue") return !closed && d < now;
+              if (opt.key === "today") return d.toDateString() === now.toDateString();
+              if (opt.key === "week") {
+                const in7 = new Date(); in7.setDate(in7.getDate() + 7);
+                return d >= now && d <= in7;
+              }
+              return false;
+            }).length;
+          })();
           return (
             <button
               key={opt.key}
