@@ -179,6 +179,7 @@ export default function KanbanPage() {
     }
   }, [exportColumns]);
   const [columnsDialogOpen, setColumnsDialogOpen] = useState(false);
+  const [previewDialogOpen, setPreviewDialogOpen] = useState(false);
 
   // Ostatnio użyty format eksportu (CSV/XLSX/PDF) — pozwala szybko powtórzyć
   type ExportFormat = "csv" | "xlsx" | "pdf";
@@ -871,6 +872,10 @@ export default function KanbanPage() {
                   <FileText className="h-3.5 w-3.5 mr-2" /> PDF (.pdf){lastExportFormat === "pdf" ? " ✓" : ""}
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
+                <DropdownMenuItem onSelect={(e) => { e.preventDefault(); setPreviewDialogOpen(true); }}>
+                  <Search className="h-3.5 w-3.5 mr-2" />
+                  Podgląd eksportu
+                </DropdownMenuItem>
                 <DropdownMenuItem onSelect={(e) => { e.preventDefault(); setColumnsDialogOpen(true); }}>
                   <Settings2 className="h-3.5 w-3.5 mr-2" />
                   Wybierz kolumny ({activeColumnDefs.length}/{EXPORT_COLUMNS.length})
@@ -1229,6 +1234,156 @@ export default function KanbanPage() {
             <Button type="button" onClick={() => setColumnsDialogOpen(false)}>
               Gotowe ({activeColumnDefs.length})
             </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* === Podgląd eksportu === */}
+      <Dialog open={previewDialogOpen} onOpenChange={setPreviewDialogOpen}>
+        <DialogContent className="max-w-5xl">
+          <DialogHeader>
+            <DialogTitle>Podgląd eksportu</DialogTitle>
+            <DialogDescription>
+              Sprawdź, jak będzie wyglądał wyeksportowany plik. Pokazujemy do 5 pierwszych wierszy z każdej grupy.
+            </DialogDescription>
+          </DialogHeader>
+
+          {(() => {
+            const groups = groupTasksForExport(sortedFilteredTasks, exportGroupBy);
+            const totalGroups = groups.length;
+            const totalTasks = sortedFilteredTasks.length;
+            return (
+              <div className="space-y-4 max-h-[65vh] overflow-y-auto pr-1">
+                {/* Podsumowanie */}
+                <div className="rounded-md border border-border bg-card/40 p-3 text-xs space-y-1">
+                  <div className="flex flex-wrap gap-x-4 gap-y-1">
+                    <span><span className="text-muted-foreground">Format:</span> <b>{lastExportFormat.toUpperCase()}</b></span>
+                    <span><span className="text-muted-foreground">Zadania:</span> <b>{totalTasks}</b></span>
+                    <span><span className="text-muted-foreground">Kolumny:</span> <b>{activeColumnDefs.length}/{EXPORT_COLUMNS.length}</b></span>
+                    <span><span className="text-muted-foreground">Sortowanie:</span> <b>{exportContext.sortLabel}</b></span>
+                    <span><span className="text-muted-foreground">Metadane:</span> <b>{includeExportMeta ? "tak" : "nie"}</b></span>
+                  </div>
+                  <div>
+                    <span className="text-muted-foreground">Grupowanie:</span>{" "}
+                    <b>{groupByLabel[exportGroupBy]}</b>
+                    {exportGroupBy !== "none" && (
+                      <> · <b>{totalGroups}</b> grup · tryb: <b>{exportGroupOutput === "files" ? "osobne pliki (.zip)" : "sekcje w jednym pliku"}</b></>
+                    )}
+                  </div>
+                  {activeColumnDefs.length === 0 && (
+                    <div className="text-destructive">⚠ Wybierz przynajmniej jedną kolumnę.</div>
+                  )}
+                </div>
+
+                {/* Lista grup z plikami */}
+                {exportGroupBy !== "none" && (
+                  <div className="space-y-1">
+                    <div className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+                      Grupy ({totalGroups})
+                    </div>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-1.5 text-xs">
+                      {groups.map((g) => (
+                        <div key={g.key} className="flex items-center justify-between rounded border border-border bg-card/30 px-2 py-1.5">
+                          <span className="truncate" title={g.label}>{g.label}</span>
+                          <span className="ml-2 rounded bg-muted/60 px-1.5 py-0.5 text-[10px] font-mono">{g.tasks.length}</span>
+                        </div>
+                      ))}
+                    </div>
+                    {exportGroupOutput === "files" && (
+                      <p className="text-[11px] text-muted-foreground italic mt-1">
+                        Powstanie {totalGroups} plików spakowanych w jedno archiwum .zip.
+                      </p>
+                    )}
+                  </div>
+                )}
+
+                {/* Tabele podglądu (max 5 wierszy / grupa) */}
+                <div className="space-y-4">
+                  {groups.map((g) => {
+                    const sample = g.tasks.slice(0, 5);
+                    return (
+                      <div key={g.key} className="space-y-1">
+                        {exportGroupBy !== "none" && (
+                          <div className="flex items-baseline justify-between">
+                            <h4 className="text-sm font-semibold">
+                              {groupByLabel[exportGroupBy]}: {g.label}
+                            </h4>
+                            <span className="text-[11px] text-muted-foreground">
+                              {sample.length} / {g.tasks.length}
+                            </span>
+                          </div>
+                        )}
+                        <div className="overflow-x-auto rounded border border-border">
+                          <table className="w-full text-[11px]">
+                            <thead className="bg-secondary/60">
+                              <tr>
+                                {activeColumnDefs.map((c) => (
+                                  <th key={c.key} className="px-2 py-1.5 text-left font-semibold whitespace-nowrap">
+                                    {c.label}
+                                  </th>
+                                ))}
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {sample.length === 0 ? (
+                                <tr><td colSpan={activeColumnDefs.length || 1} className="px-2 py-3 text-center text-muted-foreground">Brak wierszy</td></tr>
+                              ) : sample.map((t: any, idx: number) => (
+                                <tr key={t.id ?? idx} className="border-t border-border/60">
+                                  {activeColumnDefs.map((c) => {
+                                    const v = String(c.accessor(t) ?? "");
+                                    return (
+                                      <td key={c.key} className="px-2 py-1 align-top max-w-[220px] truncate" title={v}>
+                                        {v || <span className="text-muted-foreground">—</span>}
+                                      </td>
+                                    );
+                                  })}
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+                        {g.tasks.length > sample.length && (
+                          <p className="text-[11px] text-muted-foreground italic">
+                            … i jeszcze {g.tasks.length - sample.length} wierszy
+                          </p>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            );
+          })()}
+
+          <DialogFooter className="flex flex-col sm:flex-row sm:justify-between gap-2">
+            <Button type="button" variant="outline" onClick={() => setPreviewDialogOpen(false)}>
+              Zamknij
+            </Button>
+            <div className="flex gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                disabled={!activeColumnDefs.length}
+                onClick={() => { setPreviewDialogOpen(false); handleExportCSV(); }}
+              >
+                Pobierz CSV
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                disabled={!activeColumnDefs.length}
+                onClick={() => { setPreviewDialogOpen(false); handleExportXLSX(); }}
+              >
+                Pobierz XLSX
+              </Button>
+              <Button
+                type="button"
+                disabled={!activeColumnDefs.length}
+                onClick={() => { setPreviewDialogOpen(false); handleExportPDF(); }}
+              >
+                Pobierz PDF
+              </Button>
+            </div>
           </DialogFooter>
         </DialogContent>
       </Dialog>
