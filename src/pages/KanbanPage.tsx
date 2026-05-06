@@ -1583,7 +1583,7 @@ export default function KanbanPage() {
                         <div className="font-medium text-sm truncate">{tpl.name}</div>
                         <div className="text-[11px] text-muted-foreground">
                           {tpl.format.toUpperCase()} · {tpl.columns.length} kol. · grupowanie: {groupByLabel[tpl.groupBy]}
-                          {tpl.groupBy !== "none" && <> ({tpl.groupOutput === "files" ? "pliki" : "sekcje"})</>}
+                          {tpl.groupBy !== "none" && <> ({groupOutputShort[tpl.groupOutput]})</>}
                           {tpl.includeMeta && " · z meta"}
                         </div>
                       </div>
