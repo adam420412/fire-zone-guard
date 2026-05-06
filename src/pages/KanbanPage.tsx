@@ -305,6 +305,16 @@ export default function KanbanPage() {
   const groupByLabel: Record<ExportGroupBy, string> = {
     none: "brak", company: "Firma", building: "Obiekt", assignee: "Osoba",
   };
+  const groupOutputLabel: Record<ExportGroupOutput, string> = {
+    sections: "sekcje (osobne arkusze w XLSX)",
+    "single-sheet": "sekcje w jednym arkuszu",
+    files: "osobne pliki (.zip)",
+  };
+  const groupOutputShort: Record<ExportGroupOutput, string> = {
+    sections: "sekcje",
+    "single-sheet": "1 arkusz",
+    files: "pliki",
+  };
   const sanitizeFileName = (s: string) =>
     s.replace(/[\\/:*?"<>|]+/g, "_").replace(/\s+/g, "_").slice(0, 80) || "grupa";
 
