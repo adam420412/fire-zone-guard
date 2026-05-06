@@ -523,6 +523,15 @@ export function buildKanbanPdf(
       tableStartY,
       tableFinalY,
       tableEndPage,
+      // Pola diagnostyczne uzupełnimy w post-processingu poniżej.
+      headerHeight: 0,
+      tableHeightFirstPage: 0,
+      tablePageSpan: 0,
+      sectionHeightOnStartPage: 0,
+      gapBeforeHeader: null,
+      startsNewPage: false,
+      indexOnPage: 0,
+      taskCount: g.tasks.length,
     });
 
     prevTableFinalY = tableFinalY;
@@ -540,6 +549,69 @@ export function buildKanbanPdf(
   }
   doc.setPage(totalPagesFinal);
 
+  // ── Post-processing diagnostyczny ─────────────────────────────────────────
+  const totalPages = doc.getNumberOfPages();
+  const perPageCounter = new Map<number, number>();
+  for (let i = 0; i < sections.length; i++) {
+    const s = sections[i];
+    const prev = i > 0 ? sections[i - 1] : null;
+
+    s.headerHeight = s.headerBottom - s.headerTop;
+    s.tablePageSpan = Math.max(1, s.tableEndPage - s.page + 1);
+    s.tableHeightFirstPage =
+      s.tableEndPage === s.page
+        ? Math.max(0, s.tableFinalY - s.tableStartY)
+        : Math.max(0, pageHeight - marginBottom - s.tableStartY);
+    s.sectionHeightOnStartPage = s.headerHeight + s.tableHeightFirstPage;
+    s.startsNewPage = !prev || s.page > prev.tableEndPage;
+    s.gapBeforeHeader =
+      prev && prev.tableEndPage === s.page
+        ? Math.max(0, s.headerTop - prev.tableFinalY)
+        : null;
+    const idxOnPage = perPageCounter.get(s.page) ?? 0;
+    s.indexOnPage = idxOnPage;
+    perPageCounter.set(s.page, idxOnPage + 1);
+  }
+
+  // Agregaty per-strona.
+  const pages: KanbanPdfPageSummary[] = [];
+  for (let p = 1; p <= totalPages; p++) {
+    const onPage = sections.filter((s) => s.page === p);
+    const endingHere = sections.filter((s) => s.tableEndPage === p);
+    const ys: number[] = [];
+    onPage.forEach((s) => ys.push(s.headerTop, s.tableStartY));
+    endingHere.forEach((s) => ys.push(s.tableFinalY));
+    const firstUsedY = ys.length ? Math.min(...ys) : null;
+    const lastUsedY = ys.length ? Math.max(...ys) : null;
+    const trailingWhitespace =
+      lastUsedY != null
+        ? Math.max(0, pageHeight - marginBottom - lastUsedY)
+        : pageHeight - marginTop - marginBottom;
+    pages.push({
+      page: p,
+      sectionsStarting: onPage.length,
+      sectionsEnding: endingHere.length,
+      firstUsedY,
+      lastUsedY,
+      trailingWhitespace,
+    });
+  }
+
+  // Globalne sumy.
+  const totalHeaderHeight = sections.reduce((a, s) => a + s.headerHeight, 0);
+  const totalTableHeightOnStartPage = sections.reduce(
+    (a, s) => a + s.tableHeightFirstPage,
+    0,
+  );
+  const totalGapBeforeHeader = sections.reduce(
+    (a, s) => a + (s.gapBeforeHeader ?? 0),
+    0,
+  );
+  const avgTrailingWhitespace =
+    pages.length > 0
+      ? pages.reduce((a, p) => a + p.trailingWhitespace, 0) / pages.length
+      : 0;
+
   return {
     doc,
     layout: {
@@ -547,8 +619,18 @@ export function buildKanbanPdf(
       pageHeight,
       marginTop,
       marginBottom,
-      totalPages: doc.getNumberOfPages(),
+      marginLeft,
+      spacing: resolvedSpacing,
+      totalPages,
       sections,
+      pages,
+      totals: {
+        sectionsCount: sections.length,
+        totalHeaderHeight,
+        totalTableHeightOnStartPage,
+        totalGapBeforeHeader,
+        avgTrailingWhitespace,
+      },
     },
   };
 }
