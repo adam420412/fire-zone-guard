@@ -1545,7 +1545,7 @@ export default function KanbanPage() {
                 <span><span className="text-muted-foreground">Format:</span> <b>{lastExportFormat.toUpperCase()}</b></span>
                 <span><span className="text-muted-foreground">Kolumny:</span> <b>{exportColumns.length}/{EXPORT_COLUMNS.length}</b></span>
                 <span><span className="text-muted-foreground">Metadane:</span> <b>{includeExportMeta ? "tak" : "nie"}</b></span>
-                <span><span className="text-muted-foreground">Grupowanie:</span> <b>{groupByLabel[exportGroupBy]}</b>{exportGroupBy !== "none" && <> · <b>{exportGroupOutput === "files" ? "pliki" : "sekcje"}</b></>}</span>
+                <span><span className="text-muted-foreground">Grupowanie:</span> <b>{groupByLabel[exportGroupBy]}</b>{exportGroupBy !== "none" && <> · <b>{groupOutputShort[exportGroupOutput]}</b></>}</span>
               </div>
             </div>
 
