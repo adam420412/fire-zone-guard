@@ -159,6 +159,7 @@ export interface TaskWithDetails extends Tables<"tasks"> {
   quoteCount?: number;
   quoteUpdatedAt?: string | null;
   quoteNumber?: string | null;
+  quoteLastEvent?: "sent" | "accepted" | "rejected" | "expired" | "created" | null;
   financialBalance?: number;
 }
 
@@ -193,7 +194,7 @@ export function useTasks() {
       // Subtask progress per task
       const taskIds = (data ?? []).map((t: any) => t.id);
       const subtaskAgg: Record<string, { total: number; done: number }> = {};
-      const quoteAgg: Record<string, { count: number; latestStatus: string | null; latestUpdatedAt: string | null; latestNumber: string | null }> = {};
+      const quoteAgg: Record<string, { count: number; latestStatus: string | null; latestUpdatedAt: string | null; latestNumber: string | null; latestEvent: TaskWithDetails["quoteLastEvent"] }> = {};
       const finAgg: Record<string, number> = {};
 
       if (taskIds.length > 0) {
@@ -213,16 +214,37 @@ export function useTasks() {
         try {
           const { data: quotes } = await supabase
             .from("quotes")
-            .select("task_id, status, created_at, sent_at, accepted_at, rejected_at, quote_number")
+            .select("task_id, status, created_at, sent_at, accepted_at, rejected_at, quote_number, valid_until")
             .in("task_id", taskIds)
             .order("created_at", { ascending: false });
           (quotes ?? []).forEach((q: any) => {
-            const a = quoteAgg[q.task_id] ?? { count: 0, latestStatus: null, latestUpdatedAt: null, latestNumber: null };
+            const a = quoteAgg[q.task_id] ?? { count: 0, latestStatus: null, latestUpdatedAt: null, latestNumber: null, latestEvent: null };
             a.count += 1;
             if (a.latestStatus === null) {
               a.latestStatus = q.status;
               a.latestNumber = q.quote_number ?? null;
-              a.latestUpdatedAt = q.accepted_at ?? q.rejected_at ?? q.sent_at ?? q.created_at ?? null;
+
+              // Determine last meaningful event by most recent timestamp
+              const candidates: Array<{ key: NonNullable<TaskWithDetails["quoteLastEvent"]>; iso: string | null }> = [
+                { key: "accepted", iso: q.accepted_at },
+                { key: "rejected", iso: q.rejected_at },
+                { key: "sent", iso: q.sent_at },
+                { key: "created", iso: q.created_at },
+              ];
+              const valid = candidates.filter((c) => !!c.iso).sort((x, y) => +new Date(y.iso!) - +new Date(x.iso!));
+              let latest = valid[0] ?? { key: "created" as const, iso: q.created_at };
+
+              // Override with "expired" if quote is past valid_until and not accepted/rejected
+              const status = String(q.status ?? "").toLowerCase();
+              const isFinal = status === "zaakceptowana" || status === "odrzucona";
+              if (!isFinal && q.valid_until) {
+                const vu = new Date(q.valid_until);
+                if (!Number.isNaN(vu.getTime()) && vu.getTime() < Date.now()) {
+                  latest = { key: "expired", iso: q.valid_until };
+                }
+              }
+              a.latestEvent = latest.key;
+              a.latestUpdatedAt = latest.iso ?? q.created_at ?? null;
             }
             quoteAgg[q.task_id] = a;
           });
@@ -261,6 +283,7 @@ export function useTasks() {
         quoteStatus: quoteAgg[t.id]?.latestStatus ?? null,
         quoteUpdatedAt: quoteAgg[t.id]?.latestUpdatedAt ?? null,
         quoteNumber: quoteAgg[t.id]?.latestNumber ?? null,
+        quoteLastEvent: quoteAgg[t.id]?.latestEvent ?? null,
         financialBalance: finAgg[t.id] ?? 0,
       })) as TaskWithDetails[];
     },

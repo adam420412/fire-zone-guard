@@ -5,6 +5,7 @@ import { cn } from "@/lib/utils";
 import {
   Clock, User, Building2, AlertTriangle, Bell, Phone, Mail,
   ListTodo, FileText, Wallet, MoreHorizontal, CalendarDays, UserCog,
+  Send, CheckCircle2, XCircle, TimerOff, FilePlus2,
 } from "lucide-react";
 import {
   DropdownMenu, DropdownMenuTrigger, DropdownMenuContent,
@@ -28,6 +29,14 @@ const quoteStatusBadge: Record<string, { label: string; cls: string }> = {
   odrzucona: { label: "Odrzucona", cls: "bg-destructive/15 text-destructive border border-destructive/30" },
   wygasla: { label: "Wygasła", cls: "bg-warning/15 text-warning border border-warning/30" },
   wygasła: { label: "Wygasła", cls: "bg-warning/15 text-warning border border-warning/30" },
+};
+
+const quoteEventMeta: Record<NonNullable<TaskWithDetails["quoteLastEvent"]>, { label: string; verb: string; Icon: typeof Send; cls: string }> = {
+  sent:     { label: "Wysłana",      verb: "Wysłano",      Icon: Send,         cls: "text-blue-400" },
+  accepted: { label: "Zaakceptowana", verb: "Zaakceptowano", Icon: CheckCircle2, cls: "text-success" },
+  rejected: { label: "Odrzucona",    verb: "Odrzucono",    Icon: XCircle,      cls: "text-destructive" },
+  expired:  { label: "Wygasła",      verb: "Wygasła",      Icon: TimerOff,     cls: "text-warning" },
+  created:  { label: "Utworzona",    verb: "Utworzono",    Icon: FilePlus2,    cls: "text-muted-foreground" },
 };
 
 function formatRelative(iso?: string | null): string | null {
@@ -174,11 +183,13 @@ export default function TaskCard({ task, onClick }: TaskCardProps) {
         {(task.quoteCount ?? 0) > 0 && task.quoteStatus && (() => {
           const meta = quoteStatusBadge[task.quoteStatus] ?? { label: task.quoteStatus, cls: "bg-secondary text-secondary-foreground border border-border" };
           const rel = formatRelative(task.quoteUpdatedAt);
+          const event = task.quoteLastEvent ? quoteEventMeta[task.quoteLastEvent] : null;
+          const EventIcon = event?.Icon ?? FileText;
           const tooltip = [
             `Oferta: ${meta.label}`,
             task.quoteNumber ? `Nr ${task.quoteNumber}` : null,
             (task.quoteCount ?? 0) > 1 ? `${task.quoteCount} ofert` : null,
-            rel ? `Aktualizacja: ${rel}` : null,
+            event ? `Ostatnio: ${event.verb}${rel ? ` (${rel})` : ""}` : (rel ? `Aktualizacja: ${rel}` : null),
           ].filter(Boolean).join(" · ");
           return (
             <button
@@ -196,11 +207,20 @@ export default function TaskCard({ task, onClick }: TaskCardProps) {
                 meta.cls
               )}
               title={`${tooltip} — kliknij, aby ${(task.quoteCount ?? 0) > 1 ? "zobaczyć listę ofert" : "otworzyć ofertę"}`}
+              aria-label={tooltip}
             >
               <FileText className="h-2.5 w-2.5" />
               <span>{meta.label}</span>
               {(task.quoteCount ?? 0) > 1 && (
                 <span className="opacity-70">×{task.quoteCount}</span>
+              )}
+              {event && (
+                <span
+                  className={cn("inline-flex items-center gap-0.5 ml-0.5 pl-1 border-l border-current/30", event.cls)}
+                  title={`${event.verb}${rel ? ` · ${rel}` : ""}`}
+                >
+                  <EventIcon className="h-2.5 w-2.5" />
+                </span>
               )}
               {rel && <span className="opacity-70">· {rel}</span>}
             </button>
