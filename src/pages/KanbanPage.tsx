@@ -307,6 +307,32 @@ export default function KanbanPage() {
               ))}
             </select>
           )}
+          <div className="inline-flex rounded-md border border-border bg-card overflow-hidden" role="tablist" aria-label="Widok zadań">
+            <button
+              type="button"
+              onClick={() => setViewMode("kanban")}
+              className={cn(
+                "flex items-center gap-1 px-2.5 py-1.5 text-xs font-medium transition-colors",
+                viewMode === "kanban" ? "bg-primary/15 text-primary" : "text-muted-foreground hover:bg-secondary"
+              )}
+              aria-pressed={viewMode === "kanban"}
+              title="Widok Kanban"
+            >
+              <LayoutGrid className="h-3.5 w-3.5" /> Kanban
+            </button>
+            <button
+              type="button"
+              onClick={() => setViewMode("list")}
+              className={cn(
+                "flex items-center gap-1 px-2.5 py-1.5 text-xs font-medium transition-colors border-l border-border",
+                viewMode === "list" ? "bg-primary/15 text-primary" : "text-muted-foreground hover:bg-secondary"
+              )}
+              aria-pressed={viewMode === "list"}
+              title="Widok listy"
+            >
+              <ListIcon className="h-3.5 w-3.5" /> Lista
+            </button>
+          </div>
           <button
             onClick={handleExportCSV}
             className="flex items-center gap-2 rounded-md border border-border bg-card px-3 py-1.5 text-sm font-medium hover:bg-secondary transition-colors"
