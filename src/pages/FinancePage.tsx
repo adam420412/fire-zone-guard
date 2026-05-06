@@ -694,6 +694,17 @@ export default function FinancePage() {
                   </Select>
                 </div>
               </div>
+              {taskParam && (
+                <div className="mt-3 flex items-center gap-2">
+                  <Badge variant="outline" className="gap-1">
+                    <FileText className="h-3 w-3" />
+                    Filtr: oferty zadania {taskParam.slice(0, 8)}
+                  </Badge>
+                  <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={clearTaskFilter}>
+                    <XCircle className="mr-1 h-3 w-3" /> Wyczyść filtr
+                  </Button>
+                </div>
+              )}
             </CardHeader>
             <CardContent>
               {filteredQuotes.length === 0 ? (
