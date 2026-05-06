@@ -160,6 +160,7 @@ export interface TaskWithDetails extends Tables<"tasks"> {
   quoteUpdatedAt?: string | null;
   quoteNumber?: string | null;
   quoteLastEvent?: "sent" | "accepted" | "rejected" | "expired" | "created" | null;
+  quoteStatusCounts?: Partial<Record<"draft" | "sent" | "accepted" | "rejected" | "expired", number>>;
   financialBalance?: number;
 }
 
