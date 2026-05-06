@@ -172,13 +172,16 @@ export default function TaskCard({ task, onClick }: TaskCardProps) {
         {(task.quoteCount ?? 0) > 0 && task.quoteStatus && (() => {
           const meta = quoteStatusBadge[task.quoteStatus] ?? { label: task.quoteStatus, cls: "bg-secondary text-secondary-foreground border border-border" };
           const rel = formatRelative(task.quoteUpdatedAt);
+          const exact = formatLocalDateTime(task.quoteUpdatedAt);
           const event = task.quoteLastEvent ? quoteEventMeta[task.quoteLastEvent] : null;
           const EventIcon = event?.Icon ?? FileText;
           const tooltip = [
             `Oferta: ${meta.label}`,
             task.quoteNumber ? `Nr ${task.quoteNumber}` : null,
             (task.quoteCount ?? 0) > 1 ? `${task.quoteCount} ofert` : null,
-            event ? `Ostatnio: ${event.verb}${rel ? ` (${rel})` : ""}` : (rel ? `Aktualizacja: ${rel}` : null),
+            event
+              ? `Ostatnio: ${event.verb}${rel ? ` (${rel})` : ""}${exact ? ` — ${exact}` : ""}`
+              : (rel ? `Aktualizacja: ${rel}${exact ? ` (${exact})` : ""}` : null),
           ].filter(Boolean).join(" · ");
           return (
             <button
