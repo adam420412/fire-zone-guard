@@ -365,29 +365,13 @@ export default function KanbanPage() {
     };
   }, [search, filterPriority, dueFilter, quoteFilter, recencyFilter, groupMode, groupValueFilter, sortMode]);
 
-  // Wiersze do eksportu — uwzględniają filtry I sortowanie (te same co w widoku listy).
-  const exportRows = useMemo(() => {
-    return sortTasks(filteredTasks).map((t: any) => ({
-      id: t.id.slice(0, 8),
-      title: t.title || "",
-      building: t.buildingName || "",
-      company: t.companyName || "",
-      assignee: t.assigneeName || "",
-      priority: t.priority || "",
-      status: t.status || "",
-      type: t.type || "",
-      deadline: t.deadline ? new Date(t.deadline).toLocaleDateString("pl-PL") : "",
-      quoteStatus: t.quoteStatus || "",
-      quoteCount: t.quoteCount ?? 0,
-      lastActivity: (() => {
-        const ms = Math.max(
-          t.created_at ? new Date(t.created_at).getTime() : 0,
-          t.quoteUpdatedAt ? new Date(t.quoteUpdatedAt).getTime() : 0
-        );
-        return ms ? new Date(ms).toLocaleString("pl-PL") : "";
-      })(),
-    }));
-  }, [filteredTasks, sortTasks]);
+  // Posortowane + przefiltrowane zadania (te same co w widoku listy) — źródło dla eksportów.
+  const sortedFilteredTasks = useMemo(
+    () => sortTasks(filteredTasks),
+    [filteredTasks, sortTasks]
+  );
+
+  const exportRowCount = sortedFilteredTasks.length;
 
   const exportFileBase = useMemo(() => {
     const date = new Date().toISOString().split("T")[0];
@@ -395,24 +379,27 @@ export default function KanbanPage() {
   }, [exportContext.slug]);
 
   const handleExportCSV = () => {
-    const headers = [
-      "ID", "Tytuł", "Obiekt", "Firma", "Przypisany", "Priorytet", "Status", "Typ",
-      "Deadline", "Oferta — status", "Oferta — liczba", "Ostatnia aktywność",
-    ];
+    if (!activeColumnDefs.length) {
+      toast.error("Wybierz przynajmniej jedną kolumnę do eksportu");
+      return;
+    }
+    const headers = activeColumnDefs.map((c) => c.label);
     const escape = (v: any) => `"${String(v ?? "").replace(/"/g, '""')}"`;
     const meta = includeExportMeta
       ? [
           `# Eksport: ${new Date().toLocaleString("pl-PL")}`,
           `# Sort: ${exportContext.sortLabel}`,
           `# Filtry: ${exportContext.filters.map(f => `${f.label}=${f.value}`).join(" | ") || "—"}`,
-          `# Liczba zadań: ${exportRows.length}`,
+          `# Liczba zadań: ${exportRowCount}`,
+          `# Kolumny: ${activeColumnDefs.map(c => c.label).join(", ")}`,
         ].join("\n") + "\n"
       : "";
     const body = [headers.map(escape).join(";")]
-      .concat(exportRows.map(r => [
-        r.id, r.title, r.building, r.company, r.assignee, r.priority, r.status, r.type,
-        r.deadline, r.quoteStatus, r.quoteCount, r.lastActivity,
-      ].map(escape).join(";")))
+      .concat(
+        sortedFilteredTasks.map((t: any) =>
+          activeColumnDefs.map((c) => escape(c.accessor(t))).join(";")
+        )
+      )
       .join("\n");
     const csvContent = `${meta}${body}`;
     const blob = new Blob(["\ufeff" + csvContent], { type: "text/csv;charset=utf-8" });
@@ -427,38 +414,38 @@ export default function KanbanPage() {
   };
 
   const handleExportXLSX = async () => {
+    if (!activeColumnDefs.length) {
+      toast.error("Wybierz przynajmniej jedną kolumnę do eksportu");
+      return;
+    }
     const XLSX = await import("xlsx");
-    const headers = [
-      "ID", "Tytuł", "Obiekt", "Firma", "Przypisany", "Priorytet", "Status", "Typ",
-      "Deadline", "Oferta — status", "Oferta — liczba", "Ostatnia aktywność",
-    ];
+    const headers = activeColumnDefs.map((c) => c.label);
     const metaRows: any[][] = includeExportMeta
       ? [
           [`Eksport: ${new Date().toLocaleString("pl-PL")}`],
           [`Sortowanie: ${exportContext.sortLabel}`],
           [`Filtry: ${exportContext.filters.map(f => `${f.label}=${f.value}`).join(" | ") || "—"}`],
-          [`Liczba zadań: ${exportRows.length}`],
+          [`Liczba zadań: ${exportRowCount}`],
+          [`Kolumny: ${activeColumnDefs.map(c => c.label).join(", ")}`],
           [],
         ]
       : [];
-    const dataRows = exportRows.map(r => [
-      r.id, r.title, r.building, r.company, r.assignee, r.priority, r.status, r.type,
-      r.deadline, r.quoteStatus, r.quoteCount, r.lastActivity,
-    ]);
+    const dataRows = sortedFilteredTasks.map((t: any) =>
+      activeColumnDefs.map((c) => c.accessor(t))
+    );
     const aoa = [...metaRows, headers, ...dataRows];
     const ws = XLSX.utils.aoa_to_sheet(aoa);
-    // Szerokości kolumn
-    ws["!cols"] = [
-      { wch: 10 }, { wch: 38 }, { wch: 22 }, { wch: 22 }, { wch: 18 },
-      { wch: 10 }, { wch: 14 }, { wch: 12 }, { wch: 14 }, { wch: 16 },
-      { wch: 8 }, { wch: 22 },
-    ];
+    ws["!cols"] = activeColumnDefs.map((c) => ({ wch: c.xlsxWidth ?? 16 }));
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, "Zadania");
     XLSX.writeFile(wb, `${exportFileBase}.xlsx`);
   };
 
   const handleExportPDF = async () => {
+    if (!activeColumnDefs.length) {
+      toast.error("Wybierz przynajmniej jedną kolumnę do eksportu");
+      return;
+    }
     const [{ default: jsPDF }, autoTableMod] = await Promise.all([
       import("jspdf"),
       import("jspdf-autotable"),
@@ -477,45 +464,27 @@ export default function KanbanPage() {
           `Wygenerowano: ${new Date().toLocaleString("pl-PL")}`,
           `Sortowanie: ${exportContext.sortLabel}`,
           `Filtry: ${exportContext.filters.map(f => `${f.label}=${f.value}`).join("  |  ") || "—"}`,
-          `Liczba zadań: ${exportRows.length}`,
+          `Liczba zadań: ${exportRowCount}`,
         ]
       : [];
     metaLines.forEach((line, i) => doc.text(line, 40, 54 + i * 12));
 
+    const columnStyles: Record<number, { cellWidth: number }> = {};
+    activeColumnDefs.forEach((c, i) => {
+      if (c.pdfWidth) columnStyles[i] = { cellWidth: c.pdfWidth };
+    });
+
     autoTable(doc, {
       startY: metaLines.length ? 54 + metaLines.length * 12 + 8 : 50,
-      head: [[
-        "ID", "Tytuł", "Obiekt / Firma", "Wykonawca",
-        "Pr.", "Status", "Termin", "Oferta", "Akt.",
-      ]],
-      body: exportRows.map(r => [
-        r.id,
-        r.title,
-        r.building + (r.company ? `\n${r.company}` : ""),
-        r.assignee,
-        r.priority,
-        r.status,
-        r.deadline,
-        r.quoteStatus
-          ? `${r.quoteStatus}${r.quoteCount > 1 ? ` ×${r.quoteCount}` : ""}`
-          : (r.quoteCount ? `×${r.quoteCount}` : "—"),
-        r.lastActivity,
-      ]),
+      head: [activeColumnDefs.map((c) => c.pdfShort ?? c.label)],
+      body: sortedFilteredTasks.map((t: any) =>
+        activeColumnDefs.map((c) => String(c.accessor(t) ?? ""))
+      ),
       styles: { fontSize: 8, cellPadding: 3, overflow: "linebreak" },
       headStyles: { fillColor: [220, 38, 38], textColor: 255 },
       alternateRowStyles: { fillColor: [248, 248, 248] },
-      columnStyles: {
-        0: { cellWidth: 50 },
-        1: { cellWidth: 180 },
-        2: { cellWidth: 140 },
-        3: { cellWidth: 80 },
-        4: { cellWidth: 45 },
-        5: { cellWidth: 70 },
-        6: { cellWidth: 60 },
-        7: { cellWidth: 80 },
-        8: { cellWidth: 90 },
-      },
-      didDrawPage: (data: any) => {
+      columnStyles,
+      didDrawPage: () => {
         const str = `Strona ${doc.getNumberOfPages()}`;
         doc.setFontSize(8);
         doc.setTextColor(150);
@@ -524,6 +493,17 @@ export default function KanbanPage() {
     });
 
     doc.save(`${exportFileBase}.pdf`);
+  };
+
+  // Toggle pojedynczej kolumny (zachowuje kolejność z EXPORT_COLUMNS)
+  const toggleExportColumn = (key: ExportColumnKey) => {
+    setExportColumns((prev) => {
+      const has = prev.includes(key);
+      if (has) return prev.filter((k) => k !== key);
+      // Zachowaj kolejność wg EXPORT_COLUMNS
+      const next = [...prev, key];
+      return EXPORT_COLUMNS.map((c) => c.key).filter((k) => next.includes(k));
+    });
   };
 
 
