@@ -6,7 +6,7 @@ import TaskCard from "@/components/TaskCard";
 import TaskDetailDialog from "@/components/TaskDetailDialog";
 import CreateTaskDialog from "@/components/CreateTaskDialog";
 import { cn } from "@/lib/utils";
-import { Filter, Search, Plus, Download, ArrowUpDown, LayoutGrid, List as ListIcon, FileText, Settings2, ChevronDown } from "lucide-react";
+import { Filter, Search, Plus, Download, ArrowUpDown, LayoutGrid, List as ListIcon, FileText, Settings2, ChevronDown, Bug } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Button } from "@/components/ui/button";
@@ -21,6 +21,7 @@ import {
   DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuCheckboxItem,
 } from "@/components/ui/dropdown-menu";
 import { buildLastActivityTooltip } from "@/lib/lastActivity";
+import { PdfLayoutDebugDialog } from "@/components/kanban/PdfLayoutDebugDialog";
 
 type SortMode = "deadline" | "priority" | "created" | "title" | "updated" | "quoteStatus" | "quoteCount";
 type GroupMode = "none" | "building" | "assignee";
@@ -219,6 +220,7 @@ export default function KanbanPage() {
   }, [exportColumns]);
   const [columnsDialogOpen, setColumnsDialogOpen] = useState(false);
   const [previewDialogOpen, setPreviewDialogOpen] = useState(false);
+  const [pdfDebugDialogOpen, setPdfDebugDialogOpen] = useState(false);
 
   // Ostatnio użyty format eksportu (CSV/XLSX/PDF) — pozwala szybko powtórzyć
   type ExportFormat = "csv" | "xlsx" | "pdf";
@@ -1010,6 +1012,13 @@ export default function KanbanPage() {
                 >
                   Debug układu PDF (marginesy + wolne miejsce)
                 </DropdownMenuCheckboxItem>
+                <DropdownMenuItem
+                  onSelect={(e) => { e.preventDefault(); setPdfDebugDialogOpen(true); }}
+                  title="Pokaż wygenerowany PDF obok strukturalnego raportu KanbanPdfLayoutReport (sekcja po sekcji + per-strona)."
+                >
+                  <Bug className="h-3.5 w-3.5 mr-2" />
+                  Raport układu PDF (debug obok PDF)
+                </DropdownMenuItem>
                 <DropdownMenuLabel className="text-[10px] uppercase mt-1">
                   Odstępy w PDF (pt)
                 </DropdownMenuLabel>
