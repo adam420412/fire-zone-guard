@@ -6,7 +6,7 @@ import TaskCard from "@/components/TaskCard";
 import TaskDetailDialog from "@/components/TaskDetailDialog";
 import CreateTaskDialog from "@/components/CreateTaskDialog";
 import { cn } from "@/lib/utils";
-import { Filter, Search, Plus, Download, ArrowUpDown, LayoutGrid, List as ListIcon, FileText, Settings2, ChevronDown, Bug } from "lucide-react";
+import { Filter, Search, Plus, Download, ArrowUpDown, LayoutGrid, List as ListIcon, FileText, Settings2, ChevronDown, Bug, AlertTriangle } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Button } from "@/components/ui/button";
