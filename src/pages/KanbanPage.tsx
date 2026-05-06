@@ -196,7 +196,7 @@ export default function KanbanPage() {
 
   // Grupowanie eksportu
   type ExportGroupBy = "none" | "company" | "building" | "assignee";
-  type ExportGroupOutput = "sections" | "files";
+  type ExportGroupOutput = "sections" | "files" | "single-sheet";
   const [exportGroupBy, setExportGroupBy] = useState<ExportGroupBy>(() => {
     if (typeof window === "undefined") return "none";
     const v = window.localStorage.getItem("kanban.exportGroupBy");
@@ -205,7 +205,7 @@ export default function KanbanPage() {
   const [exportGroupOutput, setExportGroupOutput] = useState<ExportGroupOutput>(() => {
     if (typeof window === "undefined") return "sections";
     const v = window.localStorage.getItem("kanban.exportGroupOutput");
-    return v === "files" ? "files" : "sections";
+    return v === "files" || v === "single-sheet" ? v : "sections";
   });
   useEffect(() => {
     if (typeof window !== "undefined") {
@@ -304,6 +304,16 @@ export default function KanbanPage() {
 
   const groupByLabel: Record<ExportGroupBy, string> = {
     none: "brak", company: "Firma", building: "Obiekt", assignee: "Osoba",
+  };
+  const groupOutputLabel: Record<ExportGroupOutput, string> = {
+    sections: "sekcje (osobne arkusze w XLSX)",
+    "single-sheet": "sekcje w jednym arkuszu",
+    files: "osobne pliki (.zip)",
+  };
+  const groupOutputShort: Record<ExportGroupOutput, string> = {
+    sections: "sekcje",
+    "single-sheet": "1 arkusz",
+    files: "pliki",
   };
   const sanitizeFileName = (s: string) =>
     s.replace(/[\\/:*?"<>|]+/g, "_").replace(/\s+/g, "_").slice(0, 80) || "grupa";
@@ -515,7 +525,7 @@ export default function KanbanPage() {
       `Kolumny: ${activeColumnDefs.map(c => c.label).join(", ")}`,
     ];
     if (exportGroupBy !== "none") {
-      lines.push(`Grupowanie: ${groupByLabel[exportGroupBy]} (${exportGroupOutput === "files" ? "osobne pliki" : "sekcje"})`);
+      lines.push(`Grupowanie: ${groupByLabel[exportGroupBy]} (${groupOutputLabel[exportGroupOutput]})`);
       if (groupLabel) lines.push(`Grupa: ${groupLabel}`);
     }
     return lines;
@@ -640,7 +650,29 @@ export default function KanbanPage() {
       return;
     }
 
-    // sekcje = osobne arkusze w jednym skoroszycie
+    if (exportGroupOutput === "single-sheet") {
+      // Wszystkie grupy w jednym arkuszu, oddzielone nagłówkiem sekcji i pustym wierszem
+      const headers = activeColumnDefs.map((c) => c.label);
+      const aoa: any[][] = [];
+      if (includeExportMeta) {
+        buildMetaLines().forEach((l) => aoa.push([l]));
+        aoa.push([]);
+      }
+      groups.forEach((g, idx) => {
+        if (idx > 0) aoa.push([]);
+        aoa.push([`${groupByLabel[exportGroupBy]}: ${g.label} (${g.tasks.length})`]);
+        aoa.push(headers);
+        g.tasks.forEach((t: any) => aoa.push(activeColumnDefs.map((c) => c.accessor(t))));
+      });
+      const ws = XLSX.utils.aoa_to_sheet(aoa);
+      ws["!cols"] = activeColumnDefs.map((c) => ({ wch: c.xlsxWidth ?? 16 }));
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, "Zadania");
+      XLSX.writeFile(wb, `${exportFileBase}__by-${exportGroupBy}.xlsx`);
+      return;
+    }
+
+    // sections (domyślne dla XLSX) = osobne arkusze w jednym skoroszycie
     const wb = XLSX.utils.book_new();
     const usedNames = new Set<string>();
     for (const g of groups) {
@@ -990,7 +1022,14 @@ export default function KanbanPage() {
                       onCheckedChange={() => setExportGroupOutput("sections")}
                       onSelect={(e) => e.preventDefault()}
                     >
-                      Sekcje w jednym pliku
+                      Sekcje{lastExportFormat === "xlsx" ? " (osobne arkusze)" : " w jednym pliku"}
+                    </DropdownMenuCheckboxItem>
+                    <DropdownMenuCheckboxItem
+                      checked={exportGroupOutput === "single-sheet"}
+                      onCheckedChange={() => setExportGroupOutput("single-sheet")}
+                      onSelect={(e) => e.preventDefault()}
+                    >
+                      Sekcje w jednym arkuszu (XLSX)
                     </DropdownMenuCheckboxItem>
                     <DropdownMenuCheckboxItem
                       checked={exportGroupOutput === "files"}
@@ -1014,7 +1053,7 @@ export default function KanbanPage() {
                     <DropdownMenuItem
                       key={tpl.id}
                       onSelect={(e) => { e.preventDefault(); runTemplate(tpl); }}
-                      title={`${tpl.format.toUpperCase()} · ${tpl.columns.length} kol. · grupowanie: ${groupByLabel[tpl.groupBy]}${tpl.groupBy !== "none" ? ` (${tpl.groupOutput === "files" ? "pliki" : "sekcje"})` : ""}${tpl.includeMeta ? " · z meta" : ""}`}
+                      title={`${tpl.format.toUpperCase()} · ${tpl.columns.length} kol. · grupowanie: ${groupByLabel[tpl.groupBy]}${tpl.groupBy !== "none" ? ` (${groupOutputShort[tpl.groupOutput]})` : ""}${tpl.includeMeta ? " · z meta" : ""}`}
                     >
                       <Download className="h-3.5 w-3.5 mr-2" />
                       <span className="truncate">{tpl.name}</span>
@@ -1365,7 +1404,7 @@ export default function KanbanPage() {
                     <span className="text-muted-foreground">Grupowanie:</span>{" "}
                     <b>{groupByLabel[exportGroupBy]}</b>
                     {exportGroupBy !== "none" && (
-                      <> · <b>{totalGroups}</b> grup · tryb: <b>{exportGroupOutput === "files" ? "osobne pliki (.zip)" : "sekcje w jednym pliku"}</b></>
+                      <> · <b>{totalGroups}</b> grup · tryb: <b>{groupOutputLabel[exportGroupOutput]}</b></>
                     )}
                   </div>
                   {activeColumnDefs.length === 0 && (
@@ -1506,7 +1545,7 @@ export default function KanbanPage() {
                 <span><span className="text-muted-foreground">Format:</span> <b>{lastExportFormat.toUpperCase()}</b></span>
                 <span><span className="text-muted-foreground">Kolumny:</span> <b>{exportColumns.length}/{EXPORT_COLUMNS.length}</b></span>
                 <span><span className="text-muted-foreground">Metadane:</span> <b>{includeExportMeta ? "tak" : "nie"}</b></span>
-                <span><span className="text-muted-foreground">Grupowanie:</span> <b>{groupByLabel[exportGroupBy]}</b>{exportGroupBy !== "none" && <> · <b>{exportGroupOutput === "files" ? "pliki" : "sekcje"}</b></>}</span>
+                <span><span className="text-muted-foreground">Grupowanie:</span> <b>{groupByLabel[exportGroupBy]}</b>{exportGroupBy !== "none" && <> · <b>{groupOutputShort[exportGroupOutput]}</b></>}</span>
               </div>
             </div>
 
@@ -1544,7 +1583,7 @@ export default function KanbanPage() {
                         <div className="font-medium text-sm truncate">{tpl.name}</div>
                         <div className="text-[11px] text-muted-foreground">
                           {tpl.format.toUpperCase()} · {tpl.columns.length} kol. · grupowanie: {groupByLabel[tpl.groupBy]}
-                          {tpl.groupBy !== "none" && <> ({tpl.groupOutput === "files" ? "pliki" : "sekcje"})</>}
+                          {tpl.groupBy !== "none" && <> ({groupOutputShort[tpl.groupOutput]})</>}
                           {tpl.includeMeta && " · z meta"}
                         </div>
                       </div>
