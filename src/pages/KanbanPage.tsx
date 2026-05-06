@@ -47,6 +47,9 @@ export default function KanbanPage() {
   const [groupMode, setGroupMode] = useState<GroupMode>("none");
   const [dueFilter, setDueFilter] = useState<DueFilter>("all");
   const [groupValueFilter, setGroupValueFilter] = useState<string>("all");
+  const [quoteFilter, setQuoteFilter] = useState<QuoteFilter>("all");
+  const [recencyFilter, setRecencyFilter] = useState<RecencyFilter>("all");
+  const [viewMode, setViewMode] = useState<ViewMode>("kanban");
   const [showCreate, setShowCreate] = useState(false);
   const [selectedTask, setSelectedTask] = useState<any>(null);
   
