@@ -13,7 +13,7 @@ import { toast } from "sonner";
 import { formatRelative, formatLocalDateTime } from "@/lib/relativeTime";
 import {
   DropdownMenu, DropdownMenuTrigger, DropdownMenuContent,
-  DropdownMenuItem, DropdownMenuLabel,
+  DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuCheckboxItem,
 } from "@/components/ui/dropdown-menu";
 import { buildLastActivityTooltip } from "@/lib/lastActivity";
 
@@ -70,6 +70,15 @@ export default function KanbanPage() {
   const [quoteFilter, setQuoteFilter] = useState<QuoteFilter>("all");
   const [recencyFilter, setRecencyFilter] = useState<RecencyFilter>("all");
   const [viewMode, setViewMode] = useState<ViewMode>("kanban");
+  const [includeExportMeta, setIncludeExportMeta] = useState<boolean>(() => {
+    if (typeof window === "undefined") return false;
+    return window.localStorage.getItem("kanban.exportIncludeMeta") === "1";
+  });
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      window.localStorage.setItem("kanban.exportIncludeMeta", includeExportMeta ? "1" : "0");
+    }
+  }, [includeExportMeta]);
   const [showCreate, setShowCreate] = useState(false);
   const [selectedTask, setSelectedTask] = useState<any>(null);
   
@@ -283,19 +292,21 @@ export default function KanbanPage() {
       "Deadline", "Oferta — status", "Oferta — liczba", "Ostatnia aktywność",
     ];
     const escape = (v: any) => `"${String(v ?? "").replace(/"/g, '""')}"`;
-    const meta = [
-      `# Eksport: ${new Date().toLocaleString("pl-PL")}`,
-      `# Sort: ${exportContext.sortLabel}`,
-      `# Filtry: ${exportContext.filters.map(f => `${f.label}=${f.value}`).join(" | ")}`,
-      `# Liczba zadań: ${exportRows.length}`,
-    ].join("\n");
+    const meta = includeExportMeta
+      ? [
+          `# Eksport: ${new Date().toLocaleString("pl-PL")}`,
+          `# Sort: ${exportContext.sortLabel}`,
+          `# Filtry: ${exportContext.filters.map(f => `${f.label}=${f.value}`).join(" | ") || "—"}`,
+          `# Liczba zadań: ${exportRows.length}`,
+        ].join("\n") + "\n"
+      : "";
     const body = [headers.map(escape).join(";")]
       .concat(exportRows.map(r => [
         r.id, r.title, r.building, r.company, r.assignee, r.priority, r.status, r.type,
         r.deadline, r.quoteStatus, r.quoteCount, r.lastActivity,
       ].map(escape).join(";")))
       .join("\n");
-    const csvContent = `${meta}\n${body}`;
+    const csvContent = `${meta}${body}`;
     const blob = new Blob(["\ufeff" + csvContent], { type: "text/csv;charset=utf-8" });
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
@@ -313,13 +324,15 @@ export default function KanbanPage() {
       "ID", "Tytuł", "Obiekt", "Firma", "Przypisany", "Priorytet", "Status", "Typ",
       "Deadline", "Oferta — status", "Oferta — liczba", "Ostatnia aktywność",
     ];
-    const metaRows: any[][] = [
-      [`Eksport: ${new Date().toLocaleString("pl-PL")}`],
-      [`Sortowanie: ${exportContext.sortLabel}`],
-      [`Filtry: ${exportContext.filters.map(f => `${f.label}=${f.value}`).join(" | ") || "—"}`],
-      [`Liczba zadań: ${exportRows.length}`],
-      [],
-    ];
+    const metaRows: any[][] = includeExportMeta
+      ? [
+          [`Eksport: ${new Date().toLocaleString("pl-PL")}`],
+          [`Sortowanie: ${exportContext.sortLabel}`],
+          [`Filtry: ${exportContext.filters.map(f => `${f.label}=${f.value}`).join(" | ") || "—"}`],
+          [`Liczba zadań: ${exportRows.length}`],
+          [],
+        ]
+      : [];
     const dataRows = exportRows.map(r => [
       r.id, r.title, r.building, r.company, r.assignee, r.priority, r.status, r.type,
       r.deadline, r.quoteStatus, r.quoteCount, r.lastActivity,
@@ -351,16 +364,18 @@ export default function KanbanPage() {
     doc.text("Fire Zone — Eksport zadań (Kanban)", 40, 36);
     doc.setFontSize(9);
     doc.setTextColor(110);
-    const metaLines = [
-      `Wygenerowano: ${new Date().toLocaleString("pl-PL")}`,
-      `Sortowanie: ${exportContext.sortLabel}`,
-      `Filtry: ${exportContext.filters.map(f => `${f.label}=${f.value}`).join("  |  ")}`,
-      `Liczba zadań: ${exportRows.length}`,
-    ];
+    const metaLines = includeExportMeta
+      ? [
+          `Wygenerowano: ${new Date().toLocaleString("pl-PL")}`,
+          `Sortowanie: ${exportContext.sortLabel}`,
+          `Filtry: ${exportContext.filters.map(f => `${f.label}=${f.value}`).join("  |  ") || "—"}`,
+          `Liczba zadań: ${exportRows.length}`,
+        ]
+      : [];
     metaLines.forEach((line, i) => doc.text(line, 40, 54 + i * 12));
 
     autoTable(doc, {
-      startY: 54 + metaLines.length * 12 + 8,
+      startY: metaLines.length ? 54 + metaLines.length * 12 + 8 : 50,
       head: [[
         "ID", "Tytuł", "Obiekt / Firma", "Wykonawca",
         "Pr.", "Status", "Termin", "Oferta", "Akt.",
@@ -578,6 +593,14 @@ export default function KanbanPage() {
               <DropdownMenuItem onClick={handleExportPDF}>
                 <FileText className="h-3.5 w-3.5 mr-2" /> PDF (.pdf)
               </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuCheckboxItem
+                checked={includeExportMeta}
+                onCheckedChange={(v) => setIncludeExportMeta(!!v)}
+                onSelect={(e) => e.preventDefault()}
+              >
+                Dołącz metadane (filtry, sort)
+              </DropdownMenuCheckboxItem>
             </DropdownMenuContent>
           </DropdownMenu>
           <button
