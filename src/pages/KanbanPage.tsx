@@ -10,7 +10,8 @@ import { Filter, Search, Plus, Download, ArrowUpDown, LayoutGrid, List as ListIc
 import { KanbanSkeleton } from "@/components/PageSkeleton";
 import { DragDropContext, Droppable, Draggable, DropResult } from "@hello-pangea/dnd";
 import { toast } from "sonner";
-import { formatRelative } from "@/lib/relativeTime";
+import { formatRelative, formatLocalDateTime } from "@/lib/relativeTime";
+import { buildLastActivityTooltip } from "@/lib/lastActivity";
 
 type SortMode = "deadline" | "priority" | "created" | "title" | "updated";
 type GroupMode = "none" | "building" | "assignee";
