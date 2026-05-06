@@ -182,9 +182,14 @@ export function buildKanbanPdf(
     debug = false,
     spacing,
     diagnostics = true,
+    pageSetup,
   } = opts;
 
-  const doc = new jsPDF({ orientation: "landscape", unit: "pt", format: "a4" });
+  const doc = new jsPDF({
+    orientation: pageSetup?.orientation ?? "landscape",
+    unit: pageSetup?.unit ?? "pt",
+    format: pageSetup?.format ?? "a4",
+  });
   const pageWidth = doc.internal.pageSize.getWidth();
   const pageHeight = doc.internal.pageSize.getHeight();
   const marginTop = 40;
