@@ -193,6 +193,47 @@ export default function KanbanPage() {
     }
   }, [lastExportFormat]);
 
+  // Grupowanie eksportu
+  type ExportGroupBy = "none" | "company" | "building" | "assignee";
+  type ExportGroupOutput = "sections" | "files";
+  const [exportGroupBy, setExportGroupBy] = useState<ExportGroupBy>(() => {
+    if (typeof window === "undefined") return "none";
+    const v = window.localStorage.getItem("kanban.exportGroupBy");
+    return v === "company" || v === "building" || v === "assignee" ? v : "none";
+  });
+  const [exportGroupOutput, setExportGroupOutput] = useState<ExportGroupOutput>(() => {
+    if (typeof window === "undefined") return "sections";
+    const v = window.localStorage.getItem("kanban.exportGroupOutput");
+    return v === "files" ? "files" : "sections";
+  });
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      window.localStorage.setItem("kanban.exportGroupBy", exportGroupBy);
+      window.localStorage.setItem("kanban.exportGroupOutput", exportGroupOutput);
+    }
+  }, [exportGroupBy, exportGroupOutput]);
+
+  const groupTasksForExport = useCallback((arr: any[], by: ExportGroupBy) => {
+    if (by === "none") return [{ key: "_all", label: "Wszystkie", tasks: arr }];
+    const map = new Map<string, { key: string; label: string; tasks: any[] }>();
+    arr.forEach((t: any) => {
+      const label =
+        by === "company"  ? (t.companyName  || "— bez firmy —")  :
+        by === "building" ? (t.buildingName || "— bez obiektu —") :
+                            (t.assigneeName || "— nieprzypisane —");
+      const entry = map.get(label) ?? { key: label, label, tasks: [] };
+      entry.tasks.push(t);
+      map.set(label, entry);
+    });
+    return Array.from(map.values()).sort((a, b) => a.label.localeCompare(b.label, "pl"));
+  }, []);
+
+  const groupByLabel: Record<ExportGroupBy, string> = {
+    none: "brak", company: "Firma", building: "Obiekt", assignee: "Osoba",
+  };
+  const sanitizeFileName = (s: string) =>
+    s.replace(/[\\/:*?"<>|]+/g, "_").replace(/\s+/g, "_").slice(0, 80) || "grupa";
+
   // Aktywne definicje kolumn w kolejności wyboru
   const activeColumnDefs = useMemo(
     () => exportColumns
