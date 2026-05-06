@@ -645,7 +645,15 @@ function TaskListView({ tasks, onSelect }: { tasks: any[]; onSelect: (t: any) =>
                   ) : <span className="text-muted-foreground text-xs">—</span>}
                 </td>
                 <td className="px-3 py-2.5 hidden md:table-cell text-xs text-muted-foreground">
-                  {lastRel ?? "—"}
+                  <span
+                    title={activity.tooltip}
+                    className="inline-flex flex-col leading-tight cursor-help"
+                  >
+                    <span className="text-foreground/90">{lastRel ?? "—"}</span>
+                    <span className="text-[10px] opacity-70">
+                      {activity.source === "quote" ? "oferta" : activity.source === "created" ? "utworzenie" : "—"}
+                    </span>
+                  </span>
                 </td>
               </tr>
             );
