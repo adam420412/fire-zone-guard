@@ -254,8 +254,6 @@ export function buildKanbanPdf(
   const TABLE_FONT_SIZE = 8;
   const TABLE_CELL_PADDING = 3;
   const GROUP_HEADER_FONT = 11;
-  // ── Sztywne odstępy pionowe (pt). Stałe i niezależne od pomiarów. ──
-  /** Odstęp między końcem POPRZEDNIEJ tabeli a górą nagłówka KOLEJNEJ grupy. */
   // ── Sztywne odstępy pionowe (pt) — konfigurowalne, z domyślnymi 8 / 18. ──
   const resolvedSpacing = clampSpacing(spacing);
   /** Odstęp między końcem POPRZEDNIEJ tabeli a górą nagłówka KOLEJNEJ grupy. */
