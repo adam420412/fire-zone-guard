@@ -463,86 +463,93 @@ export default function KanbanPage() {
         })}
       </div>
 
-      <div className="flex-1 overflow-x-auto pb-4 select-none">
-        <DragDropContext onDragEnd={onDragEnd}>
-          <div className="flex gap-4 min-w-max h-full">
-            {kanbanStatuses.map((status) => {
-              const columnTasks = getTasksForStatus(status);
-              return (
-                <div key={status} className="flex w-72 shrink-0 flex-col rounded-xl border border-border bg-muted/20">
-                  <div className="flex items-center justify-between border-b border-border px-4 py-3 bg-card/40">
-                    <span className={cn("rounded-full px-2 py-0.5 text-[10px] font-bold uppercase", statusColors[status])}>
-                      {status}
-                    </span>
-                    <span className="text-xs font-bold text-muted-foreground/60">{columnTasks.length}</span>
-                  </div>
-                  
-                  <Droppable droppableId={status}>
-                    {(provided, snapshot) => (
-                      <div
-                        ref={provided.innerRef}
-                        {...provided.droppableProps}
-                        className={cn(
-                          "flex-1 space-y-3 overflow-y-auto p-3 scrollbar-thin min-h-[150px] max-h-[calc(100vh-250px)] transition-colors duration-200",
-                          snapshot.isDraggingOver && "bg-secondary/30"
-                        )}
-                      >
-                        {(() => {
-                          const groups = groupTasks(columnTasks);
-                          const nodes: JSX.Element[] = [];
-                          let runningIndex = 0;
-                          groups.forEach((group) => {
-                            if (groupMode !== "none") {
-                              nodes.push(
-                                <div
-                                  key={`hdr-${group.key}`}
-                                  className="sticky top-0 z-10 flex items-center justify-between bg-card/80 backdrop-blur px-2 py-1 rounded text-[10px] font-bold uppercase tracking-wider text-muted-foreground border-b border-border"
-                                >
-                                  <span className="truncate">{group.label}</span>
-                                  <span className="ml-2 shrink-0">{group.tasks.length}</span>
-                                </div>
-                              );
-                            }
-                            group.tasks.forEach((task: any) => {
-                              const realIndex = runningIndex++;
-                              nodes.push(
-                                <Draggable key={task.id} draggableId={task.id} index={realIndex}>
-                                  {(provided, snapshot) => (
-                                    <div
-                                      ref={provided.innerRef}
-                                      {...provided.draggableProps}
-                                      {...provided.dragHandleProps}
-                                      className={cn(
-                                        "transition-transform",
-                                        snapshot.isDragging && "opacity-90 shadow-2xl scale-105 z-50 ring-2 ring-primary/50"
-                                      )}
-                                      style={{ ...provided.draggableProps.style }}
-                                    >
-                                      <TaskCard task={task} onClick={() => setSelectedTask(task)} />
-                                    </div>
-                                  )}
-                                </Draggable>
-                              );
+      {viewMode === "kanban" ? (
+        <div className="flex-1 overflow-x-auto pb-4 select-none">
+          <DragDropContext onDragEnd={onDragEnd}>
+            <div className="flex gap-4 min-w-max h-full">
+              {kanbanStatuses.map((status) => {
+                const columnTasks = getTasksForStatus(status);
+                return (
+                  <div key={status} className="flex w-72 shrink-0 flex-col rounded-xl border border-border bg-muted/20">
+                    <div className="flex items-center justify-between border-b border-border px-4 py-3 bg-card/40">
+                      <span className={cn("rounded-full px-2 py-0.5 text-[10px] font-bold uppercase", statusColors[status])}>
+                        {status}
+                      </span>
+                      <span className="text-xs font-bold text-muted-foreground/60">{columnTasks.length}</span>
+                    </div>
+
+                    <Droppable droppableId={status}>
+                      {(provided, snapshot) => (
+                        <div
+                          ref={provided.innerRef}
+                          {...provided.droppableProps}
+                          className={cn(
+                            "flex-1 space-y-3 overflow-y-auto p-3 scrollbar-thin min-h-[150px] max-h-[calc(100vh-250px)] transition-colors duration-200",
+                            snapshot.isDraggingOver && "bg-secondary/30"
+                          )}
+                        >
+                          {(() => {
+                            const groups = groupTasks(columnTasks);
+                            const nodes: JSX.Element[] = [];
+                            let runningIndex = 0;
+                            groups.forEach((group) => {
+                              if (groupMode !== "none") {
+                                nodes.push(
+                                  <div
+                                    key={`hdr-${group.key}`}
+                                    className="sticky top-0 z-10 flex items-center justify-between bg-card/80 backdrop-blur px-2 py-1 rounded text-[10px] font-bold uppercase tracking-wider text-muted-foreground border-b border-border"
+                                  >
+                                    <span className="truncate">{group.label}</span>
+                                    <span className="ml-2 shrink-0">{group.tasks.length}</span>
+                                  </div>
+                                );
+                              }
+                              group.tasks.forEach((task: any) => {
+                                const realIndex = runningIndex++;
+                                nodes.push(
+                                  <Draggable key={task.id} draggableId={task.id} index={realIndex}>
+                                    {(provided, snapshot) => (
+                                      <div
+                                        ref={provided.innerRef}
+                                        {...provided.draggableProps}
+                                        {...provided.dragHandleProps}
+                                        className={cn(
+                                          "transition-transform",
+                                          snapshot.isDragging && "opacity-90 shadow-2xl scale-105 z-50 ring-2 ring-primary/50"
+                                        )}
+                                        style={{ ...provided.draggableProps.style }}
+                                      >
+                                        <TaskCard task={task} onClick={() => setSelectedTask(task)} />
+                                      </div>
+                                    )}
+                                  </Draggable>
+                                );
+                              });
                             });
-                          });
-                          return nodes;
-                        })()}
-                        {provided.placeholder}
-                        {columnTasks.length === 0 && !snapshot.isDraggingOver && (
-                          <div className="flex flex-col items-center justify-center py-10 opacity-30 text-center">
-                            <Filter className="h-8 w-8 mb-2" />
-                            <p className="text-[11px] font-medium">Brak zadań</p>
-                          </div>
-                        )}
-                      </div>
-                    )}
-                  </Droppable>
-                </div>
-              );
-            })}
-          </div>
-        </DragDropContext>
-      </div>
+                            return nodes;
+                          })()}
+                          {provided.placeholder}
+                          {columnTasks.length === 0 && !snapshot.isDraggingOver && (
+                            <div className="flex flex-col items-center justify-center py-10 opacity-30 text-center">
+                              <Filter className="h-8 w-8 mb-2" />
+                              <p className="text-[11px] font-medium">Brak zadań</p>
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </Droppable>
+                  </div>
+                );
+              })}
+            </div>
+          </DragDropContext>
+        </div>
+      ) : (
+        <TaskListView
+          tasks={sortTasks(filteredTasks)}
+          onSelect={setSelectedTask}
+        />
+      )}
 
       <CreateTaskDialog open={showCreate} onOpenChange={setShowCreate} />
       <TaskDetailDialog task={selectedTask} open={!!selectedTask} onOpenChange={(o) => !o && setSelectedTask(null)} />
