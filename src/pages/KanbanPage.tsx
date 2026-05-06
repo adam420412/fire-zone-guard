@@ -184,6 +184,22 @@ export default function KanbanPage() {
     }
   }, [pdfDownloadLayoutJson]);
 
+  // Tryb diagnostyczny PDF — kontroluje, czy buildKanbanPdf liczy i zwraca
+  // pola diagnostyczne raportu układu (per-section derived, per-page, totals).
+  const [pdfDiagnostics, setPdfDiagnostics] = useState<boolean>(() => {
+    if (typeof window === "undefined") return true;
+    const v = window.localStorage.getItem("kanban.exportPdfDiagnostics");
+    return v === null ? true : v === "1";
+  });
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      window.localStorage.setItem(
+        "kanban.exportPdfDiagnostics",
+        pdfDiagnostics ? "1" : "0",
+      );
+    }
+  }, [pdfDiagnostics]);
+
   // Konfigurowalne odstępy pionowe w PDF (pt). Domyślnie 8 / 18.
   const PDF_SPACING_DEFAULTS = { headerToTable: 8, tableToNextHeader: 18 };
   const [pdfSpacing, setPdfSpacing] = useState<{
