@@ -200,6 +200,16 @@ export default function KanbanPage() {
     }
   }, [pdfDiagnostics]);
 
+  // INWARIANT: pobranie .layout.json wymaga diagnostyki włączonej.
+  // Gdy user włączy JSON przy wyłączonej diagnostyce — auto-włączamy diagnostykę
+  // (zob. handler `onCheckedChange`). Ten efekt jest safety-netem na wypadek
+  // niespójności (np. zmiana w localStorage z innej karty / starszej wersji UI).
+  useEffect(() => {
+    if (pdfDownloadLayoutJson && !pdfDiagnostics) {
+      setPdfDiagnostics(true);
+    }
+  }, [pdfDownloadLayoutJson, pdfDiagnostics]);
+
   // Konfigurowalne odstępy pionowe w PDF (pt). Domyślnie 8 / 18.
   const PDF_SPACING_DEFAULTS = { headerToTable: 8, tableToNextHeader: 18 };
   const [pdfSpacing, setPdfSpacing] = useState<{
