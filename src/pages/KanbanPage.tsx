@@ -10,7 +10,8 @@ import { Filter, Search, Plus, Download, ArrowUpDown, LayoutGrid, List as ListIc
 import { KanbanSkeleton } from "@/components/PageSkeleton";
 import { DragDropContext, Droppable, Draggable, DropResult } from "@hello-pangea/dnd";
 import { toast } from "sonner";
-import { formatRelative } from "@/lib/relativeTime";
+import { formatRelative, formatLocalDateTime } from "@/lib/relativeTime";
+import { buildLastActivityTooltip } from "@/lib/lastActivity";
 
 type SortMode = "deadline" | "priority" | "created" | "title" | "updated";
 type GroupMode = "none" | "building" | "assignee";
@@ -597,6 +598,7 @@ function TaskListView({ tasks, onSelect }: { tasks: any[]; onSelect: (t: any) =>
             const lastMs = taskLastActivityMs(t);
             const lastIso = lastMs ? new Date(lastMs).toISOString() : null;
             const lastRel = formatRelative(lastIso);
+            const activity = buildLastActivityTooltip(t);
             const quoteCls = t.quoteStatus ? (QUOTE_BADGE_CLS[String(t.quoteStatus).toLowerCase()] ?? "bg-secondary text-secondary-foreground border-border") : "";
             return (
               <tr
@@ -643,7 +645,15 @@ function TaskListView({ tasks, onSelect }: { tasks: any[]; onSelect: (t: any) =>
                   ) : <span className="text-muted-foreground text-xs">—</span>}
                 </td>
                 <td className="px-3 py-2.5 hidden md:table-cell text-xs text-muted-foreground">
-                  {lastRel ?? "—"}
+                  <span
+                    title={activity.tooltip}
+                    className="inline-flex flex-col leading-tight cursor-help"
+                  >
+                    <span className="text-foreground/90">{lastRel ?? "—"}</span>
+                    <span className="text-[10px] opacity-70">
+                      {activity.source === "quote" ? "oferta" : activity.source === "created" ? "utworzenie" : "—"}
+                    </span>
+                  </span>
                 </td>
               </tr>
             );
