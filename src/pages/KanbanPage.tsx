@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback, useEffect, useMemo } from "react";
 import { useTasks, useUpdateTask } from "@/hooks/useSupabaseData";
 import { kanbanStatuses, statusColors } from "@/lib/constants";
 import type { TaskStatus } from "@/lib/constants";
@@ -6,10 +6,15 @@ import TaskCard from "@/components/TaskCard";
 import TaskDetailDialog from "@/components/TaskDetailDialog";
 import CreateTaskDialog from "@/components/CreateTaskDialog";
 import { cn } from "@/lib/utils";
-import { Filter, Search, Plus, Download } from "lucide-react";
+import { Filter, Search, Plus, Download, ArrowUpDown, LayoutGrid } from "lucide-react";
 import { KanbanSkeleton } from "@/components/PageSkeleton";
 import { DragDropContext, Droppable, Draggable, DropResult } from "@hello-pangea/dnd";
 import { toast } from "sonner";
+
+type SortMode = "deadline" | "priority" | "created" | "title";
+type GroupMode = "none" | "building" | "assignee";
+
+const PRIORITY_RANK: Record<string, number> = { krytyczny: 0, wysoki: 1, "średni": 2, niski: 3 };
 
 export default function KanbanPage() {
   const { data: tasks, isLoading } = useTasks();
@@ -17,6 +22,8 @@ export default function KanbanPage() {
   
   const [search, setSearch] = useState("");
   const [filterPriority, setFilterPriority] = useState("all");
+  const [sortMode, setSortMode] = useState<SortMode>("deadline");
+  const [groupMode, setGroupMode] = useState<GroupMode>("none");
   const [showCreate, setShowCreate] = useState(false);
   const [selectedTask, setSelectedTask] = useState<any>(null);
   
