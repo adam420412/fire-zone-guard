@@ -1,4 +1,5 @@
 import "@testing-library/jest-dom";
+import "@/test/setup/kanbanLayoutMatcher";
 
 Object.defineProperty(window, "matchMedia", {
   writable: true,
