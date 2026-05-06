@@ -157,6 +157,16 @@ export default function KanbanPage() {
     }
   }, [includeExportMeta]);
 
+  const [pdfDebugLayout, setPdfDebugLayout] = useState<boolean>(() => {
+    if (typeof window === "undefined") return false;
+    return window.localStorage.getItem("kanban.exportPdfDebug") === "1";
+  });
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      window.localStorage.setItem("kanban.exportPdfDebug", pdfDebugLayout ? "1" : "0");
+    }
+  }, [pdfDebugLayout]);
+
   // Wybór kolumn eksportu (CSV/XLSX/PDF)
   const [exportColumns, setExportColumns] = useState<ExportColumnKey[]>(() => {
     if (typeof window === "undefined") return DEFAULT_EXPORT_COLUMNS;
@@ -705,6 +715,7 @@ export default function KanbanPage() {
           groupBy: exportGroupBy,
           groupByLabel,
           metaLines: includeExportMeta ? buildMetaLines() : [],
+          debug: pdfDebugLayout,
         },
       ).doc;
 
@@ -960,6 +971,14 @@ export default function KanbanPage() {
                   onSelect={(e) => e.preventDefault()}
                 >
                   Dołącz metadane (filtry, sort)
+                </DropdownMenuCheckboxItem>
+                <DropdownMenuCheckboxItem
+                  checked={pdfDebugLayout}
+                  onCheckedChange={(v) => setPdfDebugLayout(!!v)}
+                  onSelect={(e) => e.preventDefault()}
+                  title="Rysuje w PDF obrysy marginesów i wyliczane 'miejsce do końca strony'. Tylko dla diagnostyki paginacji."
+                >
+                  Debug układu PDF (marginesy + wolne miejsce)
                 </DropdownMenuCheckboxItem>
                 <DropdownMenuSeparator />
                 <DropdownMenuLabel className="text-[10px] uppercase">

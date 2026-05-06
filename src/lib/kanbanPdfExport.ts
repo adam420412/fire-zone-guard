@@ -58,6 +58,8 @@ export type BuildKanbanPdfOptions = {
   groupByLabel: Record<string, string>;
   metaLines?: string[];
   title?: string;
+  /** Rysuje obrysy marginesów, oś dolnego marginesu i adnotacje "miejsce do końca strony". */
+  debug?: boolean;
 };
 
 export function buildKanbanPdf(
@@ -72,6 +74,7 @@ export function buildKanbanPdf(
     groupByLabel,
     metaLines = [],
     title = "Fire Zone — Eksport zadań (Kanban)",
+    debug = false,
   } = opts;
 
   const doc = new jsPDF({ orientation: "landscape", unit: "pt", format: "a4" });
@@ -87,6 +90,98 @@ export function buildKanbanPdf(
     doc.setTextColor(150);
     doc.text(str, pageWidth - 60, pageHeight - 14);
   };
+
+  // ── Debug overlay ─────────────────────────────────────────────────────────
+  const drawDebugFrame = () => {
+    if (!debug) return;
+    const prevDraw = (doc.getDrawColor?.() as string) ?? "0";
+    const prevFill = (doc.getFillColor?.() as string) ?? "0";
+    const prevText = (doc.getTextColor?.() as string) ?? "0";
+    const prevSize = doc.getFontSize();
+    const prevLW = doc.getLineWidth?.() ?? 0.2;
+
+    // Obrys obszaru użytkowego (margin box).
+    doc.setLineWidth(0.4);
+    doc.setDrawColor(255, 80, 80);
+    doc.setLineDashPattern?.([3, 3], 0);
+    doc.rect(
+      marginLeft,
+      marginTop,
+      pageWidth - 2 * marginLeft,
+      pageHeight - marginTop - marginBottom,
+    );
+    // Linia dolnego marginesu (granica strefy stopki) — ciągła.
+    doc.setLineDashPattern?.([], 0);
+    doc.setDrawColor(255, 140, 0);
+    doc.setLineWidth(0.6);
+    const bottomY = pageHeight - marginBottom;
+    doc.line(marginLeft, bottomY, pageWidth - marginLeft, bottomY);
+
+    // Etykieta granicy.
+    doc.setFontSize(7);
+    doc.setTextColor(255, 80, 0);
+    doc.text(
+      `↑ margin-bottom = ${marginBottom}pt   page = ${pageWidth.toFixed(0)}×${pageHeight.toFixed(0)}pt`,
+      marginLeft + 2,
+      bottomY - 2,
+    );
+    doc.text(
+      `margin-top = ${marginTop}pt`,
+      marginLeft + 2,
+      marginTop - 2,
+    );
+
+    // Reset.
+    doc.setLineDashPattern?.([], 0);
+    doc.setLineWidth(prevLW);
+    doc.setDrawColor(prevDraw as any);
+    doc.setFillColor(prevFill as any);
+    doc.setTextColor(prevText as any);
+    doc.setFontSize(prevSize);
+  };
+
+  /** Adnotacja przy aktualnym kursorze: ile pt zostało do dolnego marginesu i czy się mieści. */
+  const drawDebugCursorAnnotation = (
+    yTop: number,
+    needed: number,
+    label: string,
+  ) => {
+    if (!debug) return;
+    const prevDraw = (doc.getDrawColor?.() as string) ?? "0";
+    const prevText = (doc.getTextColor?.() as string) ?? "0";
+    const prevSize = doc.getFontSize();
+    const prevLW = doc.getLineWidth?.() ?? 0.2;
+
+    const remaining = pageHeight - marginBottom - yTop;
+    const fits = needed <= remaining;
+    const color: [number, number, number] = fits ? [0, 140, 70] : [200, 0, 0];
+
+    // Strzałka wzdłuż prawej krawędzi obszaru użytkowego.
+    const x = pageWidth - marginLeft + 4;
+    doc.setDrawColor(...color);
+    doc.setLineWidth(0.4);
+    doc.line(x, yTop, x, pageHeight - marginBottom);
+    // Czapeczki strzałki.
+    doc.line(x - 2, yTop + 2, x, yTop);
+    doc.line(x + 2, yTop + 2, x, yTop);
+    doc.line(x - 2, pageHeight - marginBottom - 2, x, pageHeight - marginBottom);
+    doc.line(x + 2, pageHeight - marginBottom - 2, x, pageHeight - marginBottom);
+
+    doc.setFontSize(6.5);
+    doc.setTextColor(...color);
+    doc.text(
+      `${label} | potrzebne: ${needed.toFixed(0)}pt | wolne: ${remaining.toFixed(0)}pt ${fits ? "✓" : "✗ → nowa strona"}`,
+      marginLeft + 2,
+      yTop - 1,
+    );
+
+    doc.setLineWidth(prevLW);
+    doc.setDrawColor(prevDraw as any);
+    doc.setTextColor(prevText as any);
+    doc.setFontSize(prevSize);
+  };
+
+  drawDebugFrame();
 
   doc.setFontSize(14);
   doc.setTextColor(0);
@@ -163,10 +258,24 @@ export function buildKanbanPdf(
     let headerTop = cursorY;
     let headerBottom = cursorY;
 
+    // Adnotacja debug PRZED ewentualnym page-breakiem (pokazuje wynik decyzji).
+    drawDebugCursorAnnotation(
+      cursorY,
+      minSectionHeight,
+      `sekcja "${g.label}" (min ${minSectionHeight.toFixed(0)}pt)`,
+    );
+
     if (cursorY + minSectionHeight > pageHeight - marginBottom) {
       doc.addPage();
       drawFooter();
+      drawDebugFrame();
       cursorY = marginTop;
+      // Po page-breaku dorysuj adnotację już na nowej stronie.
+      drawDebugCursorAnnotation(
+        cursorY,
+        minSectionHeight,
+        `sekcja "${g.label}" po page-break`,
+      );
     }
 
     if (groupBy !== "none") {
@@ -178,6 +287,19 @@ export function buildKanbanPdf(
       headerTop = cursorY;
       headerBottom = headerBaseline + GROUP_HEADER_GAP_AFTER;
       cursorY = headerBottom;
+
+      if (debug) {
+        // Lekki obrys nagłówka grupy.
+        const prevDraw = (doc.getDrawColor?.() as string) ?? "0";
+        const prevLW = doc.getLineWidth?.() ?? 0.2;
+        doc.setLineWidth(0.3);
+        doc.setDrawColor(0, 120, 200);
+        doc.setLineDashPattern?.([1.5, 1.5], 0);
+        doc.rect(marginLeft - 1, headerTop, pageWidth - 2 * marginLeft + 2, headerBottom - headerTop);
+        doc.setLineDashPattern?.([], 0);
+        doc.setLineWidth(prevLW);
+        doc.setDrawColor(prevDraw as any);
+      }
     } else {
       headerTop = cursorY;
       headerBottom = cursorY;
@@ -201,6 +323,7 @@ export function buildKanbanPdf(
       rowPageBreak: "avoid",
       didDrawPage: () => {
         drawFooter();
+        drawDebugFrame();
       },
     });
 
