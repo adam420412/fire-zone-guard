@@ -31,6 +31,14 @@ const quoteStatusBadge: Record<string, { label: string; cls: string }> = {
   wygasła: { label: "Wygasła", cls: "bg-warning/15 text-warning border border-warning/30" },
 };
 
+const quoteEventMeta: Record<NonNullable<TaskWithDetails["quoteLastEvent"]>, { label: string; verb: string; Icon: typeof Send; cls: string }> = {
+  sent:     { label: "Wysłana",      verb: "Wysłano",      Icon: Send,         cls: "text-blue-400" },
+  accepted: { label: "Zaakceptowana", verb: "Zaakceptowano", Icon: CheckCircle2, cls: "text-success" },
+  rejected: { label: "Odrzucona",    verb: "Odrzucono",    Icon: XCircle,      cls: "text-destructive" },
+  expired:  { label: "Wygasła",      verb: "Wygasła",      Icon: TimerOff,     cls: "text-warning" },
+  created:  { label: "Utworzona",    verb: "Utworzono",    Icon: FilePlus2,    cls: "text-muted-foreground" },
+};
+
 function formatRelative(iso?: string | null): string | null {
   if (!iso) return null;
   const d = new Date(iso);
