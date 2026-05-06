@@ -525,7 +525,7 @@ export default function KanbanPage() {
       `Kolumny: ${activeColumnDefs.map(c => c.label).join(", ")}`,
     ];
     if (exportGroupBy !== "none") {
-      lines.push(`Grupowanie: ${groupByLabel[exportGroupBy]} (${exportGroupOutput === "files" ? "osobne pliki" : "sekcje"})`);
+      lines.push(`Grupowanie: ${groupByLabel[exportGroupBy]} (${groupOutputLabel[exportGroupOutput]})`);
       if (groupLabel) lines.push(`Grupa: ${groupLabel}`);
     }
     return lines;
