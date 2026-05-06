@@ -144,11 +144,16 @@ export function PdfLayoutDebugDialog({
     a.click();
   };
 
-  const downloadJson = () => {
+  const downloadJson = async () => {
     if (!layout) return;
-    const blob = new Blob([JSON.stringify(layout, null, 2)], {
-      type: "application/json",
-    });
+    const { serializeKanbanLayoutToJsonString } = await import(
+      "@/lib/kanbanLayoutExport"
+    );
+    // Dialog zawsze buduje raport z `diagnostics:true`, więc forceMode="diagnostic".
+    const blob = new Blob(
+      [serializeKanbanLayoutToJsonString(layout, { forceMode: "diagnostic" })],
+      { type: "application/json;charset=utf-8" },
+    );
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
