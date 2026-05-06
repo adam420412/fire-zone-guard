@@ -84,11 +84,20 @@ export function buildKanbanPdf(
   const marginBottom = 30;
   const marginLeft = 40;
 
+  // Strony, na których stopka została już narysowana — gwarancja idempotencji
+  // niezależnie od tego, czy wywoła nas manualny page-break czy autoTable.didDrawPage.
+  const footeredPages = new Set<number>();
   const drawFooter = () => {
-    const str = `Strona ${doc.getNumberOfPages()}`;
+    const page = doc.getNumberOfPages();
+    if (footeredPages.has(page)) return;
+    footeredPages.add(page);
+    const prevSize = doc.getFontSize();
+    const prevText = (doc.getTextColor?.() as string) ?? "0";
     doc.setFontSize(8);
     doc.setTextColor(150);
-    doc.text(str, pageWidth - 60, pageHeight - 14);
+    doc.text(`Strona ${page}`, pageWidth - 60, pageHeight - 14);
+    doc.setFontSize(prevSize);
+    doc.setTextColor(prevText as any);
   };
 
   // ── Debug overlay ─────────────────────────────────────────────────────────
