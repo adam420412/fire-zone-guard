@@ -30,8 +30,7 @@ expect.extend({
   toMatchKanbanLayoutSnapshot(received: AnyLayoutSnapshot, hint?: string) {
     // Delegujemy do natywnego toMatchSnapshot — przechwytujemy jego wynik.
     try {
-      // @ts-expect-error — `this` ma pełny kontekst matchera Vitest.
-      const result = (expect(received) as any).toMatchSnapshot(hint);
+      (expect(received) as any).toMatchSnapshot(hint);
       // Synchroniczny przebieg: jeśli nie rzuciło, snapshot się zgadza.
       return {
         pass: true,
