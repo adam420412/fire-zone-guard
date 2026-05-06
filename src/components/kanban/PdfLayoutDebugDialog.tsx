@@ -25,7 +25,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
-import { Loader2, Download, RefreshCcw } from "lucide-react";
+import { Loader2, Download, RefreshCcw, Gauge, Trash2 } from "lucide-react";
 import {
   buildKanbanPdf,
   type KanbanPdfColumn,
@@ -33,6 +33,11 @@ import {
   type KanbanPdfLayoutReport,
   type KanbanPdfSpacing,
 } from "@/lib/kanbanPdfExport";
+import {
+  subscribePdfExportPerf,
+  clearPdfExportPerf,
+  type PdfExportPerfEntry,
+} from "@/lib/pdfExportPerf";
 import { cn } from "@/lib/utils";
 
 export type PdfLayoutDebugDialogProps = {
