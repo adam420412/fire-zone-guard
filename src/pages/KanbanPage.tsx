@@ -295,6 +295,8 @@ export default function KanbanPage() {
             <option value="priority">Sort: Priorytet</option>
             <option value="created">Sort: Data utworzenia</option>
             <option value="updated">Sort: Ostatnia aktywność</option>
+            <option value="quoteStatus">Sort: Status oferty</option>
+            <option value="quoteCount">Sort: Liczba ofert</option>
             <option value="title">Sort: Tytuł A-Z</option>
           </select>
           <select
