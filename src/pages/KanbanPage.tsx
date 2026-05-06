@@ -852,6 +852,16 @@ export default function KanbanPage() {
       toast.error("Wybierz przynajmniej jedną kolumnę do eksportu");
       return;
     }
+    // Walidacja inwariantu: pobranie .layout.json wymaga diagnostyki.
+    // To powinno być już zsynchronizowane przez UI/effect, ale chronimy się
+    // przed nieoczekiwaną desynchronizacją (np. zmiana w localStorage z innej karty).
+    if (pdfDownloadLayoutJson && !pdfDiagnostics) {
+      setPdfDiagnostics(true);
+      toast.warning(
+        "Eksport .layout.json wymaga trybu diagnostycznego — został właśnie włączony. Ponów eksport.",
+      );
+      return;
+    }
     setLastExportFormat("pdf");
     const groups = groupTasksForExport(sortedFilteredTasks, exportGroupBy);
     const tasksCount = groups.reduce((a, g) => a + g.tasks.length, 0);
