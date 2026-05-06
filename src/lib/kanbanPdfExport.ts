@@ -138,6 +138,16 @@ export type BuildKanbanPdfOptions = {
    * w hot-pathach eksportu, gdy raport nie będzie czytany.
    */
   diagnostics?: boolean;
+  /**
+   * Opcjonalna konfiguracja strony jsPDF. Domyślnie: A4 landscape, jednostka pt.
+   * Pozwala uruchamiać eksport / testy regresji w różnych formatach (A3/A4/A5/letter/legal)
+   * i orientacjach (portrait/landscape) bez zmiany logiki layoutu.
+   */
+  pageSetup?: {
+    orientation?: "portrait" | "landscape";
+    format?: string | [number, number];
+    unit?: "pt" | "mm" | "cm" | "in";
+  };
 };
 
 function clampSpacing(s?: KanbanPdfSpacing): Required<KanbanPdfSpacing> {
