@@ -22,6 +22,21 @@ type ViewMode = "kanban" | "list";
 
 const PRIORITY_RANK: Record<string, number> = { krytyczny: 0, wysoki: 1, "średni": 2, niski: 3 };
 
+// Kolejność istotności statusów ofert (im niżej, tym "ważniejsze" / wyżej w sortowaniu rosnącym).
+const QUOTE_STATUS_RANK: Record<string, number> = {
+  zaakceptowana: 0,
+  "wysłana": 1,
+  wyslana: 1,
+  "wersja robocza": 2,
+  "wygasła": 3,
+  wygasla: 3,
+  odrzucona: 4,
+};
+function quoteStatusRank(s?: string | null): number {
+  if (!s) return 99; // brak oferty na końcu
+  return QUOTE_STATUS_RANK[String(s).toLowerCase()] ?? 50;
+}
+
 // Skróty statusów ofert (zgodnie z TaskCard)
 const QUOTE_FILTER_LABELS: Record<Exclude<QuoteFilter, "all" | "any" | "none">, string> = {
   draft: "Wersja robocza",
