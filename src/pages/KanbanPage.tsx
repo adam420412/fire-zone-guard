@@ -57,6 +57,80 @@ function taskLastActivityMs(t: any): number {
   return Math.max(created, quote);
 }
 
+// ===== Definicja kolumn eksportu =====
+type ExportColumnGroup = "basic" | "quote" | "activity";
+type ExportColumnKey =
+  | "id" | "title" | "building" | "company" | "assignee"
+  | "priority" | "status" | "type" | "deadline"
+  | "quoteStatus" | "quoteCount" | "quoteNumber" | "quoteBreakdown"
+  | "createdAt" | "quoteUpdatedAt" | "lastActivity" | "lastActivitySource";
+
+interface ExportColumnDef {
+  key: ExportColumnKey;
+  label: string;
+  group: ExportColumnGroup;
+  pdfShort?: string;
+  pdfWidth?: number;
+  xlsxWidth?: number;
+  accessor: (t: any) => string | number;
+}
+
+function fmtDate(v: any): string {
+  if (!v) return "";
+  const d = new Date(v);
+  return isNaN(d.getTime()) ? "" : d.toLocaleDateString("pl-PL");
+}
+function fmtDateTime(v: any): string {
+  if (!v) return "";
+  const d = new Date(v);
+  return isNaN(d.getTime()) ? "" : d.toLocaleString("pl-PL");
+}
+
+const EXPORT_COLUMNS: ExportColumnDef[] = [
+  { key: "id",          label: "ID",                  group: "basic", pdfShort: "ID",     pdfWidth: 50,  xlsxWidth: 10, accessor: (t) => String(t.id ?? "").slice(0, 8) },
+  { key: "title",       label: "Tytuł",               group: "basic", pdfShort: "Tytuł",  pdfWidth: 170, xlsxWidth: 38, accessor: (t) => t.title ?? "" },
+  { key: "building",    label: "Obiekt",              group: "basic", pdfShort: "Obiekt", pdfWidth: 100, xlsxWidth: 22, accessor: (t) => t.buildingName ?? "" },
+  { key: "company",     label: "Firma",               group: "basic", pdfShort: "Firma",  pdfWidth: 90,  xlsxWidth: 22, accessor: (t) => t.companyName ?? "" },
+  { key: "assignee",    label: "Przypisany",          group: "basic", pdfShort: "Wyk.",   pdfWidth: 80,  xlsxWidth: 18, accessor: (t) => t.assigneeName ?? "" },
+  { key: "priority",    label: "Priorytet",           group: "basic", pdfShort: "Pr.",    pdfWidth: 45,  xlsxWidth: 10, accessor: (t) => t.priority ?? "" },
+  { key: "status",      label: "Status",              group: "basic", pdfShort: "Status", pdfWidth: 65,  xlsxWidth: 14, accessor: (t) => t.status ?? "" },
+  { key: "type",        label: "Typ",                 group: "basic", pdfShort: "Typ",    pdfWidth: 55,  xlsxWidth: 12, accessor: (t) => t.type ?? "" },
+  { key: "deadline",    label: "Deadline",            group: "basic", pdfShort: "Termin", pdfWidth: 60,  xlsxWidth: 14, accessor: (t) => fmtDate(t.deadline) },
+
+  { key: "quoteStatus",    label: "Oferta — status",     group: "quote", pdfShort: "Oferta", pdfWidth: 70, xlsxWidth: 16, accessor: (t) => t.quoteStatus ?? "" },
+  { key: "quoteCount",     label: "Oferta — liczba",     group: "quote", pdfShort: "#Of.",   pdfWidth: 35, xlsxWidth: 8,  accessor: (t) => t.quoteCount ?? 0 },
+  { key: "quoteNumber",    label: "Oferta — numer",      group: "quote", pdfShort: "Nr of.", pdfWidth: 65, xlsxWidth: 16, accessor: (t) => t.quoteNumber ?? "" },
+  { key: "quoteBreakdown", label: "Oferta — breakdown",  group: "quote", pdfShort: "Of. breakdown", pdfWidth: 90, xlsxWidth: 24, accessor: (t) => {
+      const c = t.quoteStatusCounts ?? {};
+      const entries = Object.entries(c).filter(([, v]) => (v as number) > 0);
+      return entries.map(([k, v]) => `${k}:${v}`).join(", ");
+    } },
+
+  { key: "createdAt",          label: "Utworzono",                group: "activity", pdfShort: "Utw.",   pdfWidth: 80, xlsxWidth: 20, accessor: (t) => fmtDateTime(t.created_at) },
+  { key: "quoteUpdatedAt",     label: "Oferta zaktualizowana",    group: "activity", pdfShort: "Of. akt.", pdfWidth: 80, xlsxWidth: 20, accessor: (t) => fmtDateTime(t.quoteUpdatedAt) },
+  { key: "lastActivity",       label: "Ostatnia aktywność",       group: "activity", pdfShort: "Akt.",   pdfWidth: 80, xlsxWidth: 22, accessor: (t) => {
+      const ms = taskLastActivityMs(t);
+      return ms ? new Date(ms).toLocaleString("pl-PL") : "";
+    } },
+  { key: "lastActivitySource", label: "Źródło aktywności",        group: "activity", pdfShort: "Akt. źr.", pdfWidth: 55, xlsxWidth: 14, accessor: (t) => {
+      const c = t.created_at ? new Date(t.created_at).getTime() : 0;
+      const q = t.quoteUpdatedAt ? new Date(t.quoteUpdatedAt).getTime() : 0;
+      if (!c && !q) return "";
+      return q > c ? "oferta" : "utworzenie";
+    } },
+];
+
+const EXPORT_COLUMN_GROUPS: { key: ExportColumnGroup; label: string }[] = [
+  { key: "basic",    label: "Podstawowe" },
+  { key: "quote",    label: "Oferty" },
+  { key: "activity", label: "Aktywność" },
+];
+
+const DEFAULT_EXPORT_COLUMNS: ExportColumnKey[] = [
+  "id", "title", "building", "company", "assignee", "priority", "status", "type",
+  "deadline", "quoteStatus", "quoteCount", "lastActivity",
+];
+
 export default function KanbanPage() {
   const { data: tasks, isLoading } = useTasks();
   const { mutate: updateTask } = useUpdateTask();
