@@ -13,7 +13,7 @@ import { toast } from "sonner";
 import { formatRelative, formatLocalDateTime } from "@/lib/relativeTime";
 import { buildLastActivityTooltip } from "@/lib/lastActivity";
 
-type SortMode = "deadline" | "priority" | "created" | "title" | "updated";
+type SortMode = "deadline" | "priority" | "created" | "title" | "updated" | "quoteStatus" | "quoteCount";
 type GroupMode = "none" | "building" | "assignee";
 type DueFilter = "all" | "overdue" | "today" | "week";
 type QuoteFilter = "all" | "any" | "none" | "draft" | "sent" | "accepted" | "rejected" | "expired";
@@ -21,6 +21,21 @@ type RecencyFilter = "all" | "24h" | "7d" | "30d";
 type ViewMode = "kanban" | "list";
 
 const PRIORITY_RANK: Record<string, number> = { krytyczny: 0, wysoki: 1, "średni": 2, niski: 3 };
+
+// Kolejność istotności statusów ofert (im niżej, tym "ważniejsze" / wyżej w sortowaniu rosnącym).
+const QUOTE_STATUS_RANK: Record<string, number> = {
+  zaakceptowana: 0,
+  "wysłana": 1,
+  wyslana: 1,
+  "wersja robocza": 2,
+  "wygasła": 3,
+  wygasla: 3,
+  odrzucona: 4,
+};
+function quoteStatusRank(s?: string | null): number {
+  if (!s) return 99; // brak oferty na końcu
+  return QUOTE_STATUS_RANK[String(s).toLowerCase()] ?? 50;
+}
 
 // Skróty statusów ofert (zgodnie z TaskCard)
 const QUOTE_FILTER_LABELS: Record<Exclude<QuoteFilter, "all" | "any" | "none">, string> = {
@@ -178,6 +193,18 @@ export default function KanbanPage() {
       sorted.sort((a, b) => (a.title || "").localeCompare(b.title || "", "pl"));
     } else if (sortMode === "updated") {
       sorted.sort((a, b) => taskLastActivityMs(b) - taskLastActivityMs(a));
+    } else if (sortMode === "quoteStatus") {
+      sorted.sort((a, b) => {
+        const r = quoteStatusRank(a.quoteStatus) - quoteStatusRank(b.quoteStatus);
+        if (r !== 0) return r;
+        return taskLastActivityMs(b) - taskLastActivityMs(a);
+      });
+    } else if (sortMode === "quoteCount") {
+      sorted.sort((a, b) => {
+        const d = (b.quoteCount ?? 0) - (a.quoteCount ?? 0);
+        if (d !== 0) return d;
+        return taskLastActivityMs(b) - taskLastActivityMs(a);
+      });
     } else {
       sorted.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
     }
@@ -268,6 +295,8 @@ export default function KanbanPage() {
             <option value="priority">Sort: Priorytet</option>
             <option value="created">Sort: Data utworzenia</option>
             <option value="updated">Sort: Ostatnia aktywność</option>
+            <option value="quoteStatus">Sort: Status oferty</option>
+            <option value="quoteCount">Sort: Liczba ofert</option>
             <option value="title">Sort: Tytuł A-Z</option>
           </select>
           <select
