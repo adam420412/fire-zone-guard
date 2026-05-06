@@ -40,7 +40,6 @@ const quoteEventMeta: Record<NonNullable<TaskWithDetails["quoteLastEvent"]>, { l
   created:  { label: "Utworzona",    verb: "Utworzono",    Icon: FilePlus2,    cls: "text-muted-foreground" },
 };
 
-import { formatRelative, formatLocalDateTime } from "@/lib/relativeTime";
 
 export default function TaskCard({ task, onClick }: TaskCardProps) {
   const priority = task.priority as TaskPriority;
