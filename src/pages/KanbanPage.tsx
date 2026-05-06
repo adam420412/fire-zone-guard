@@ -184,6 +184,22 @@ export default function KanbanPage() {
     }
   }, [pdfDownloadLayoutJson]);
 
+  // Tryb diagnostyczny PDF — kontroluje, czy buildKanbanPdf liczy i zwraca
+  // pola diagnostyczne raportu układu (per-section derived, per-page, totals).
+  const [pdfDiagnostics, setPdfDiagnostics] = useState<boolean>(() => {
+    if (typeof window === "undefined") return true;
+    const v = window.localStorage.getItem("kanban.exportPdfDiagnostics");
+    return v === null ? true : v === "1";
+  });
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      window.localStorage.setItem(
+        "kanban.exportPdfDiagnostics",
+        pdfDiagnostics ? "1" : "0",
+      );
+    }
+  }, [pdfDiagnostics]);
+
   // Konfigurowalne odstępy pionowe w PDF (pt). Domyślnie 8 / 18.
   const PDF_SPACING_DEFAULTS = { headerToTable: 8, tableToNextHeader: 18 };
   const [pdfSpacing, setPdfSpacing] = useState<{
@@ -751,6 +767,10 @@ export default function KanbanPage() {
     ]);
     const autoTable = (autoTableMod as any).default ?? (autoTableMod as any);
 
+    // Diagnostyka jest niezbędna, gdy użytkownik chce pobrać raport JSON —
+    // inaczej `pages`/`totals` byłyby puste/zerowe. Stąd OR z preferencją.
+    const diagnosticsForRun = pdfDiagnostics || pdfDownloadLayoutJson;
+
     const buildDocAndLayout = (grps: { label: string; tasks: any[] }[]) =>
       buildKanbanPdf(
         { jsPDF, autoTable },
@@ -762,6 +782,7 @@ export default function KanbanPage() {
           metaLines: includeExportMeta ? buildMetaLines() : [],
           debug: pdfDebugLayout,
           spacing: pdfSpacing,
+          diagnostics: diagnosticsForRun,
         },
       );
 
@@ -1047,6 +1068,15 @@ export default function KanbanPage() {
                   title="Po eksporcie PDF pobiera dodatkowo plik .layout.json z pełnym KanbanPdfLayoutReport (sekcje + per-strona)."
                 >
                   Pobierz raport układu (.layout.json) razem z PDF
+                </DropdownMenuCheckboxItem>
+                <DropdownMenuCheckboxItem
+                  checked={pdfDiagnostics || pdfDownloadLayoutJson}
+                  disabled={pdfDownloadLayoutJson}
+                  onCheckedChange={(v) => setPdfDiagnostics(!!v)}
+                  onSelect={(e) => e.preventDefault()}
+                  title="Gdy wyłączone, buildKanbanPdf pomija liczenie pól diagnostycznych: per-section derived, per-page summary, totals. Pobranie raportu .layout.json automatycznie wymusza tryb diagnostyczny."
+                >
+                  Tryb diagnostyczny PDF (pola raportu układu)
                 </DropdownMenuCheckboxItem>
                 <DropdownMenuItem
                   onSelect={(e) => { e.preventDefault(); setPdfDebugDialogOpen(true); }}

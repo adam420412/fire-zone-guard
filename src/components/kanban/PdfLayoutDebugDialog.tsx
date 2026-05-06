@@ -96,6 +96,8 @@ export function PdfLayoutDebugDialog({
           spacing,
           // Włączamy debug overlay w PDF, żeby wizualnie korelowało z raportem.
           debug: true,
+          // Dialog pokazuje per-section/per-page/totals — wymuszamy diagnostykę.
+          diagnostics: true,
         },
       );
       const blob: Blob = doc.output("blob");
