@@ -219,8 +219,30 @@ export function useTasks() {
             .in("task_id", taskIds)
             .order("created_at", { ascending: false });
           (quotes ?? []).forEach((q: any) => {
-            const a = quoteAgg[q.task_id] ?? { count: 0, latestStatus: null, latestUpdatedAt: null, latestNumber: null, latestEvent: null };
+            const a = quoteAgg[q.task_id] ?? { count: 0, latestStatus: null, latestUpdatedAt: null, latestNumber: null, latestEvent: null, counts: {} as NonNullable<TaskWithDetails["quoteStatusCounts"]> };
             a.count += 1;
+
+            // Normalize this quote's effective status (uwzględnij valid_until → expired)
+            const rawStatus = String(q.status ?? "").toLowerCase();
+            const isFinal = rawStatus === "zaakceptowana" || rawStatus === "odrzucona";
+            let bucket: keyof NonNullable<TaskWithDetails["quoteStatusCounts"]> = "draft";
+            if (rawStatus === "zaakceptowana") bucket = "accepted";
+            else if (rawStatus === "odrzucona") bucket = "rejected";
+            else if (rawStatus === "wysłana" || rawStatus === "wyslana") bucket = "sent";
+            else if (rawStatus === "wygasła" || rawStatus === "wygasla") bucket = "expired";
+            else bucket = "draft";
+
+            // Override to "expired" if past valid_until and not yet finalized
+            let expiredOverride = false;
+            if (!isFinal && q.valid_until) {
+              const vu = new Date(q.valid_until);
+              if (!Number.isNaN(vu.getTime()) && vu.getTime() < Date.now()) {
+                bucket = "expired";
+                expiredOverride = true;
+              }
+            }
+            a.counts[bucket] = (a.counts[bucket] ?? 0) + 1;
+
             if (a.latestStatus === null) {
               a.latestStatus = q.status;
               a.latestNumber = q.quote_number ?? null;
@@ -235,14 +257,8 @@ export function useTasks() {
               const valid = candidates.filter((c) => !!c.iso).sort((x, y) => +new Date(y.iso!) - +new Date(x.iso!));
               let latest = valid[0] ?? { key: "created" as const, iso: q.created_at };
 
-              // Override with "expired" if quote is past valid_until and not accepted/rejected
-              const status = String(q.status ?? "").toLowerCase();
-              const isFinal = status === "zaakceptowana" || status === "odrzucona";
-              if (!isFinal && q.valid_until) {
-                const vu = new Date(q.valid_until);
-                if (!Number.isNaN(vu.getTime()) && vu.getTime() < Date.now()) {
-                  latest = { key: "expired", iso: q.valid_until };
-                }
+              if (expiredOverride) {
+                latest = { key: "expired", iso: q.valid_until };
               }
               a.latestEvent = latest.key;
               a.latestUpdatedAt = latest.iso ?? q.created_at ?? null;
