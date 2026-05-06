@@ -13,7 +13,7 @@ import { toast } from "sonner";
 import { formatRelative, formatLocalDateTime } from "@/lib/relativeTime";
 import { buildLastActivityTooltip } from "@/lib/lastActivity";
 
-type SortMode = "deadline" | "priority" | "created" | "title" | "updated";
+type SortMode = "deadline" | "priority" | "created" | "title" | "updated" | "quoteStatus" | "quoteCount";
 type GroupMode = "none" | "building" | "assignee";
 type DueFilter = "all" | "overdue" | "today" | "week";
 type QuoteFilter = "all" | "any" | "none" | "draft" | "sent" | "accepted" | "rejected" | "expired";
