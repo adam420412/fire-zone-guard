@@ -303,7 +303,7 @@ export function useUpdateTask() {
       if ("assignee_id" in updates) {
         const profiles = qc.getQueryData<any[]>(["profiles"]) ?? [];
         const found = profiles.find((p: any) => p.id === (updates as any).assignee_id);
-        assigneePatch.assigneeName = found?.name ?? (updates as any).assignee_id ? "—" : "Nieprzypisany";
+        assigneePatch.assigneeName = found?.name ?? ((updates as any).assignee_id ? "—" : "Nieprzypisany");
       }
 
       if (previous) {
