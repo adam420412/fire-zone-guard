@@ -20,11 +20,27 @@ interface TaskCardProps {
 }
 
 const quoteStatusBadge: Record<string, { label: string; cls: string }> = {
-  "wersja robocza": { label: "draft", cls: "bg-muted text-muted-foreground" },
-  wyslana: { label: "wysł.", cls: "bg-blue-500/15 text-blue-400" },
-  zaakceptowana: { label: "✓ akc.", cls: "bg-success/15 text-success" },
-  odrzucona: { label: "✗ odrz.", cls: "bg-destructive/15 text-destructive" },
+  "wersja robocza": { label: "Draft", cls: "bg-muted text-muted-foreground border border-border" },
+  wyslana: { label: "Wysłana", cls: "bg-blue-500/15 text-blue-400 border border-blue-500/30" },
+  wysłana: { label: "Wysłana", cls: "bg-blue-500/15 text-blue-400 border border-blue-500/30" },
+  zaakceptowana: { label: "Zaakceptowana", cls: "bg-success/15 text-success border border-success/30" },
+  odrzucona: { label: "Odrzucona", cls: "bg-destructive/15 text-destructive border border-destructive/30" },
+  wygasla: { label: "Wygasła", cls: "bg-warning/15 text-warning border border-warning/30" },
+  wygasła: { label: "Wygasła", cls: "bg-warning/15 text-warning border border-warning/30" },
 };
+
+function formatRelative(iso?: string | null): string | null {
+  if (!iso) return null;
+  const d = new Date(iso);
+  const diffMs = Date.now() - d.getTime();
+  const day = 24 * 60 * 60 * 1000;
+  const diffDays = Math.floor(diffMs / day);
+  if (diffDays <= 0) return "dziś";
+  if (diffDays === 1) return "wczoraj";
+  if (diffDays < 7) return `${diffDays} dni temu`;
+  if (diffDays < 30) return `${Math.floor(diffDays / 7)} tyg. temu`;
+  return d.toLocaleDateString("pl-PL", { day: "2-digit", month: "2-digit", year: "2-digit" });
+}
 
 export default function TaskCard({ task, onClick }: TaskCardProps) {
   const priority = task.priority as TaskPriority;
@@ -153,18 +169,29 @@ export default function TaskCard({ task, onClick }: TaskCardProps) {
             {task.subtasksDone}/{task.subtasksTotal}
           </span>
         )}
-        {(task.quoteCount ?? 0) > 0 && task.quoteStatus && (
-          <span
-            className={cn(
-              "inline-flex items-center gap-0.5 rounded px-1.5 py-0.5 text-[10px] font-medium",
-              quoteStatusBadge[task.quoteStatus]?.cls ?? "bg-secondary text-secondary-foreground"
-            )}
-            title={`Oferty: ${task.quoteCount}, ostatnia: ${task.quoteStatus}`}
-          >
-            <FileText className="h-2.5 w-2.5" />
-            {quoteStatusBadge[task.quoteStatus]?.label ?? task.quoteStatus}
-          </span>
-        )}
+        {(task.quoteCount ?? 0) > 0 && task.quoteStatus && (() => {
+          const meta = quoteStatusBadge[task.quoteStatus] ?? { label: task.quoteStatus, cls: "bg-secondary text-secondary-foreground border border-border" };
+          const rel = formatRelative(task.quoteUpdatedAt);
+          const tooltip = [
+            `Oferta: ${meta.label}`,
+            task.quoteNumber ? `Nr ${task.quoteNumber}` : null,
+            (task.quoteCount ?? 0) > 1 ? `${task.quoteCount} ofert` : null,
+            rel ? `Aktualizacja: ${rel}` : null,
+          ].filter(Boolean).join(" · ");
+          return (
+            <span
+              className={cn("inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-[10px] font-medium", meta.cls)}
+              title={tooltip}
+            >
+              <FileText className="h-2.5 w-2.5" />
+              <span>{meta.label}</span>
+              {(task.quoteCount ?? 0) > 1 && (
+                <span className="opacity-70">×{task.quoteCount}</span>
+              )}
+              {rel && <span className="opacity-70">· {rel}</span>}
+            </span>
+          );
+        })()}
         {(task.financialBalance ?? 0) !== 0 && (
           <span
             className={cn(
