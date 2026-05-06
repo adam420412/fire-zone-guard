@@ -170,6 +170,20 @@ export default function KanbanPage() {
     }
   }, [pdfDebugLayout]);
 
+  // Pobieranie KanbanPdfLayoutReport jako JSON razem z PDF
+  const [pdfDownloadLayoutJson, setPdfDownloadLayoutJson] = useState<boolean>(() => {
+    if (typeof window === "undefined") return false;
+    return window.localStorage.getItem("kanban.exportPdfLayoutJson") === "1";
+  });
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      window.localStorage.setItem(
+        "kanban.exportPdfLayoutJson",
+        pdfDownloadLayoutJson ? "1" : "0",
+      );
+    }
+  }, [pdfDownloadLayoutJson]);
+
   // Konfigurowalne odstępy pionowe w PDF (pt). Domyślnie 8 / 18.
   const PDF_SPACING_DEFAULTS = { headerToTable: 8, tableToNextHeader: 18 };
   const [pdfSpacing, setPdfSpacing] = useState<{
