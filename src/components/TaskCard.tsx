@@ -49,6 +49,7 @@ export default function TaskCard({ task, onClick }: TaskCardProps) {
   const updateTask = useUpdateTask();
   const { data: profiles } = useProfiles();
   const { toast } = useToast();
+  const navigate = useNavigate();
 
   const initials = task.assigneeName && task.assigneeName !== "Nieprzypisany"
     ? task.assigneeName.split(" ").map(n => n[0]).join("").toUpperCase().substring(0, 2)
