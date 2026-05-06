@@ -197,7 +197,8 @@ export default function TaskCard({ task, onClick }: TaskCardProps) {
           const exact = formatLocalDateTime(task.quoteUpdatedAt);
           const event = task.quoteLastEvent ? quoteEventMeta[task.quoteLastEvent] : null;
           const EventIcon = event?.Icon ?? FileText;
-          const tooltip = [
+          const activity = buildLastActivityTooltip(task as any);
+          const tooltipParts = [
             `Oferta: ${meta.label}`,
             task.quoteNumber ? `Nr ${task.quoteNumber}` : null,
             (task.quoteCount ?? 0) > 1 ? `${task.quoteCount} ofert` : null,
@@ -205,6 +206,7 @@ export default function TaskCard({ task, onClick }: TaskCardProps) {
               ? `Ostatnio: ${event.verb}${rel ? ` (${rel})` : ""}${exact ? ` — ${exact}` : ""}`
               : (rel ? `Aktualizacja: ${rel}${exact ? ` (${exact})` : ""}` : null),
           ].filter(Boolean).join(" · ");
+          const tooltip = `${tooltipParts}\n\n${activity.tooltip}`;
           // Skróty ofert w pozostałych statusach (oprócz statusu „latest”), tylko gdy >1 oferta.
           const counts = task.quoteStatusCounts ?? {};
           const latestKey = quoteStatusToCountKey(task.quoteStatus);
