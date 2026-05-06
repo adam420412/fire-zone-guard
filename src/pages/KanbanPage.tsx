@@ -175,6 +175,8 @@ export default function KanbanPage() {
       sorted.sort((a, b) => (PRIORITY_RANK[a.priority] ?? 9) - (PRIORITY_RANK[b.priority] ?? 9));
     } else if (sortMode === "title") {
       sorted.sort((a, b) => (a.title || "").localeCompare(b.title || "", "pl"));
+    } else if (sortMode === "updated") {
+      sorted.sort((a, b) => taskLastActivityMs(b) - taskLastActivityMs(a));
     } else {
       sorted.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
     }
