@@ -698,12 +698,26 @@ export default function KanbanPage() {
     const buildDoc = (grps: { label: string; tasks: any[] }[]) => {
       const doc = new jsPDF({ orientation: "landscape", unit: "pt", format: "a4" });
       const pageWidth = doc.internal.pageSize.getWidth();
+      const pageHeight = doc.internal.pageSize.getHeight();
+      const marginTop = 40;
+      const marginBottom = 30; // miejsce na stopkę z numerem strony
+      const marginLeft = 40;
+
+      // Stała stopka rysowana na każdej stronie przez autoTable
+      const drawFooter = () => {
+        const str = `Strona ${doc.getNumberOfPages()}`;
+        doc.setFontSize(8);
+        doc.setTextColor(150);
+        doc.text(str, pageWidth - 60, pageHeight - 14);
+      };
+
       doc.setFontSize(14);
-      doc.text("Fire Zone — Eksport zadań (Kanban)", 40, 36);
+      doc.setTextColor(0);
+      doc.text("Fire Zone — Eksport zadań (Kanban)", marginLeft, 36);
       doc.setFontSize(9);
       doc.setTextColor(110);
       const meta = includeExportMeta ? buildMetaLines() : [];
-      meta.forEach((line, i) => doc.text(line, 40, 54 + i * 12));
+      meta.forEach((line, i) => doc.text(line, marginLeft, 54 + i * 12));
       let cursorY = meta.length ? 54 + meta.length * 12 + 8 : 50;
 
       const columnStyles: Record<number, { cellWidth: number }> = {};
@@ -711,31 +725,67 @@ export default function KanbanPage() {
         if (c.pdfWidth) columnStyles[i] = { cellWidth: c.pdfWidth };
       });
 
+      // Wymiary nagłówka grupy (pomiar zamiast magicznych liczb)
+      const GROUP_HEADER_FONT = 11;
+      const GROUP_HEADER_HEIGHT = GROUP_HEADER_FONT * 1.25;     // ≈ wysokość linii
+      const GROUP_HEADER_GAP_BEFORE = 16;                        // odstęp od poprzedniej tabeli
+      const GROUP_HEADER_GAP_AFTER = 6;                          // odstęp przed nową tabelą
+      // Minimum, by w ogóle warto było zaczynać sekcję na bieżącej stronie:
+      // nagłówek + nagłówek tabeli (~16) + 1 wiersz (~14)
+      const MIN_SECTION_HEIGHT = GROUP_HEADER_HEIGHT + 16 + 14;
+
       grps.forEach((g, idx) => {
-        if (exportGroupBy !== "none") {
-          if (idx > 0) cursorY = (doc as any).lastAutoTable?.finalY ? (doc as any).lastAutoTable.finalY + 18 : cursorY + 18;
-          doc.setFontSize(11);
-          doc.setTextColor(40);
-          doc.text(`${groupByLabel[exportGroupBy]}: ${g.label}  (${g.tasks.length})`, 40, cursorY);
-          cursorY += 8;
+        // Po pierwszej tabeli pobierz aktualną pozycję końca
+        if (idx > 0) {
+          const lastY = (doc as any).lastAutoTable?.finalY;
+          cursorY = (typeof lastY === "number" ? lastY : cursorY) + GROUP_HEADER_GAP_BEFORE;
         }
+
+        if (exportGroupBy !== "none") {
+          // Jeśli zostało za mało miejsca na nagłówek + minimum tabeli — nowa strona
+          if (cursorY + MIN_SECTION_HEIGHT > pageHeight - marginBottom) {
+            doc.addPage();
+            drawFooter();
+            cursorY = marginTop;
+          }
+          doc.setFontSize(GROUP_HEADER_FONT);
+          doc.setTextColor(40);
+          // baseline ≈ top + height; rysujemy tekst w cursorY + height
+          const headerBaseline = cursorY + GROUP_HEADER_HEIGHT;
+          doc.text(`${groupByLabel[exportGroupBy]}: ${g.label}  (${g.tasks.length})`, marginLeft, headerBaseline);
+          cursorY = headerBaseline + GROUP_HEADER_GAP_AFTER;
+        } else {
+          // Brak grupowania — upewnij się że cursorY mieści się na stronie
+          if (cursorY + MIN_SECTION_HEIGHT > pageHeight - marginBottom) {
+            doc.addPage();
+            drawFooter();
+            cursorY = marginTop;
+          }
+        }
+
         autoTable(doc, {
           startY: cursorY,
+          margin: { top: marginTop, bottom: marginBottom, left: marginLeft, right: marginLeft },
           head: [activeColumnDefs.map((c) => c.pdfShort ?? c.label)],
-          body: g.tasks.map((t: any) => activeColumnDefs.map((c) => String(c.accessor(t) ?? ""))),
+          body: g.tasks.length
+            ? g.tasks.map((t: any) => activeColumnDefs.map((c) => String(c.accessor(t) ?? "")))
+            : [["(brak zadań w grupie)", ...activeColumnDefs.slice(1).map(() => "")]],
           styles: { fontSize: 8, cellPadding: 3, overflow: "linebreak" },
           headStyles: { fillColor: [220, 38, 38], textColor: 255 },
           alternateRowStyles: { fillColor: [248, 248, 248] },
           columnStyles,
+          // Powtarzaj nagłówek tabeli na każdej kolejnej stronie
+          showHead: "everyPage",
+          // Nie dziel pojedynczego wiersza między strony — minimalizuje wizualne nakładki
+          rowPageBreak: "avoid",
           didDrawPage: () => {
-            const str = `Strona ${doc.getNumberOfPages()}`;
-            doc.setFontSize(8);
-            doc.setTextColor(150);
-            doc.text(str, pageWidth - 60, doc.internal.pageSize.getHeight() - 14);
+            drawFooter();
           },
         });
+
         cursorY = (doc as any).lastAutoTable?.finalY ?? cursorY;
       });
+
       return doc;
     };
 
