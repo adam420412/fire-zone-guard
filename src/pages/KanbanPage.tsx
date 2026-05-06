@@ -6,16 +6,36 @@ import TaskCard from "@/components/TaskCard";
 import TaskDetailDialog from "@/components/TaskDetailDialog";
 import CreateTaskDialog from "@/components/CreateTaskDialog";
 import { cn } from "@/lib/utils";
-import { Filter, Search, Plus, Download, ArrowUpDown, LayoutGrid } from "lucide-react";
+import { Filter, Search, Plus, Download, ArrowUpDown, LayoutGrid, List as ListIcon, FileText } from "lucide-react";
 import { KanbanSkeleton } from "@/components/PageSkeleton";
 import { DragDropContext, Droppable, Draggable, DropResult } from "@hello-pangea/dnd";
 import { toast } from "sonner";
+import { formatRelative } from "@/lib/relativeTime";
 
-type SortMode = "deadline" | "priority" | "created" | "title";
+type SortMode = "deadline" | "priority" | "created" | "title" | "updated";
 type GroupMode = "none" | "building" | "assignee";
 type DueFilter = "all" | "overdue" | "today" | "week";
+type QuoteFilter = "all" | "any" | "none" | "draft" | "sent" | "accepted" | "rejected" | "expired";
+type RecencyFilter = "all" | "24h" | "7d" | "30d";
+type ViewMode = "kanban" | "list";
 
 const PRIORITY_RANK: Record<string, number> = { krytyczny: 0, wysoki: 1, "średni": 2, niski: 3 };
+
+// Skróty statusów ofert (zgodnie z TaskCard)
+const QUOTE_FILTER_LABELS: Record<Exclude<QuoteFilter, "all" | "any" | "none">, string> = {
+  draft: "Wersja robocza",
+  sent: "Wysłana",
+  accepted: "Zaakceptowana",
+  rejected: "Odrzucona",
+  expired: "Wygasła",
+};
+
+// "Ostatnia aktywność" zadania = max(created_at, quoteUpdatedAt)
+function taskLastActivityMs(t: any): number {
+  const created = t.created_at ? new Date(t.created_at).getTime() : 0;
+  const quote = t.quoteUpdatedAt ? new Date(t.quoteUpdatedAt).getTime() : 0;
+  return Math.max(created, quote);
+}
 
 export default function KanbanPage() {
   const { data: tasks, isLoading } = useTasks();
@@ -27,6 +47,9 @@ export default function KanbanPage() {
   const [groupMode, setGroupMode] = useState<GroupMode>("none");
   const [dueFilter, setDueFilter] = useState<DueFilter>("all");
   const [groupValueFilter, setGroupValueFilter] = useState<string>("all");
+  const [quoteFilter, setQuoteFilter] = useState<QuoteFilter>("all");
+  const [recencyFilter, setRecencyFilter] = useState<RecencyFilter>("all");
+  const [viewMode, setViewMode] = useState<ViewMode>("kanban");
   const [showCreate, setShowCreate] = useState(false);
   const [selectedTask, setSelectedTask] = useState<any>(null);
   
@@ -77,6 +100,29 @@ export default function KanbanPage() {
     return true;
   };
 
+  // Mapuje quoteStatus na klucz filtra (uwzględnia też wygasłą wg valid_until z agregacji).
+  const matchesQuote = useCallback((t: any): boolean => {
+    if (quoteFilter === "all") return true;
+    const counts = t.quoteStatusCounts ?? {};
+    const totalQuotes = t.quoteCount ?? 0;
+    if (quoteFilter === "any") return totalQuotes > 0;
+    if (quoteFilter === "none") return totalQuotes === 0;
+    // Konkretny status: wystarczy, że istnieje JAKAKOLWIEK oferta tego zadania w danym statusie.
+    return (counts[quoteFilter] ?? 0) > 0;
+  }, [quoteFilter]);
+
+  const matchesRecency = useCallback((t: any): boolean => {
+    if (recencyFilter === "all") return true;
+    const last = taskLastActivityMs(t);
+    if (!last) return false;
+    const ageMs = Date.now() - last;
+    const hour = 3_600_000;
+    if (recencyFilter === "24h") return ageMs <= 24 * hour;
+    if (recencyFilter === "7d") return ageMs <= 7 * 24 * hour;
+    if (recencyFilter === "30d") return ageMs <= 30 * 24 * hour;
+    return true;
+  }, [recencyFilter]);
+
   const filteredTasks = localTasks.filter((t: any) => {
     const matchesSearch =
       search === "" ||
@@ -90,7 +136,7 @@ export default function KanbanPage() {
         ? (t.buildingName || "— bez obiektu —") === groupValueFilter
         : (t.assigneeName || "— nieprzypisane —") === groupValueFilter
     );
-    return matchesSearch && matchesPriority && matchesDue && matchesGroupValue;
+    return matchesSearch && matchesPriority && matchesDue && matchesGroupValue && matchesQuote(t) && matchesRecency(t);
   });
 
   const handleExportCSV = () => {
@@ -129,6 +175,8 @@ export default function KanbanPage() {
       sorted.sort((a, b) => (PRIORITY_RANK[a.priority] ?? 9) - (PRIORITY_RANK[b.priority] ?? 9));
     } else if (sortMode === "title") {
       sorted.sort((a, b) => (a.title || "").localeCompare(b.title || "", "pl"));
+    } else if (sortMode === "updated") {
+      sorted.sort((a, b) => taskLastActivityMs(b) - taskLastActivityMs(a));
     } else {
       sorted.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
     }
@@ -218,7 +266,21 @@ export default function KanbanPage() {
             <option value="deadline">Sort: Termin</option>
             <option value="priority">Sort: Priorytet</option>
             <option value="created">Sort: Data utworzenia</option>
+            <option value="updated">Sort: Ostatnia aktywność</option>
             <option value="title">Sort: Tytuł A-Z</option>
+          </select>
+          <select
+            value={quoteFilter}
+            onChange={(e) => setQuoteFilter(e.target.value as QuoteFilter)}
+            className="rounded-md border border-border bg-card px-3 py-1.5 text-sm outline-none cursor-pointer"
+            title="Filtr po statusie oferty powiązanej z zadaniem"
+          >
+            <option value="all">Oferta: Wszystkie</option>
+            <option value="any">Oferta: Dowolna</option>
+            <option value="none">Oferta: Bez oferty</option>
+            {(Object.keys(QUOTE_FILTER_LABELS) as Array<keyof typeof QUOTE_FILTER_LABELS>).map((k) => (
+              <option key={k} value={k}>Oferta: {QUOTE_FILTER_LABELS[k]}</option>
+            ))}
           </select>
           <select
             value={groupMode}
@@ -245,6 +307,32 @@ export default function KanbanPage() {
               ))}
             </select>
           )}
+          <div className="inline-flex rounded-md border border-border bg-card overflow-hidden" role="tablist" aria-label="Widok zadań">
+            <button
+              type="button"
+              onClick={() => setViewMode("kanban")}
+              className={cn(
+                "flex items-center gap-1 px-2.5 py-1.5 text-xs font-medium transition-colors",
+                viewMode === "kanban" ? "bg-primary/15 text-primary" : "text-muted-foreground hover:bg-secondary"
+              )}
+              aria-pressed={viewMode === "kanban"}
+              title="Widok Kanban"
+            >
+              <LayoutGrid className="h-3.5 w-3.5" /> Kanban
+            </button>
+            <button
+              type="button"
+              onClick={() => setViewMode("list")}
+              className={cn(
+                "flex items-center gap-1 px-2.5 py-1.5 text-xs font-medium transition-colors border-l border-border",
+                viewMode === "list" ? "bg-primary/15 text-primary" : "text-muted-foreground hover:bg-secondary"
+              )}
+              aria-pressed={viewMode === "list"}
+              title="Widok listy"
+            >
+              <ListIcon className="h-3.5 w-3.5" /> Lista
+            </button>
+          </div>
           <button
             onClick={handleExportCSV}
             className="flex items-center gap-2 rounded-md border border-border bg-card px-3 py-1.5 text-sm font-medium hover:bg-secondary transition-colors"
@@ -313,13 +401,15 @@ export default function KanbanPage() {
             </button>
           );
         })}
-        {(dueFilter !== "all" || groupValueFilter !== "all" || filterPriority !== "all" || search) && (
+        {(dueFilter !== "all" || groupValueFilter !== "all" || filterPriority !== "all" || search || quoteFilter !== "all" || recencyFilter !== "all") && (
           <button
             onClick={() => {
               setDueFilter("all");
               setGroupValueFilter("all");
               setFilterPriority("all");
               setSearch("");
+              setQuoteFilter("all");
+              setRecencyFilter("all");
             }}
             className="ml-2 text-[11px] text-muted-foreground hover:text-foreground underline-offset-2 hover:underline"
           >
@@ -328,89 +418,238 @@ export default function KanbanPage() {
         )}
       </div>
 
-      <div className="flex-1 overflow-x-auto pb-4 select-none">
-        <DragDropContext onDragEnd={onDragEnd}>
-          <div className="flex gap-4 min-w-max h-full">
-            {kanbanStatuses.map((status) => {
-              const columnTasks = getTasksForStatus(status);
-              return (
-                <div key={status} className="flex w-72 shrink-0 flex-col rounded-xl border border-border bg-muted/20">
-                  <div className="flex items-center justify-between border-b border-border px-4 py-3 bg-card/40">
-                    <span className={cn("rounded-full px-2 py-0.5 text-[10px] font-bold uppercase", statusColors[status])}>
-                      {status}
-                    </span>
-                    <span className="text-xs font-bold text-muted-foreground/60">{columnTasks.length}</span>
-                  </div>
-                  
-                  <Droppable droppableId={status}>
-                    {(provided, snapshot) => (
-                      <div
-                        ref={provided.innerRef}
-                        {...provided.droppableProps}
-                        className={cn(
-                          "flex-1 space-y-3 overflow-y-auto p-3 scrollbar-thin min-h-[150px] max-h-[calc(100vh-250px)] transition-colors duration-200",
-                          snapshot.isDraggingOver && "bg-secondary/30"
-                        )}
-                      >
-                        {(() => {
-                          const groups = groupTasks(columnTasks);
-                          const nodes: JSX.Element[] = [];
-                          let runningIndex = 0;
-                          groups.forEach((group) => {
-                            if (groupMode !== "none") {
-                              nodes.push(
-                                <div
-                                  key={`hdr-${group.key}`}
-                                  className="sticky top-0 z-10 flex items-center justify-between bg-card/80 backdrop-blur px-2 py-1 rounded text-[10px] font-bold uppercase tracking-wider text-muted-foreground border-b border-border"
-                                >
-                                  <span className="truncate">{group.label}</span>
-                                  <span className="ml-2 shrink-0">{group.tasks.length}</span>
-                                </div>
-                              );
-                            }
-                            group.tasks.forEach((task: any) => {
-                              const realIndex = runningIndex++;
-                              nodes.push(
-                                <Draggable key={task.id} draggableId={task.id} index={realIndex}>
-                                  {(provided, snapshot) => (
-                                    <div
-                                      ref={provided.innerRef}
-                                      {...provided.draggableProps}
-                                      {...provided.dragHandleProps}
-                                      className={cn(
-                                        "transition-transform",
-                                        snapshot.isDragging && "opacity-90 shadow-2xl scale-105 z-50 ring-2 ring-primary/50"
-                                      )}
-                                      style={{ ...provided.draggableProps.style }}
-                                    >
-                                      <TaskCard task={task} onClick={() => setSelectedTask(task)} />
-                                    </div>
-                                  )}
-                                </Draggable>
-                              );
-                            });
-                          });
-                          return nodes;
-                        })()}
-                        {provided.placeholder}
-                        {columnTasks.length === 0 && !snapshot.isDraggingOver && (
-                          <div className="flex flex-col items-center justify-center py-10 opacity-30 text-center">
-                            <Filter className="h-8 w-8 mb-2" />
-                            <p className="text-[11px] font-medium">Brak zadań</p>
-                          </div>
-                        )}
-                      </div>
-                    )}
-                  </Droppable>
-                </div>
-              );
-            })}
-          </div>
-        </DragDropContext>
+      {/* Quick recency (last activity) chips */}
+      <div className="mb-4 flex items-center gap-2 flex-wrap">
+        <span className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground mr-1">
+          Aktywność:
+        </span>
+        {([
+          { key: "all", label: "Wszystkie" },
+          { key: "24h", label: "Ostatnie 24h" },
+          { key: "7d",  label: "Ostatnie 7 dni" },
+          { key: "30d", label: "Ostatnie 30 dni" },
+        ] as { key: RecencyFilter; label: string }[]).map((opt) => {
+          const active = recencyFilter === opt.key;
+          const count = (() => {
+            if (opt.key === "all") return localTasks.length;
+            const hour = 3_600_000;
+            const limit = opt.key === "24h" ? 24 * hour : opt.key === "7d" ? 7 * 24 * hour : 30 * 24 * hour;
+            return localTasks.filter((t: any) => {
+              const last = taskLastActivityMs(t);
+              return last && (Date.now() - last) <= limit;
+            }).length;
+          })();
+          return (
+            <button
+              key={opt.key}
+              onClick={() => setRecencyFilter(opt.key)}
+              className={cn(
+                "inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-[11px] font-medium transition-colors",
+                active
+                  ? "border-primary/50 bg-primary/15 text-primary"
+                  : "border-border bg-card hover:bg-secondary text-muted-foreground"
+              )}
+              title="Ostatnia aktywność = nowsze z: data utworzenia / aktualizacja oferty"
+            >
+              {opt.label}
+              <span className={cn(
+                "rounded-full px-1.5 py-0.5 text-[10px]",
+                active ? "bg-background/40" : "bg-muted/60"
+              )}>
+                {count}
+              </span>
+            </button>
+          );
+        })}
       </div>
+
+      {viewMode === "kanban" ? (
+        <div className="flex-1 overflow-x-auto pb-4 select-none">
+          <DragDropContext onDragEnd={onDragEnd}>
+            <div className="flex gap-4 min-w-max h-full">
+              {kanbanStatuses.map((status) => {
+                const columnTasks = getTasksForStatus(status);
+                return (
+                  <div key={status} className="flex w-72 shrink-0 flex-col rounded-xl border border-border bg-muted/20">
+                    <div className="flex items-center justify-between border-b border-border px-4 py-3 bg-card/40">
+                      <span className={cn("rounded-full px-2 py-0.5 text-[10px] font-bold uppercase", statusColors[status])}>
+                        {status}
+                      </span>
+                      <span className="text-xs font-bold text-muted-foreground/60">{columnTasks.length}</span>
+                    </div>
+
+                    <Droppable droppableId={status}>
+                      {(provided, snapshot) => (
+                        <div
+                          ref={provided.innerRef}
+                          {...provided.droppableProps}
+                          className={cn(
+                            "flex-1 space-y-3 overflow-y-auto p-3 scrollbar-thin min-h-[150px] max-h-[calc(100vh-250px)] transition-colors duration-200",
+                            snapshot.isDraggingOver && "bg-secondary/30"
+                          )}
+                        >
+                          {(() => {
+                            const groups = groupTasks(columnTasks);
+                            const nodes: JSX.Element[] = [];
+                            let runningIndex = 0;
+                            groups.forEach((group) => {
+                              if (groupMode !== "none") {
+                                nodes.push(
+                                  <div
+                                    key={`hdr-${group.key}`}
+                                    className="sticky top-0 z-10 flex items-center justify-between bg-card/80 backdrop-blur px-2 py-1 rounded text-[10px] font-bold uppercase tracking-wider text-muted-foreground border-b border-border"
+                                  >
+                                    <span className="truncate">{group.label}</span>
+                                    <span className="ml-2 shrink-0">{group.tasks.length}</span>
+                                  </div>
+                                );
+                              }
+                              group.tasks.forEach((task: any) => {
+                                const realIndex = runningIndex++;
+                                nodes.push(
+                                  <Draggable key={task.id} draggableId={task.id} index={realIndex}>
+                                    {(provided, snapshot) => (
+                                      <div
+                                        ref={provided.innerRef}
+                                        {...provided.draggableProps}
+                                        {...provided.dragHandleProps}
+                                        className={cn(
+                                          "transition-transform",
+                                          snapshot.isDragging && "opacity-90 shadow-2xl scale-105 z-50 ring-2 ring-primary/50"
+                                        )}
+                                        style={{ ...provided.draggableProps.style }}
+                                      >
+                                        <TaskCard task={task} onClick={() => setSelectedTask(task)} />
+                                      </div>
+                                    )}
+                                  </Draggable>
+                                );
+                              });
+                            });
+                            return nodes;
+                          })()}
+                          {provided.placeholder}
+                          {columnTasks.length === 0 && !snapshot.isDraggingOver && (
+                            <div className="flex flex-col items-center justify-center py-10 opacity-30 text-center">
+                              <Filter className="h-8 w-8 mb-2" />
+                              <p className="text-[11px] font-medium">Brak zadań</p>
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </Droppable>
+                  </div>
+                );
+              })}
+            </div>
+          </DragDropContext>
+        </div>
+      ) : (
+        <TaskListView
+          tasks={sortTasks(filteredTasks)}
+          onSelect={setSelectedTask}
+        />
+      )}
 
       <CreateTaskDialog open={showCreate} onOpenChange={setShowCreate} />
       <TaskDetailDialog task={selectedTask} open={!!selectedTask} onOpenChange={(o) => !o && setSelectedTask(null)} />
+    </div>
+  );
+}
+
+// ---------- LIST VIEW ----------
+const QUOTE_BADGE_CLS: Record<string, string> = {
+  "wersja robocza": "bg-muted text-muted-foreground border-border",
+  "wysłana":        "bg-blue-500/15 text-blue-400 border-blue-500/30",
+  "wyslana":        "bg-blue-500/15 text-blue-400 border-blue-500/30",
+  "zaakceptowana":  "bg-success/15 text-success border-success/30",
+  "odrzucona":      "bg-destructive/15 text-destructive border-destructive/30",
+  "wygasła":        "bg-warning/15 text-warning border-warning/30",
+  "wygasla":        "bg-warning/15 text-warning border-warning/30",
+};
+
+function TaskListView({ tasks, onSelect }: { tasks: any[]; onSelect: (t: any) => void }) {
+  if (tasks.length === 0) {
+    return (
+      <div className="flex-1 flex flex-col items-center justify-center py-20 text-muted-foreground opacity-60">
+        <Filter className="h-10 w-10 mb-3" />
+        <p className="text-sm font-medium">Brak zadań spełniających filtry</p>
+      </div>
+    );
+  }
+  return (
+    <div className="flex-1 overflow-auto pb-4 rounded-xl border border-border bg-card/40">
+      <table className="w-full text-sm">
+        <thead className="sticky top-0 bg-card/95 backdrop-blur z-10 border-b border-border">
+          <tr className="text-left text-[11px] uppercase tracking-wider text-muted-foreground">
+            <th className="px-3 py-2 font-semibold">Zadanie</th>
+            <th className="px-3 py-2 font-semibold hidden md:table-cell">Obiekt / Firma</th>
+            <th className="px-3 py-2 font-semibold">Status</th>
+            <th className="px-3 py-2 font-semibold hidden sm:table-cell">Priorytet</th>
+            <th className="px-3 py-2 font-semibold hidden md:table-cell">Wykonawca</th>
+            <th className="px-3 py-2 font-semibold hidden lg:table-cell">Termin</th>
+            <th className="px-3 py-2 font-semibold">Oferta</th>
+            <th className="px-3 py-2 font-semibold hidden md:table-cell">Aktywność</th>
+          </tr>
+        </thead>
+        <tbody>
+          {tasks.map((t) => {
+            const lastMs = taskLastActivityMs(t);
+            const lastIso = lastMs ? new Date(lastMs).toISOString() : null;
+            const lastRel = formatRelative(lastIso);
+            const quoteCls = t.quoteStatus ? (QUOTE_BADGE_CLS[String(t.quoteStatus).toLowerCase()] ?? "bg-secondary text-secondary-foreground border-border") : "";
+            return (
+              <tr
+                key={t.id}
+                onClick={() => onSelect(t)}
+                className={cn(
+                  "border-b border-border/60 hover:bg-secondary/40 cursor-pointer transition-colors",
+                  t.isOverdue && "bg-critical/5"
+                )}
+              >
+                <td className="px-3 py-2.5 max-w-[360px]">
+                  <div className="font-medium text-foreground line-clamp-1">{t.title}</div>
+                  <div className="text-[10px] font-mono text-muted-foreground">{t.id.slice(0, 8)}</div>
+                </td>
+                <td className="px-3 py-2.5 hidden md:table-cell text-muted-foreground">
+                  <div className="line-clamp-1">{t.buildingName || "—"}</div>
+                  {t.companyName && <div className="text-[11px] opacity-70 line-clamp-1">{t.companyName}</div>}
+                </td>
+                <td className="px-3 py-2.5">
+                  <span className={cn("rounded-full px-2 py-0.5 text-[10px] font-bold uppercase", statusColors[t.status as TaskStatus])}>
+                    {t.status}
+                  </span>
+                </td>
+                <td className="px-3 py-2.5 hidden sm:table-cell">
+                  <span className="text-xs capitalize">{t.priority}</span>
+                </td>
+                <td className="px-3 py-2.5 hidden md:table-cell text-muted-foreground text-xs line-clamp-1">
+                  {t.assigneeName}
+                </td>
+                <td className="px-3 py-2.5 hidden lg:table-cell text-xs">
+                  {t.deadline ? (
+                    <span className={cn(t.isOverdue && "text-critical font-semibold")}>
+                      {new Date(t.deadline).toLocaleDateString("pl-PL")}
+                    </span>
+                  ) : <span className="text-muted-foreground">—</span>}
+                </td>
+                <td className="px-3 py-2.5">
+                  {(t.quoteCount ?? 0) > 0 && t.quoteStatus ? (
+                    <span className={cn("inline-flex items-center gap-1 rounded border px-1.5 py-0.5 text-[10px] font-medium", quoteCls)}>
+                      <FileText className="h-2.5 w-2.5" />
+                      <span className="capitalize">{t.quoteStatus}</span>
+                      {(t.quoteCount ?? 0) > 1 && <span className="opacity-70">×{t.quoteCount}</span>}
+                    </span>
+                  ) : <span className="text-muted-foreground text-xs">—</span>}
+                </td>
+                <td className="px-3 py-2.5 hidden md:table-cell text-xs text-muted-foreground">
+                  {lastRel ?? "—"}
+                </td>
+              </tr>
+            );
+          })}
+        </tbody>
+      </table>
     </div>
   );
 }
