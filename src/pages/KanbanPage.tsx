@@ -6,7 +6,10 @@ import TaskCard from "@/components/TaskCard";
 import TaskDetailDialog from "@/components/TaskDetailDialog";
 import CreateTaskDialog from "@/components/CreateTaskDialog";
 import { cn } from "@/lib/utils";
-import { Filter, Search, Plus, Download, ArrowUpDown, LayoutGrid, List as ListIcon, FileText } from "lucide-react";
+import { Filter, Search, Plus, Download, ArrowUpDown, LayoutGrid, List as ListIcon, FileText, Settings2 } from "lucide-react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Button } from "@/components/ui/button";
 import { KanbanSkeleton } from "@/components/PageSkeleton";
 import { DragDropContext, Droppable, Draggable, DropResult } from "@hello-pangea/dnd";
 import { toast } from "sonner";
@@ -57,6 +60,80 @@ function taskLastActivityMs(t: any): number {
   return Math.max(created, quote);
 }
 
+// ===== Definicja kolumn eksportu =====
+type ExportColumnGroup = "basic" | "quote" | "activity";
+type ExportColumnKey =
+  | "id" | "title" | "building" | "company" | "assignee"
+  | "priority" | "status" | "type" | "deadline"
+  | "quoteStatus" | "quoteCount" | "quoteNumber" | "quoteBreakdown"
+  | "createdAt" | "quoteUpdatedAt" | "lastActivity" | "lastActivitySource";
+
+interface ExportColumnDef {
+  key: ExportColumnKey;
+  label: string;
+  group: ExportColumnGroup;
+  pdfShort?: string;
+  pdfWidth?: number;
+  xlsxWidth?: number;
+  accessor: (t: any) => string | number;
+}
+
+function fmtDate(v: any): string {
+  if (!v) return "";
+  const d = new Date(v);
+  return isNaN(d.getTime()) ? "" : d.toLocaleDateString("pl-PL");
+}
+function fmtDateTime(v: any): string {
+  if (!v) return "";
+  const d = new Date(v);
+  return isNaN(d.getTime()) ? "" : d.toLocaleString("pl-PL");
+}
+
+const EXPORT_COLUMNS: ExportColumnDef[] = [
+  { key: "id",          label: "ID",                  group: "basic", pdfShort: "ID",     pdfWidth: 50,  xlsxWidth: 10, accessor: (t) => String(t.id ?? "").slice(0, 8) },
+  { key: "title",       label: "Tytuł",               group: "basic", pdfShort: "Tytuł",  pdfWidth: 170, xlsxWidth: 38, accessor: (t) => t.title ?? "" },
+  { key: "building",    label: "Obiekt",              group: "basic", pdfShort: "Obiekt", pdfWidth: 100, xlsxWidth: 22, accessor: (t) => t.buildingName ?? "" },
+  { key: "company",     label: "Firma",               group: "basic", pdfShort: "Firma",  pdfWidth: 90,  xlsxWidth: 22, accessor: (t) => t.companyName ?? "" },
+  { key: "assignee",    label: "Przypisany",          group: "basic", pdfShort: "Wyk.",   pdfWidth: 80,  xlsxWidth: 18, accessor: (t) => t.assigneeName ?? "" },
+  { key: "priority",    label: "Priorytet",           group: "basic", pdfShort: "Pr.",    pdfWidth: 45,  xlsxWidth: 10, accessor: (t) => t.priority ?? "" },
+  { key: "status",      label: "Status",              group: "basic", pdfShort: "Status", pdfWidth: 65,  xlsxWidth: 14, accessor: (t) => t.status ?? "" },
+  { key: "type",        label: "Typ",                 group: "basic", pdfShort: "Typ",    pdfWidth: 55,  xlsxWidth: 12, accessor: (t) => t.type ?? "" },
+  { key: "deadline",    label: "Deadline",            group: "basic", pdfShort: "Termin", pdfWidth: 60,  xlsxWidth: 14, accessor: (t) => fmtDate(t.deadline) },
+
+  { key: "quoteStatus",    label: "Oferta — status",     group: "quote", pdfShort: "Oferta", pdfWidth: 70, xlsxWidth: 16, accessor: (t) => t.quoteStatus ?? "" },
+  { key: "quoteCount",     label: "Oferta — liczba",     group: "quote", pdfShort: "#Of.",   pdfWidth: 35, xlsxWidth: 8,  accessor: (t) => t.quoteCount ?? 0 },
+  { key: "quoteNumber",    label: "Oferta — numer",      group: "quote", pdfShort: "Nr of.", pdfWidth: 65, xlsxWidth: 16, accessor: (t) => t.quoteNumber ?? "" },
+  { key: "quoteBreakdown", label: "Oferta — breakdown",  group: "quote", pdfShort: "Of. breakdown", pdfWidth: 90, xlsxWidth: 24, accessor: (t) => {
+      const c = t.quoteStatusCounts ?? {};
+      const entries = Object.entries(c).filter(([, v]) => (v as number) > 0);
+      return entries.map(([k, v]) => `${k}:${v}`).join(", ");
+    } },
+
+  { key: "createdAt",          label: "Utworzono",                group: "activity", pdfShort: "Utw.",   pdfWidth: 80, xlsxWidth: 20, accessor: (t) => fmtDateTime(t.created_at) },
+  { key: "quoteUpdatedAt",     label: "Oferta zaktualizowana",    group: "activity", pdfShort: "Of. akt.", pdfWidth: 80, xlsxWidth: 20, accessor: (t) => fmtDateTime(t.quoteUpdatedAt) },
+  { key: "lastActivity",       label: "Ostatnia aktywność",       group: "activity", pdfShort: "Akt.",   pdfWidth: 80, xlsxWidth: 22, accessor: (t) => {
+      const ms = taskLastActivityMs(t);
+      return ms ? new Date(ms).toLocaleString("pl-PL") : "";
+    } },
+  { key: "lastActivitySource", label: "Źródło aktywności",        group: "activity", pdfShort: "Akt. źr.", pdfWidth: 55, xlsxWidth: 14, accessor: (t) => {
+      const c = t.created_at ? new Date(t.created_at).getTime() : 0;
+      const q = t.quoteUpdatedAt ? new Date(t.quoteUpdatedAt).getTime() : 0;
+      if (!c && !q) return "";
+      return q > c ? "oferta" : "utworzenie";
+    } },
+];
+
+const EXPORT_COLUMN_GROUPS: { key: ExportColumnGroup; label: string }[] = [
+  { key: "basic",    label: "Podstawowe" },
+  { key: "quote",    label: "Oferty" },
+  { key: "activity", label: "Aktywność" },
+];
+
+const DEFAULT_EXPORT_COLUMNS: ExportColumnKey[] = [
+  "id", "title", "building", "company", "assignee", "priority", "status", "type",
+  "deadline", "quoteStatus", "quoteCount", "lastActivity",
+];
+
 export default function KanbanPage() {
   const { data: tasks, isLoading } = useTasks();
   const { mutate: updateTask } = useUpdateTask();
@@ -79,6 +156,37 @@ export default function KanbanPage() {
       window.localStorage.setItem("kanban.exportIncludeMeta", includeExportMeta ? "1" : "0");
     }
   }, [includeExportMeta]);
+
+  // Wybór kolumn eksportu (CSV/XLSX/PDF)
+  const [exportColumns, setExportColumns] = useState<ExportColumnKey[]>(() => {
+    if (typeof window === "undefined") return DEFAULT_EXPORT_COLUMNS;
+    try {
+      const raw = window.localStorage.getItem("kanban.exportColumns");
+      if (!raw) return DEFAULT_EXPORT_COLUMNS;
+      const parsed = JSON.parse(raw);
+      if (!Array.isArray(parsed)) return DEFAULT_EXPORT_COLUMNS;
+      const valid = parsed.filter((k: any): k is ExportColumnKey =>
+        EXPORT_COLUMNS.some((c) => c.key === k)
+      );
+      return valid.length ? valid : DEFAULT_EXPORT_COLUMNS;
+    } catch {
+      return DEFAULT_EXPORT_COLUMNS;
+    }
+  });
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      window.localStorage.setItem("kanban.exportColumns", JSON.stringify(exportColumns));
+    }
+  }, [exportColumns]);
+  const [columnsDialogOpen, setColumnsDialogOpen] = useState(false);
+
+  // Aktywne definicje kolumn w kolejności wyboru
+  const activeColumnDefs = useMemo(
+    () => exportColumns
+      .map((k) => EXPORT_COLUMNS.find((c) => c.key === k))
+      .filter((c): c is ExportColumnDef => !!c),
+    [exportColumns]
+  );
   const [showCreate, setShowCreate] = useState(false);
   const [selectedTask, setSelectedTask] = useState<any>(null);
   
@@ -257,29 +365,13 @@ export default function KanbanPage() {
     };
   }, [search, filterPriority, dueFilter, quoteFilter, recencyFilter, groupMode, groupValueFilter, sortMode]);
 
-  // Wiersze do eksportu — uwzględniają filtry I sortowanie (te same co w widoku listy).
-  const exportRows = useMemo(() => {
-    return sortTasks(filteredTasks).map((t: any) => ({
-      id: t.id.slice(0, 8),
-      title: t.title || "",
-      building: t.buildingName || "",
-      company: t.companyName || "",
-      assignee: t.assigneeName || "",
-      priority: t.priority || "",
-      status: t.status || "",
-      type: t.type || "",
-      deadline: t.deadline ? new Date(t.deadline).toLocaleDateString("pl-PL") : "",
-      quoteStatus: t.quoteStatus || "",
-      quoteCount: t.quoteCount ?? 0,
-      lastActivity: (() => {
-        const ms = Math.max(
-          t.created_at ? new Date(t.created_at).getTime() : 0,
-          t.quoteUpdatedAt ? new Date(t.quoteUpdatedAt).getTime() : 0
-        );
-        return ms ? new Date(ms).toLocaleString("pl-PL") : "";
-      })(),
-    }));
-  }, [filteredTasks, sortTasks]);
+  // Posortowane + przefiltrowane zadania (te same co w widoku listy) — źródło dla eksportów.
+  const sortedFilteredTasks = useMemo(
+    () => sortTasks(filteredTasks),
+    [filteredTasks, sortTasks]
+  );
+
+  const exportRowCount = sortedFilteredTasks.length;
 
   const exportFileBase = useMemo(() => {
     const date = new Date().toISOString().split("T")[0];
@@ -287,24 +379,27 @@ export default function KanbanPage() {
   }, [exportContext.slug]);
 
   const handleExportCSV = () => {
-    const headers = [
-      "ID", "Tytuł", "Obiekt", "Firma", "Przypisany", "Priorytet", "Status", "Typ",
-      "Deadline", "Oferta — status", "Oferta — liczba", "Ostatnia aktywność",
-    ];
+    if (!activeColumnDefs.length) {
+      toast.error("Wybierz przynajmniej jedną kolumnę do eksportu");
+      return;
+    }
+    const headers = activeColumnDefs.map((c) => c.label);
     const escape = (v: any) => `"${String(v ?? "").replace(/"/g, '""')}"`;
     const meta = includeExportMeta
       ? [
           `# Eksport: ${new Date().toLocaleString("pl-PL")}`,
           `# Sort: ${exportContext.sortLabel}`,
           `# Filtry: ${exportContext.filters.map(f => `${f.label}=${f.value}`).join(" | ") || "—"}`,
-          `# Liczba zadań: ${exportRows.length}`,
+          `# Liczba zadań: ${exportRowCount}`,
+          `# Kolumny: ${activeColumnDefs.map(c => c.label).join(", ")}`,
         ].join("\n") + "\n"
       : "";
     const body = [headers.map(escape).join(";")]
-      .concat(exportRows.map(r => [
-        r.id, r.title, r.building, r.company, r.assignee, r.priority, r.status, r.type,
-        r.deadline, r.quoteStatus, r.quoteCount, r.lastActivity,
-      ].map(escape).join(";")))
+      .concat(
+        sortedFilteredTasks.map((t: any) =>
+          activeColumnDefs.map((c) => escape(c.accessor(t))).join(";")
+        )
+      )
       .join("\n");
     const csvContent = `${meta}${body}`;
     const blob = new Blob(["\ufeff" + csvContent], { type: "text/csv;charset=utf-8" });
@@ -319,38 +414,38 @@ export default function KanbanPage() {
   };
 
   const handleExportXLSX = async () => {
+    if (!activeColumnDefs.length) {
+      toast.error("Wybierz przynajmniej jedną kolumnę do eksportu");
+      return;
+    }
     const XLSX = await import("xlsx");
-    const headers = [
-      "ID", "Tytuł", "Obiekt", "Firma", "Przypisany", "Priorytet", "Status", "Typ",
-      "Deadline", "Oferta — status", "Oferta — liczba", "Ostatnia aktywność",
-    ];
+    const headers = activeColumnDefs.map((c) => c.label);
     const metaRows: any[][] = includeExportMeta
       ? [
           [`Eksport: ${new Date().toLocaleString("pl-PL")}`],
           [`Sortowanie: ${exportContext.sortLabel}`],
           [`Filtry: ${exportContext.filters.map(f => `${f.label}=${f.value}`).join(" | ") || "—"}`],
-          [`Liczba zadań: ${exportRows.length}`],
+          [`Liczba zadań: ${exportRowCount}`],
+          [`Kolumny: ${activeColumnDefs.map(c => c.label).join(", ")}`],
           [],
         ]
       : [];
-    const dataRows = exportRows.map(r => [
-      r.id, r.title, r.building, r.company, r.assignee, r.priority, r.status, r.type,
-      r.deadline, r.quoteStatus, r.quoteCount, r.lastActivity,
-    ]);
+    const dataRows = sortedFilteredTasks.map((t: any) =>
+      activeColumnDefs.map((c) => c.accessor(t))
+    );
     const aoa = [...metaRows, headers, ...dataRows];
     const ws = XLSX.utils.aoa_to_sheet(aoa);
-    // Szerokości kolumn
-    ws["!cols"] = [
-      { wch: 10 }, { wch: 38 }, { wch: 22 }, { wch: 22 }, { wch: 18 },
-      { wch: 10 }, { wch: 14 }, { wch: 12 }, { wch: 14 }, { wch: 16 },
-      { wch: 8 }, { wch: 22 },
-    ];
+    ws["!cols"] = activeColumnDefs.map((c) => ({ wch: c.xlsxWidth ?? 16 }));
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, "Zadania");
     XLSX.writeFile(wb, `${exportFileBase}.xlsx`);
   };
 
   const handleExportPDF = async () => {
+    if (!activeColumnDefs.length) {
+      toast.error("Wybierz przynajmniej jedną kolumnę do eksportu");
+      return;
+    }
     const [{ default: jsPDF }, autoTableMod] = await Promise.all([
       import("jspdf"),
       import("jspdf-autotable"),
@@ -369,45 +464,27 @@ export default function KanbanPage() {
           `Wygenerowano: ${new Date().toLocaleString("pl-PL")}`,
           `Sortowanie: ${exportContext.sortLabel}`,
           `Filtry: ${exportContext.filters.map(f => `${f.label}=${f.value}`).join("  |  ") || "—"}`,
-          `Liczba zadań: ${exportRows.length}`,
+          `Liczba zadań: ${exportRowCount}`,
         ]
       : [];
     metaLines.forEach((line, i) => doc.text(line, 40, 54 + i * 12));
 
+    const columnStyles: Record<number, { cellWidth: number }> = {};
+    activeColumnDefs.forEach((c, i) => {
+      if (c.pdfWidth) columnStyles[i] = { cellWidth: c.pdfWidth };
+    });
+
     autoTable(doc, {
       startY: metaLines.length ? 54 + metaLines.length * 12 + 8 : 50,
-      head: [[
-        "ID", "Tytuł", "Obiekt / Firma", "Wykonawca",
-        "Pr.", "Status", "Termin", "Oferta", "Akt.",
-      ]],
-      body: exportRows.map(r => [
-        r.id,
-        r.title,
-        r.building + (r.company ? `\n${r.company}` : ""),
-        r.assignee,
-        r.priority,
-        r.status,
-        r.deadline,
-        r.quoteStatus
-          ? `${r.quoteStatus}${r.quoteCount > 1 ? ` ×${r.quoteCount}` : ""}`
-          : (r.quoteCount ? `×${r.quoteCount}` : "—"),
-        r.lastActivity,
-      ]),
+      head: [activeColumnDefs.map((c) => c.pdfShort ?? c.label)],
+      body: sortedFilteredTasks.map((t: any) =>
+        activeColumnDefs.map((c) => String(c.accessor(t) ?? ""))
+      ),
       styles: { fontSize: 8, cellPadding: 3, overflow: "linebreak" },
       headStyles: { fillColor: [220, 38, 38], textColor: 255 },
       alternateRowStyles: { fillColor: [248, 248, 248] },
-      columnStyles: {
-        0: { cellWidth: 50 },
-        1: { cellWidth: 180 },
-        2: { cellWidth: 140 },
-        3: { cellWidth: 80 },
-        4: { cellWidth: 45 },
-        5: { cellWidth: 70 },
-        6: { cellWidth: 60 },
-        7: { cellWidth: 80 },
-        8: { cellWidth: 90 },
-      },
-      didDrawPage: (data: any) => {
+      columnStyles,
+      didDrawPage: () => {
         const str = `Strona ${doc.getNumberOfPages()}`;
         doc.setFontSize(8);
         doc.setTextColor(150);
@@ -416,6 +493,17 @@ export default function KanbanPage() {
     });
 
     doc.save(`${exportFileBase}.pdf`);
+  };
+
+  // Toggle pojedynczej kolumny (zachowuje kolejność z EXPORT_COLUMNS)
+  const toggleExportColumn = (key: ExportColumnKey) => {
+    setExportColumns((prev) => {
+      const has = prev.includes(key);
+      if (has) return prev.filter((k) => k !== key);
+      // Zachowaj kolejność wg EXPORT_COLUMNS
+      const next = [...prev, key];
+      return EXPORT_COLUMNS.map((c) => c.key).filter((k) => next.includes(k));
+    });
   };
 
 
@@ -576,13 +664,13 @@ export default function KanbanPage() {
             <DropdownMenuTrigger asChild>
               <button
                 className="flex items-center gap-2 rounded-md border border-border bg-card px-3 py-1.5 text-sm font-medium hover:bg-secondary transition-colors"
-                title={`Eksport ${exportRows.length} zadań · sort: ${exportContext.sortLabel}`}
+                title={`Eksport ${exportRowCount} zadań · ${activeColumnDefs.length} kolumn · sort: ${exportContext.sortLabel}`}
               >
                 <Download className="h-4 w-4" />
-                Eksportuj ({exportRows.length})
+                Eksportuj ({exportRowCount})
               </button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-56">
+            <DropdownMenuContent align="end" className="w-64">
               <DropdownMenuLabel className="text-[10px] uppercase">Z aktualnymi filtrami</DropdownMenuLabel>
               <DropdownMenuItem onClick={handleExportCSV}>
                 <FileText className="h-3.5 w-3.5 mr-2" /> CSV (.csv)
@@ -594,6 +682,10 @@ export default function KanbanPage() {
                 <FileText className="h-3.5 w-3.5 mr-2" /> PDF (.pdf)
               </DropdownMenuItem>
               <DropdownMenuSeparator />
+              <DropdownMenuItem onSelect={(e) => { e.preventDefault(); setColumnsDialogOpen(true); }}>
+                <Settings2 className="h-3.5 w-3.5 mr-2" />
+                Wybierz kolumny ({activeColumnDefs.length}/{EXPORT_COLUMNS.length})
+              </DropdownMenuItem>
               <DropdownMenuCheckboxItem
                 checked={includeExportMeta}
                 onCheckedChange={(v) => setIncludeExportMeta(!!v)}
@@ -816,6 +908,99 @@ export default function KanbanPage() {
 
       <CreateTaskDialog open={showCreate} onOpenChange={setShowCreate} />
       <TaskDetailDialog task={selectedTask} open={!!selectedTask} onOpenChange={(o) => !o && setSelectedTask(null)} />
+
+      <Dialog open={columnsDialogOpen} onOpenChange={setColumnsDialogOpen}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Kolumny eksportu</DialogTitle>
+            <DialogDescription>
+              Wybierz pola, które mają znaleźć się w plikach CSV, Excel i PDF.
+              Wybór jest zapamiętywany lokalnie.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="max-h-[60vh] overflow-y-auto space-y-4 py-2">
+            {EXPORT_COLUMN_GROUPS.map((g) => {
+              const cols = EXPORT_COLUMNS.filter((c) => c.group === g.key);
+              const allChecked = cols.every((c) => exportColumns.includes(c.key));
+              const someChecked = cols.some((c) => exportColumns.includes(c.key));
+              return (
+                <div key={g.key} className="space-y-2">
+                  <div className="flex items-center justify-between border-b border-border pb-1">
+                    <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                      {g.label}
+                    </span>
+                    <button
+                      type="button"
+                      className="text-[11px] text-primary hover:underline"
+                      onClick={() => {
+                        setExportColumns((prev) => {
+                          const keys = cols.map((c) => c.key);
+                          const next = allChecked
+                            ? prev.filter((k) => !keys.includes(k))
+                            : Array.from(new Set([...prev, ...keys]));
+                          return EXPORT_COLUMNS.map((c) => c.key).filter((k) => next.includes(k));
+                        });
+                      }}
+                    >
+                      {allChecked ? "Odznacz grupę" : someChecked ? "Zaznacz wszystkie" : "Zaznacz grupę"}
+                    </button>
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                    {cols.map((c) => {
+                      const checked = exportColumns.includes(c.key);
+                      return (
+                        <label
+                          key={c.key}
+                          className="flex items-center gap-2 text-sm cursor-pointer rounded px-2 py-1.5 hover:bg-secondary/60"
+                        >
+                          <Checkbox
+                            checked={checked}
+                            onCheckedChange={() => toggleExportColumn(c.key)}
+                          />
+                          <span>{c.label}</span>
+                        </label>
+                      );
+                    })}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+
+          <DialogFooter className="flex flex-col sm:flex-row sm:justify-between gap-2">
+            <div className="flex gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => setExportColumns(DEFAULT_EXPORT_COLUMNS)}
+              >
+                Domyślne
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => setExportColumns(EXPORT_COLUMNS.map((c) => c.key))}
+              >
+                Wszystkie
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => setExportColumns([])}
+              >
+                Żadne
+              </Button>
+            </div>
+            <Button type="button" onClick={() => setColumnsDialogOpen(false)}>
+              Gotowe ({activeColumnDefs.length})
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
