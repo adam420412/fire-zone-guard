@@ -193,7 +193,7 @@ export function buildKanbanPdf(
       body: g.tasks.length
         ? g.tasks.map((t: any) => columns.map((c) => String(c.accessor(t) ?? "")))
         : [["(brak zadań w grupie)", ...columns.slice(1).map(() => "")]],
-      styles: { fontSize: 8, cellPadding: 3, overflow: "linebreak" },
+      styles: { fontSize: TABLE_FONT_SIZE, cellPadding: TABLE_CELL_PADDING, overflow: "linebreak" },
       headStyles: { fillColor: [220, 38, 38], textColor: 255 },
       alternateRowStyles: { fillColor: [248, 248, 248] },
       columnStyles,
