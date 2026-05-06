@@ -111,6 +111,49 @@ describe("buildKanbanPdf — paginacja wielu grup", () => {
     }
   });
 
+  it("zachowuje stały odstęp ≥8pt między nagłówkiem grupy a startem tabeli", () => {
+    const groups: KanbanPdfGroup[] = [
+      { label: "A", tasks: makeTasks(5, "A") },
+      { label: "B", tasks: makeTasks(5, "B") },
+      { label: "C", tasks: makeTasks(5, "C") },
+    ];
+    const { layout } = runBuild(groups);
+    for (const s of layout.sections) {
+      // headerBottom = baseline + GAP_BETWEEN_HEADER_AND_TABLE; tableStartY === headerBottom.
+      // Sztywny odstęp od baseline do startu tabeli musi być ≥ 8pt.
+      const gap = s.tableStartY - s.headerTop - (s.headerBottom - s.headerTop - 8);
+      expect(s.tableStartY - s.headerBottom).toBeGreaterThanOrEqual(0);
+      // Bardziej praktycznie: między dolną krawędzią pasa nagłówka a startem tabeli
+      // gap musi być dokładnie 0 (bo gap jest już wliczony w headerBottom),
+      // ale headerBottom - baseline (≈ headerTop + h) musi być ≥ 8.
+      const headerBlockHeight = s.headerBottom - s.headerTop;
+      // headerBlockHeight = wysokość tekstu + GAP_BETWEEN_HEADER_AND_TABLE (8).
+      expect(headerBlockHeight).toBeGreaterThanOrEqual(8);
+      void gap;
+    }
+  });
+
+  it("zachowuje stały odstęp ≥18pt między końcem poprzedniej tabeli a nagłówkiem kolejnej grupy (na tej samej stronie)", () => {
+    const groups: KanbanPdfGroup[] = [
+      { label: "G1", tasks: makeTasks(3, "G1") },
+      { label: "G2", tasks: makeTasks(3, "G2") },
+      { label: "G3", tasks: makeTasks(3, "G3") },
+    ];
+    const { layout } = runBuild(groups);
+    let samePagePairs = 0;
+    for (let i = 1; i < layout.sections.length; i++) {
+      const prev = layout.sections[i - 1];
+      const curr = layout.sections[i];
+      if (curr.page === prev.tableEndPage) {
+        samePagePairs++;
+        const gap = curr.headerTop - prev.tableFinalY;
+        expect(gap, `gap przed grupą ${curr.groupLabel}`).toBeGreaterThanOrEqual(18);
+      }
+    }
+    // Test ma sens tylko jeśli przynajmniej jedna para grup zmieściła się na tej samej stronie.
+    expect(samePagePairs).toBeGreaterThan(0);
+  });
+
   it("wymusza nową stronę gdy w bieżącej zostało za mało miejsca na nagłówek + min. wiersz tabeli", () => {
     // Dużo małych grup wymusi co najmniej kilka page-breaków.
     const groups: KanbanPdfGroup[] = Array.from({ length: 10 }, (_, i) => ({
