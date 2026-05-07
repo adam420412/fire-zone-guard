@@ -185,8 +185,11 @@ jobs:
 
       - name: Run pełna regresja Kanban PDF (snapshoty + boundaries + E2E formaty + diagnostics + perf)
         run: |
+          mkdir -p reports/kanban-pdf-export
           bunx vitest run \
             --reporter=verbose \
+            --reporter=junit --outputFile.junit=reports/kanban-pdf-export/junit.xml \
+            --reporter=html --outputFile.html=reports/kanban-pdf-export/index.html \
             --passWithNoTests=false \
             src/test/kanbanPdfExport.test.ts \
             src/test/kanbanPdfExport.snapshot.test.ts \
@@ -199,6 +202,17 @@ jobs:
             src/test/kanbanLayoutCompare.test.ts \
             src/test/kanbanLayoutExport.test.ts \
             src/test/pdfExportPerf.test.ts
+
+      - name: Upload Vitest reports (HTML + JUnit) — kanban-pdf-export-suite
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: vitest-report-kanban-pdf-export-suite
+          path: |
+            reports/kanban-pdf-export/**
+            html/**
+          if-no-files-found: warn
+          retention-days: 14
 
       - name: Podpowiedź naprawy
         if: failure()
