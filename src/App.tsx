@@ -20,6 +20,7 @@ import MapPage from "@/pages/MapPage";
 import ClientPanel from "@/pages/ClientPanel";
 import ClientSlaPage from "@/pages/ClientSlaPage";
 import AuthPage from "@/pages/AuthPage";
+import ResetPasswordPage from "@/pages/ResetPasswordPage";
 import AuditsPage from "@/pages/AuditsPage";
 import AuditDetailPage from "@/pages/AuditDetailPage";
 import ChecklistsPage from "@/pages/ChecklistsPage";
