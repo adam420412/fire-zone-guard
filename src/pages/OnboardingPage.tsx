@@ -740,6 +740,7 @@ export default function OnboardingPage() {
               else if (step === "building") handleSaveBuilding();
               else if (step === "devices") handleSaveDevices();
               else if (step === "employees") handleSaveEmployees();
+              else if (step === "tasks") handleGenerateTasks();
             }}
             disabled={submitting}
           >
