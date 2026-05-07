@@ -223,12 +223,75 @@ export default function OnboardingPage() {
       if (error) throw error;
       setEmployeesSaved(rows.length);
       toast.success(`Dodano ${rows.length} pracowników`);
+      await loadTemplates();
       setStepIdx(stepIdx + 1);
     } catch (e: any) {
       toast.error(e.message || "Błąd zapisu pracowników");
     } finally {
       setSubmitting(false);
     }
+  };
+
+  // ── Step 6: load global templates & generate tasks ──────────
+  const loadTemplates = async () => {
+    const { data } = await supabase
+      .from("task_templates")
+      .select("id, name, description, type, priority, sla_hours, recurrence_days")
+      .eq("is_global", true)
+      .order("name");
+    const list = (data ?? []) as TaskTemplate[];
+    setTemplates(list);
+    setSelectedTpl(new Set(list.map(t => t.id)));
+  };
+
+  // Spread tasks across the upcoming quarter (~90 days)
+  const spreadDeadline = (idx: number, total: number): Date => {
+    const start = 7;
+    const end = 90;
+    const offset = total <= 1 ? start : Math.round(start + ((end - start) * idx) / (total - 1));
+    const d = new Date();
+    d.setDate(d.getDate() + offset);
+    return d;
+  };
+
+  const handleGenerateTasks = async () => {
+    if (!companyId || !buildingId) { toast.error("Brak firmy/obiektu"); return; }
+    const selected = templates.filter(t => selectedTpl.has(t.id));
+    if (selected.length === 0) {
+      toast.info("Pominięto generowanie zadań");
+      setStepIdx(stepIdx + 1);
+      return;
+    }
+    setSubmitting(true);
+    try {
+      const rows = selected.map((t, i) => ({
+        company_id: companyId,
+        building_id: buildingId,
+        type: t.type as any,
+        title: t.name,
+        description: t.description || "",
+        priority: t.priority as any,
+        status: "Nowe" as any,
+        sla_hours: t.sla_hours,
+        deadline: spreadDeadline(i, selected.length).toISOString(),
+        source: "manual" as any,
+      }));
+      const { error } = await supabase.from("tasks").insert(rows as any);
+      if (error) throw error;
+      setTasksSaved(rows.length);
+      toast.success(`Wygenerowano ${rows.length} zadań w Kanbanie`);
+      setStepIdx(stepIdx + 1);
+    } catch (e: any) {
+      toast.error(e.message || "Błąd tworzenia zadań");
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const toggleTpl = (id: string) => {
+    const next = new Set(selectedTpl);
+    next.has(id) ? next.delete(id) : next.add(id);
+    setSelectedTpl(next);
   };
 
   // ── helpers ───────────────────────────────────────────────
