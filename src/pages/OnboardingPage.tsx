@@ -681,7 +681,7 @@ export default function OnboardingPage() {
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-sm">
+              <div className="grid grid-cols-2 md:grid-cols-5 gap-3 text-sm">
                 <div className="rounded-lg bg-success/10 border border-success/30 p-3">
                   <Building2 className="h-5 w-5 text-success mb-1" />
                   <div className="font-semibold">{companyName || "—"}</div>
