@@ -11,7 +11,9 @@ import { useNavigate, Link } from "react-router-dom";
 import {
   CheckCircle2, Building2, MapPin, Wrench, Users, Sparkles,
   ArrowRight, ArrowLeft, Loader2, Search, Plus, Trash2, Rocket, Upload,
+  ListChecks, Calendar as CalendarIcon,
 } from "lucide-react";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
