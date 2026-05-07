@@ -93,6 +93,11 @@ export default function OnboardingPage() {
   ]);
   const [employeesSaved, setEmployeesSaved] = useState(0);
 
+  // Task templates
+  const [templates, setTemplates] = useState<TaskTemplate[]>([]);
+  const [selectedTpl, setSelectedTpl] = useState<Set<string>>(new Set());
+  const [tasksSaved, setTasksSaved] = useState(0);
+
   const [submitting, setSubmitting] = useState(false);
 
   const createCompany = useCreateCompany();
