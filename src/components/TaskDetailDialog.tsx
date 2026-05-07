@@ -298,12 +298,40 @@ export default function TaskDetailDialog({ task, open, onOpenChange }: Props) {
           <TabsContent value="details" className="space-y-4 mt-4">
             <TaskCustomerContextPanel task={task} />
 
-            {task.description && (
-              <div>
-                <p className="text-xs font-medium text-muted-foreground mb-1">Opis</p>
-                <p className="text-sm text-card-foreground whitespace-pre-wrap">{task.description}</p>
+            <div>
+              <div className="flex items-center justify-between mb-1">
+                <p className="text-xs font-medium text-muted-foreground">Opis</p>
+                {isAdmin && !editingDesc && (
+                  <button type="button" onClick={() => { setDescDraft(task.description ?? ""); setEditingDesc(true); }} className="text-[11px] text-muted-foreground hover:text-foreground flex items-center gap-1">
+                    <Pencil className="h-3 w-3" /> {task.description ? "Edytuj" : "Dodaj opis"}
+                  </button>
+                )}
               </div>
-            )}
+              {editingDesc && isAdmin ? (
+                <div className="space-y-2">
+                  <textarea
+                    value={descDraft}
+                    onChange={(e) => setDescDraft(e.target.value)}
+                    rows={4}
+                    className={inputCls}
+                    autoFocus
+                    placeholder="Wpisz opis zadania..."
+                  />
+                  <div className="flex gap-2 justify-end">
+                    <button type="button" onClick={() => { setDescDraft(task.description ?? ""); setEditingDesc(false); }} className="rounded-md bg-secondary px-3 py-1.5 text-xs hover:bg-secondary/80">
+                      Anuluj
+                    </button>
+                    <button type="button" onClick={handleSaveDesc} className="rounded-md bg-primary px-3 py-1.5 text-xs text-primary-foreground hover:opacity-90 inline-flex items-center gap-1">
+                      <Check className="h-3 w-3" /> Zapisz
+                    </button>
+                  </div>
+                </div>
+              ) : task.description ? (
+                <p className="text-sm text-card-foreground whitespace-pre-wrap">{task.description}</p>
+              ) : (
+                <p className="text-sm text-muted-foreground italic">Brak opisu.</p>
+              )}
+            </div>
 
             <div className="grid grid-cols-2 gap-4">
               {task.deadline && (
