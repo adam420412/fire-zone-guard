@@ -42,6 +42,7 @@ import SlaAuditLogPage from "@/pages/SlaAuditLogPage";
 import SlaKpiPage from "@/pages/SlaKpiPage";
 import SystemAuditPage from "@/pages/SystemAuditPage";
 import PublicSlaIntakePage from "@/pages/PublicSlaIntakePage";
+import OnboardingPage from "@/pages/OnboardingPage";
 import NotFound from "./pages/NotFound";
 import { Loader2 } from "lucide-react";
 
@@ -120,6 +121,7 @@ function ProtectedRoutes() {
             <Route path="/settings" element={<SettingsPage />} />
             <Route path="/admin" element={<AdminPage />} />
             <Route path="/admin/import" element={<BulkImportPage />} />
+            <Route path="/onboarding" element={<OnboardingPage />} />
             <Route path="/map" element={<MapPage />} />
             <Route path="*" element={<NotFound />} />
           </>

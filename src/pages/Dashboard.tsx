@@ -5,7 +5,7 @@ import { pl } from "date-fns/locale";
 import {
   Building2, Briefcase, ClipboardList, Flame, AlertTriangle,
   Clock, Shield, TrendingUp, Loader2, FileText, CalendarIcon, Filter, X,
-  CheckCircle2, Activity, Info, ChevronRight
+  CheckCircle2, Activity, Info, ChevronRight, Sparkles
 } from "lucide-react";
 import StatCard from "@/components/StatCard";
 import { useDashboardStats, useTasks, useBuildings, useCompanies, useAudits, useProtocols } from "@/hooks/useSupabaseData";
@@ -70,9 +70,29 @@ export default function Dashboard() {
   const allTasks = (tasks ?? []) as any[];
   const criticalTasks = allTasks.filter(t => t.priority === "krytyczny" && t.status !== "Zamknięte");
   const overdueTasks = allTasks.filter(t => t.isOverdue);
+  const isEmpty = (s.totalCompanies ?? 0) === 0 && (s.totalBuildings ?? 0) === 0;
 
   return (
     <div className="space-y-6">
+      {isEmpty && (
+        <div className="rounded-2xl border border-primary/40 bg-gradient-to-br from-primary/15 via-card to-card p-6 shadow-lg">
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <div className="flex items-start gap-3">
+              <Sparkles className="h-6 w-6 text-primary mt-1 shrink-0" />
+              <div>
+                <h2 className="text-lg font-bold">Witaj w Fire Zone! Skonfigurujmy Twoje konto.</h2>
+                <p className="text-sm text-muted-foreground">
+                  W 5 krokach dodasz firmę, pierwszy obiekt, urządzenia ppoż. i zespół. Zajmie to ok. 3 minuty.
+                </p>
+              </div>
+            </div>
+            <Button onClick={() => navigate("/onboarding")} size="lg">
+              <Sparkles className="h-4 w-4 mr-1" /> Uruchom onboarding
+            </Button>
+          </div>
+        </div>
+      )}
+
       {/* Premium Hero Header */}
       <div className="relative overflow-hidden rounded-2xl bg-slate-900 px-6 py-8 text-white shadow-2xl">
         <div className="absolute right-0 top-0 h-full w-1/3 bg-gradient-to-l from-primary/20 to-transparent opacity-50" />
