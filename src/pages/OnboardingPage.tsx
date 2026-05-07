@@ -595,6 +595,81 @@ export default function OnboardingPage() {
           </>
         )}
 
+        {step === "tasks" && (
+          <>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <ListChecks className="h-5 w-5 text-primary" /> Krok 5: Pierwsze zadania w Kanbanie
+              </CardTitle>
+              <CardDescription>
+                Wybierz szablony przeglądów, które chcesz zaplanować na najbliższy kwartał.
+                Terminy zostaną rozłożone od ~1 tygodnia do ~3 miesięcy od dziś.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              <div className="flex items-center justify-between flex-wrap gap-2">
+                <div className="text-sm text-muted-foreground flex items-center gap-1">
+                  <CalendarIcon className="h-4 w-4" />
+                  Wybrano <strong className="text-foreground mx-1">{selectedTpl.size}</strong> z {templates.length}
+                </div>
+                <div className="flex gap-2">
+                  <Button type="button" variant="ghost" size="sm"
+                    onClick={() => setSelectedTpl(new Set(templates.map(t => t.id)))}>
+                    Zaznacz wszystkie
+                  </Button>
+                  <Button type="button" variant="ghost" size="sm"
+                    onClick={() => setSelectedTpl(new Set())}>
+                    Wyczyść
+                  </Button>
+                </div>
+              </div>
+              {templates.length === 0 ? (
+                <Alert><AlertDescription>Ładowanie szablonów…</AlertDescription></Alert>
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                  {templates.map((t, idx) => {
+                    const checked = selectedTpl.has(t.id);
+                    const previewDate = spreadDeadline(idx, Math.max(selectedTpl.size, 1));
+                    return (
+                      <label
+                        key={t.id}
+                        className={cn(
+                          "flex gap-3 rounded-md border p-3 cursor-pointer transition-colors",
+                          checked ? "border-primary/50 bg-primary/5" : "border-border/50 hover:bg-muted/50"
+                        )}
+                      >
+                        <Checkbox checked={checked} onCheckedChange={() => toggleTpl(t.id)} className="mt-1" />
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center justify-between gap-2 flex-wrap">
+                            <span className="font-medium text-sm">{t.name}</span>
+                            <Badge variant="outline" className="text-[10px] capitalize">{t.priority}</Badge>
+                          </div>
+                          {t.description && (
+                            <p className="text-xs text-muted-foreground mt-1 line-clamp-2">{t.description}</p>
+                          )}
+                          {checked && (
+                            <p className="text-[11px] text-muted-foreground mt-1 flex items-center gap-1">
+                              <CalendarIcon className="h-3 w-3" />
+                              Termin orientacyjny: {previewDate.toLocaleDateString("pl-PL")}
+                            </p>
+                          )}
+                        </div>
+                      </label>
+                    );
+                  })}
+                </div>
+              )}
+              <Alert>
+                <Sparkles className="h-4 w-4" />
+                <AlertDescription className="text-xs">
+                  Zadania trafią do kolumny <strong>„Nowe”</strong> w Kanbanie. Możesz je później przypisać,
+                  edytować lub usunąć.
+                </AlertDescription>
+              </Alert>
+            </CardContent>
+          </>
+        )}
+
         {step === "done" && (
           <>
             <CardHeader>
