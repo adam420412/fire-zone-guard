@@ -113,6 +113,43 @@ export default function TaskDetailDialog({ task, open, onOpenChange }: Props) {
   const [telegramMsg, setTelegramMsg] = useState("");
   const [sendingTelegram, setSendingTelegram] = useState(false);
 
+  const [editingTitle, setEditingTitle] = useState(false);
+  const [titleDraft, setTitleDraft] = useState("");
+  const [editingDesc, setEditingDesc] = useState(false);
+  const [descDraft, setDescDraft] = useState("");
+
+  useEffect(() => {
+    if (task) {
+      setTitleDraft(task.title ?? "");
+      setDescDraft(task.description ?? "");
+      setEditingTitle(false);
+      setEditingDesc(false);
+    }
+  }, [task?.id]);
+
+  const handleSaveTitle = async () => {
+    if (!task) return;
+    if (!titleDraft.trim()) { toast({ title: "Tytuł nie może być pusty", variant: "destructive" }); return; }
+    try {
+      await updateTask.mutateAsync({ id: task.id, title: titleDraft.trim() } as any);
+      toast({ title: "Tytuł zaktualizowany" });
+      setEditingTitle(false);
+    } catch (err: any) {
+      toast({ title: "Błąd", description: err.message, variant: "destructive" });
+    }
+  };
+
+  const handleSaveDesc = async () => {
+    if (!task) return;
+    try {
+      await updateTask.mutateAsync({ id: task.id, description: descDraft.trim() || null } as any);
+      toast({ title: "Opis zaktualizowany" });
+      setEditingDesc(false);
+    } catch (err: any) {
+      toast({ title: "Błąd", description: err.message, variant: "destructive" });
+    }
+  };
+
   if (!task) return null;
 
   const priority = task.priority as TaskPriority;
