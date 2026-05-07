@@ -702,6 +702,11 @@ export default function OnboardingPage() {
                   <div className="font-semibold">{employeesSaved}</div>
                   <div className="text-xs text-muted-foreground">Pracownicy</div>
                 </div>
+                <div className="rounded-lg bg-success/10 border border-success/30 p-3">
+                  <ListChecks className="h-5 w-5 text-success mb-1" />
+                  <div className="font-semibold">{tasksSaved}</div>
+                  <div className="text-xs text-muted-foreground">Zadań w Kanbanie</div>
+                </div>
               </div>
               <Alert>
                 <Sparkles className="h-4 w-4" />
