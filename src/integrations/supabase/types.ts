@@ -518,6 +518,99 @@ export type Database = {
         }
         Relationships: []
       }
+      company_contact_buildings: {
+        Row: {
+          building_id: string
+          contact_id: string
+          created_at: string
+          id: string
+        }
+        Insert: {
+          building_id: string
+          contact_id: string
+          created_at?: string
+          id?: string
+        }
+        Update: {
+          building_id?: string
+          contact_id?: string
+          created_at?: string
+          id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "company_contact_buildings_building_id_fkey"
+            columns: ["building_id"]
+            isOneToOne: false
+            referencedRelation: "building_cost_summary"
+            referencedColumns: ["building_id"]
+          },
+          {
+            foreignKeyName: "company_contact_buildings_building_id_fkey"
+            columns: ["building_id"]
+            isOneToOne: false
+            referencedRelation: "buildings"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "company_contact_buildings_contact_id_fkey"
+            columns: ["contact_id"]
+            isOneToOne: false
+            referencedRelation: "company_contacts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      company_contacts: {
+        Row: {
+          company_id: string
+          created_at: string
+          email: string | null
+          full_name: string
+          id: string
+          is_emergency: boolean
+          is_primary: boolean
+          notes: string | null
+          phone: string | null
+          position: string | null
+          updated_at: string
+        }
+        Insert: {
+          company_id: string
+          created_at?: string
+          email?: string | null
+          full_name: string
+          id?: string
+          is_emergency?: boolean
+          is_primary?: boolean
+          notes?: string | null
+          phone?: string | null
+          position?: string | null
+          updated_at?: string
+        }
+        Update: {
+          company_id?: string
+          created_at?: string
+          email?: string | null
+          full_name?: string
+          id?: string
+          is_emergency?: boolean
+          is_primary?: boolean
+          notes?: string | null
+          phone?: string | null
+          position?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "company_contacts_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       contacts: {
         Row: {
           company_id: string

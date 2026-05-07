@@ -15,7 +15,8 @@ import { cn } from "@/lib/utils";
 import { sendTelegramNotification } from "@/lib/telegramNotify";
 import {
   Building2, User, Clock, Calendar, AlertTriangle, History,
-  ArrowRight, Loader2, Plus, Trash2, Bell, ListTodo, Wallet, TrendingUp, TrendingDown, Lock, Send, FileText
+  ArrowRight, Loader2, Plus, Trash2, Bell, ListTodo, Wallet, TrendingUp, TrendingDown, Lock, Send, FileText,
+  Pencil, Check, X
 } from "lucide-react";
 import TaskQuotesPanel from "@/components/TaskQuotesPanel";
 import TaskCustomerContextPanel from "@/components/TaskCustomerContextPanel";
@@ -113,6 +114,43 @@ export default function TaskDetailDialog({ task, open, onOpenChange }: Props) {
   const [telegramMsg, setTelegramMsg] = useState("");
   const [sendingTelegram, setSendingTelegram] = useState(false);
 
+  const [editingTitle, setEditingTitle] = useState(false);
+  const [titleDraft, setTitleDraft] = useState("");
+  const [editingDesc, setEditingDesc] = useState(false);
+  const [descDraft, setDescDraft] = useState("");
+
+  useEffect(() => {
+    if (task) {
+      setTitleDraft(task.title ?? "");
+      setDescDraft(task.description ?? "");
+      setEditingTitle(false);
+      setEditingDesc(false);
+    }
+  }, [task?.id]);
+
+  const handleSaveTitle = async () => {
+    if (!task) return;
+    if (!titleDraft.trim()) { toast({ title: "Tytuł nie może być pusty", variant: "destructive" }); return; }
+    try {
+      await updateTask.mutateAsync({ id: task.id, title: titleDraft.trim() } as any);
+      toast({ title: "Tytuł zaktualizowany" });
+      setEditingTitle(false);
+    } catch (err: any) {
+      toast({ title: "Błąd", description: err.message, variant: "destructive" });
+    }
+  };
+
+  const handleSaveDesc = async () => {
+    if (!task) return;
+    try {
+      await updateTask.mutateAsync({ id: task.id, description: descDraft.trim() || null } as any);
+      toast({ title: "Opis zaktualizowany" });
+      setEditingDesc(false);
+    } catch (err: any) {
+      toast({ title: "Błąd", description: err.message, variant: "destructive" });
+    }
+  };
+
   if (!task) return null;
 
   const priority = task.priority as TaskPriority;
@@ -198,7 +236,36 @@ export default function TaskDetailDialog({ task, open, onOpenChange }: Props) {
               {taskTypeLabels[type]}
             </span>
           </div>
-          <DialogTitle className="text-lg text-card-foreground">{task.title}</DialogTitle>
+          {editingTitle && isAdmin ? (
+            <div className="flex gap-2 items-center">
+              <input
+                value={titleDraft}
+                onChange={(e) => setTitleDraft(e.target.value)}
+                className={inputCls + " text-lg font-semibold"}
+                autoFocus
+              />
+              <button type="button" onClick={handleSaveTitle} className="rounded-md bg-primary px-2 py-1.5 text-primary-foreground hover:opacity-90" title="Zapisz">
+                <Check className="h-4 w-4" />
+              </button>
+              <button type="button" onClick={() => { setTitleDraft(task.title ?? ""); setEditingTitle(false); }} className="rounded-md bg-secondary px-2 py-1.5 hover:bg-secondary/80" title="Anuluj">
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+          ) : (
+            <DialogTitle className="text-lg text-card-foreground flex items-center gap-2 group">
+              <span className="flex-1">{task.title}</span>
+              {isAdmin && (
+                <button
+                  type="button"
+                  onClick={() => setEditingTitle(true)}
+                  className="opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground hover:text-foreground"
+                  title="Edytuj tytuł"
+                >
+                  <Pencil className="h-3.5 w-3.5" />
+                </button>
+              )}
+            </DialogTitle>
+          )}
         </DialogHeader>
 
         <Tabs defaultValue="details" className="mt-2">
@@ -231,12 +298,40 @@ export default function TaskDetailDialog({ task, open, onOpenChange }: Props) {
           <TabsContent value="details" className="space-y-4 mt-4">
             <TaskCustomerContextPanel task={task} />
 
-            {task.description && (
-              <div>
-                <p className="text-xs font-medium text-muted-foreground mb-1">Opis</p>
-                <p className="text-sm text-card-foreground whitespace-pre-wrap">{task.description}</p>
+            <div>
+              <div className="flex items-center justify-between mb-1">
+                <p className="text-xs font-medium text-muted-foreground">Opis</p>
+                {isAdmin && !editingDesc && (
+                  <button type="button" onClick={() => { setDescDraft(task.description ?? ""); setEditingDesc(true); }} className="text-[11px] text-muted-foreground hover:text-foreground flex items-center gap-1">
+                    <Pencil className="h-3 w-3" /> {task.description ? "Edytuj" : "Dodaj opis"}
+                  </button>
+                )}
               </div>
-            )}
+              {editingDesc && isAdmin ? (
+                <div className="space-y-2">
+                  <textarea
+                    value={descDraft}
+                    onChange={(e) => setDescDraft(e.target.value)}
+                    rows={4}
+                    className={inputCls}
+                    autoFocus
+                    placeholder="Wpisz opis zadania..."
+                  />
+                  <div className="flex gap-2 justify-end">
+                    <button type="button" onClick={() => { setDescDraft(task.description ?? ""); setEditingDesc(false); }} className="rounded-md bg-secondary px-3 py-1.5 text-xs hover:bg-secondary/80">
+                      Anuluj
+                    </button>
+                    <button type="button" onClick={handleSaveDesc} className="rounded-md bg-primary px-3 py-1.5 text-xs text-primary-foreground hover:opacity-90 inline-flex items-center gap-1">
+                      <Check className="h-3 w-3" /> Zapisz
+                    </button>
+                  </div>
+                </div>
+              ) : task.description ? (
+                <p className="text-sm text-card-foreground whitespace-pre-wrap">{task.description}</p>
+              ) : (
+                <p className="text-sm text-muted-foreground italic">Brak opisu.</p>
+              )}
+            </div>
 
             <div className="grid grid-cols-2 gap-4">
               {task.deadline && (
