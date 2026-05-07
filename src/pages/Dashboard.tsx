@@ -5,7 +5,7 @@ import { pl } from "date-fns/locale";
 import {
   Building2, Briefcase, ClipboardList, Flame, AlertTriangle,
   Clock, Shield, TrendingUp, Loader2, FileText, CalendarIcon, Filter, X,
-  CheckCircle2, Activity, Info, ChevronRight
+  CheckCircle2, Activity, Info, ChevronRight, Sparkles
 } from "lucide-react";
 import StatCard from "@/components/StatCard";
 import { useDashboardStats, useTasks, useBuildings, useCompanies, useAudits, useProtocols } from "@/hooks/useSupabaseData";
