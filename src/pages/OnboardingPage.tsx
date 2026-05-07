@@ -90,7 +90,7 @@ export default function OnboardingPage() {
   // ── NIP lookup ─────────────────────────────────────────────
   const handleNipLookup = async () => {
     const v = validateNip(nip);
-    if (!v.ok) { toast.error(v.reason); return; }
+    if (!v.ok) { toast.error((v as { ok: false; reason: string }).reason); return; }
     setNipLoading(true);
     try {
       const result = await fetchCompanyByNIP(nip);
