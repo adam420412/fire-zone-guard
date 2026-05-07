@@ -28,7 +28,7 @@ import { useCreateCompany, useCreateBuilding } from "@/hooks/useSupabaseData";
 import { fetchCompanyByNIP, validateNip } from "@/lib/nipLookup";
 import { supabase } from "@/integrations/supabase/client";
 
-type StepId = "welcome" | "company" | "building" | "devices" | "employees" | "done";
+type StepId = "welcome" | "company" | "building" | "devices" | "employees" | "tasks" | "done";
 
 const STEPS: { id: StepId; title: string; icon: any }[] = [
   { id: "welcome",   title: "Start",        icon: Sparkles },
@@ -36,8 +36,19 @@ const STEPS: { id: StepId; title: string; icon: any }[] = [
   { id: "building",  title: "Obiekt",       icon: MapPin },
   { id: "devices",   title: "Urządzenia",   icon: Wrench },
   { id: "employees", title: "Pracownicy",   icon: Users },
+  { id: "tasks",     title: "Zadania",      icon: ListChecks },
   { id: "done",      title: "Gotowe",       icon: Rocket },
 ];
+
+interface TaskTemplate {
+  id: string;
+  name: string;
+  description: string | null;
+  type: string;
+  priority: string;
+  sla_hours: number;
+  recurrence_days: number | null;
+}
 
 interface DeviceRow {
   device_type_id: string;
