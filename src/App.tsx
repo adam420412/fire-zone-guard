@@ -121,6 +121,7 @@ function ProtectedRoutes() {
             <Route path="/settings" element={<SettingsPage />} />
             <Route path="/admin" element={<AdminPage />} />
             <Route path="/admin/import" element={<BulkImportPage />} />
+            <Route path="/onboarding" element={<OnboardingPage />} />
             <Route path="/map" element={<MapPage />} />
             <Route path="*" element={<NotFound />} />
           </>
