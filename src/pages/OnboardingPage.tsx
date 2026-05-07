@@ -11,7 +11,9 @@ import { useNavigate, Link } from "react-router-dom";
 import {
   CheckCircle2, Building2, MapPin, Wrench, Users, Sparkles,
   ArrowRight, ArrowLeft, Loader2, Search, Plus, Trash2, Rocket, Upload,
+  ListChecks, Calendar as CalendarIcon,
 } from "lucide-react";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -26,7 +28,7 @@ import { useCreateCompany, useCreateBuilding } from "@/hooks/useSupabaseData";
 import { fetchCompanyByNIP, validateNip } from "@/lib/nipLookup";
 import { supabase } from "@/integrations/supabase/client";
 
-type StepId = "welcome" | "company" | "building" | "devices" | "employees" | "done";
+type StepId = "welcome" | "company" | "building" | "devices" | "employees" | "tasks" | "done";
 
 const STEPS: { id: StepId; title: string; icon: any }[] = [
   { id: "welcome",   title: "Start",        icon: Sparkles },
@@ -34,8 +36,19 @@ const STEPS: { id: StepId; title: string; icon: any }[] = [
   { id: "building",  title: "Obiekt",       icon: MapPin },
   { id: "devices",   title: "Urządzenia",   icon: Wrench },
   { id: "employees", title: "Pracownicy",   icon: Users },
+  { id: "tasks",     title: "Zadania",      icon: ListChecks },
   { id: "done",      title: "Gotowe",       icon: Rocket },
 ];
+
+interface TaskTemplate {
+  id: string;
+  name: string;
+  description: string | null;
+  type: string;
+  priority: string;
+  sla_hours: number;
+  recurrence_days: number | null;
+}
 
 interface DeviceRow {
   device_type_id: string;
@@ -79,6 +92,11 @@ export default function OnboardingPage() {
     { first_name: "", last_name: "", email: "", position: "Serwisant" },
   ]);
   const [employeesSaved, setEmployeesSaved] = useState(0);
+
+  // Task templates
+  const [templates, setTemplates] = useState<TaskTemplate[]>([]);
+  const [selectedTpl, setSelectedTpl] = useState<Set<string>>(new Set());
+  const [tasksSaved, setTasksSaved] = useState(0);
 
   const [submitting, setSubmitting] = useState(false);
 
@@ -205,12 +223,75 @@ export default function OnboardingPage() {
       if (error) throw error;
       setEmployeesSaved(rows.length);
       toast.success(`Dodano ${rows.length} pracowników`);
+      await loadTemplates();
       setStepIdx(stepIdx + 1);
     } catch (e: any) {
       toast.error(e.message || "Błąd zapisu pracowników");
     } finally {
       setSubmitting(false);
     }
+  };
+
+  // ── Step 6: load global templates & generate tasks ──────────
+  const loadTemplates = async () => {
+    const { data } = await supabase
+      .from("task_templates")
+      .select("id, name, description, type, priority, sla_hours, recurrence_days")
+      .eq("is_global", true)
+      .order("name");
+    const list = (data ?? []) as TaskTemplate[];
+    setTemplates(list);
+    setSelectedTpl(new Set(list.map(t => t.id)));
+  };
+
+  // Spread tasks across the upcoming quarter (~90 days)
+  const spreadDeadline = (idx: number, total: number): Date => {
+    const start = 7;
+    const end = 90;
+    const offset = total <= 1 ? start : Math.round(start + ((end - start) * idx) / (total - 1));
+    const d = new Date();
+    d.setDate(d.getDate() + offset);
+    return d;
+  };
+
+  const handleGenerateTasks = async () => {
+    if (!companyId || !buildingId) { toast.error("Brak firmy/obiektu"); return; }
+    const selected = templates.filter(t => selectedTpl.has(t.id));
+    if (selected.length === 0) {
+      toast.info("Pominięto generowanie zadań");
+      setStepIdx(stepIdx + 1);
+      return;
+    }
+    setSubmitting(true);
+    try {
+      const rows = selected.map((t, i) => ({
+        company_id: companyId,
+        building_id: buildingId,
+        type: t.type as any,
+        title: t.name,
+        description: t.description || "",
+        priority: t.priority as any,
+        status: "Nowe" as any,
+        sla_hours: t.sla_hours,
+        deadline: spreadDeadline(i, selected.length).toISOString(),
+        source: "manual" as any,
+      }));
+      const { error } = await supabase.from("tasks").insert(rows as any);
+      if (error) throw error;
+      setTasksSaved(rows.length);
+      toast.success(`Wygenerowano ${rows.length} zadań w Kanbanie`);
+      setStepIdx(stepIdx + 1);
+    } catch (e: any) {
+      toast.error(e.message || "Błąd tworzenia zadań");
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const toggleTpl = (id: string) => {
+    const next = new Set(selectedTpl);
+    next.has(id) ? next.delete(id) : next.add(id);
+    setSelectedTpl(next);
   };
 
   // ── helpers ───────────────────────────────────────────────
@@ -514,6 +595,81 @@ export default function OnboardingPage() {
           </>
         )}
 
+        {step === "tasks" && (
+          <>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <ListChecks className="h-5 w-5 text-primary" /> Krok 5: Pierwsze zadania w Kanbanie
+              </CardTitle>
+              <CardDescription>
+                Wybierz szablony przeglądów, które chcesz zaplanować na najbliższy kwartał.
+                Terminy zostaną rozłożone od ~1 tygodnia do ~3 miesięcy od dziś.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              <div className="flex items-center justify-between flex-wrap gap-2">
+                <div className="text-sm text-muted-foreground flex items-center gap-1">
+                  <CalendarIcon className="h-4 w-4" />
+                  Wybrano <strong className="text-foreground mx-1">{selectedTpl.size}</strong> z {templates.length}
+                </div>
+                <div className="flex gap-2">
+                  <Button type="button" variant="ghost" size="sm"
+                    onClick={() => setSelectedTpl(new Set(templates.map(t => t.id)))}>
+                    Zaznacz wszystkie
+                  </Button>
+                  <Button type="button" variant="ghost" size="sm"
+                    onClick={() => setSelectedTpl(new Set())}>
+                    Wyczyść
+                  </Button>
+                </div>
+              </div>
+              {templates.length === 0 ? (
+                <Alert><AlertDescription>Ładowanie szablonów…</AlertDescription></Alert>
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                  {templates.map((t, idx) => {
+                    const checked = selectedTpl.has(t.id);
+                    const previewDate = spreadDeadline(idx, Math.max(selectedTpl.size, 1));
+                    return (
+                      <label
+                        key={t.id}
+                        className={cn(
+                          "flex gap-3 rounded-md border p-3 cursor-pointer transition-colors",
+                          checked ? "border-primary/50 bg-primary/5" : "border-border/50 hover:bg-muted/50"
+                        )}
+                      >
+                        <Checkbox checked={checked} onCheckedChange={() => toggleTpl(t.id)} className="mt-1" />
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center justify-between gap-2 flex-wrap">
+                            <span className="font-medium text-sm">{t.name}</span>
+                            <Badge variant="outline" className="text-[10px] capitalize">{t.priority}</Badge>
+                          </div>
+                          {t.description && (
+                            <p className="text-xs text-muted-foreground mt-1 line-clamp-2">{t.description}</p>
+                          )}
+                          {checked && (
+                            <p className="text-[11px] text-muted-foreground mt-1 flex items-center gap-1">
+                              <CalendarIcon className="h-3 w-3" />
+                              Termin orientacyjny: {previewDate.toLocaleDateString("pl-PL")}
+                            </p>
+                          )}
+                        </div>
+                      </label>
+                    );
+                  })}
+                </div>
+              )}
+              <Alert>
+                <Sparkles className="h-4 w-4" />
+                <AlertDescription className="text-xs">
+                  Zadania trafią do kolumny <strong>„Nowe”</strong> w Kanbanie. Możesz je później przypisać,
+                  edytować lub usunąć.
+                </AlertDescription>
+              </Alert>
+            </CardContent>
+          </>
+        )}
+
         {step === "done" && (
           <>
             <CardHeader>
@@ -525,7 +681,7 @@ export default function OnboardingPage() {
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-sm">
+              <div className="grid grid-cols-2 md:grid-cols-5 gap-3 text-sm">
                 <div className="rounded-lg bg-success/10 border border-success/30 p-3">
                   <Building2 className="h-5 w-5 text-success mb-1" />
                   <div className="font-semibold">{companyName || "—"}</div>
@@ -545,6 +701,11 @@ export default function OnboardingPage() {
                   <Users className="h-5 w-5 text-success mb-1" />
                   <div className="font-semibold">{employeesSaved}</div>
                   <div className="text-xs text-muted-foreground">Pracownicy</div>
+                </div>
+                <div className="rounded-lg bg-success/10 border border-success/30 p-3">
+                  <ListChecks className="h-5 w-5 text-success mb-1" />
+                  <div className="font-semibold">{tasksSaved}</div>
+                  <div className="text-xs text-muted-foreground">Zadań w Kanbanie</div>
                 </div>
               </div>
               <Alert>
@@ -584,6 +745,7 @@ export default function OnboardingPage() {
               else if (step === "building") handleSaveBuilding();
               else if (step === "devices") handleSaveDevices();
               else if (step === "employees") handleSaveEmployees();
+              else if (step === "tasks") handleGenerateTasks();
             }}
             disabled={submitting}
           >
