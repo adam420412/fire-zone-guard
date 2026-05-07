@@ -236,7 +236,36 @@ export default function TaskDetailDialog({ task, open, onOpenChange }: Props) {
               {taskTypeLabels[type]}
             </span>
           </div>
-          <DialogTitle className="text-lg text-card-foreground">{task.title}</DialogTitle>
+          {editingTitle && isAdmin ? (
+            <div className="flex gap-2 items-center">
+              <input
+                value={titleDraft}
+                onChange={(e) => setTitleDraft(e.target.value)}
+                className={inputCls + " text-lg font-semibold"}
+                autoFocus
+              />
+              <button type="button" onClick={handleSaveTitle} className="rounded-md bg-primary px-2 py-1.5 text-primary-foreground hover:opacity-90" title="Zapisz">
+                <Check className="h-4 w-4" />
+              </button>
+              <button type="button" onClick={() => { setTitleDraft(task.title ?? ""); setEditingTitle(false); }} className="rounded-md bg-secondary px-2 py-1.5 hover:bg-secondary/80" title="Anuluj">
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+          ) : (
+            <DialogTitle className="text-lg text-card-foreground flex items-center gap-2 group">
+              <span className="flex-1">{task.title}</span>
+              {isAdmin && (
+                <button
+                  type="button"
+                  onClick={() => setEditingTitle(true)}
+                  className="opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground hover:text-foreground"
+                  title="Edytuj tytuł"
+                >
+                  <Pencil className="h-3.5 w-3.5" />
+                </button>
+              )}
+            </DialogTitle>
+          )}
         </DialogHeader>
 
         <Tabs defaultValue="details" className="mt-2">
