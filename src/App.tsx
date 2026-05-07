@@ -64,6 +64,9 @@ function ProtectedRoutes() {
   if (location.pathname === "/zgloszenie") {
     return <PublicSlaIntakePage />;
   }
+  if (location.pathname === "/reset-password" || location.hash.includes("type=recovery")) {
+    return <ResetPasswordPage />;
+  }
 
   if (loading) {
     return (
