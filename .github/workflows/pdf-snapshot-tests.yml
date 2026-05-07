@@ -183,6 +183,38 @@ jobs:
       - name: Install dependencies
         run: bun install --frozen-lockfile
 
+      # ───────────────────────────────────────────────────────────────────
+      # Cache binariów Playwright (~/.cache/ms-playwright).
+      # Klucz wiąże się z wersją @playwright/test z lockfile, dzięki czemu
+      # przy bumpie Playwrighta cache jest automatycznie invalidowany.
+      # `restore-keys` pozwala dociągnąć poprzednią wersję jako fallback.
+      # ───────────────────────────────────────────────────────────────────
+      - name: Resolve Playwright version
+        id: pw
+        run: |
+          PW_VERSION=$(node -e "console.log(require('./node_modules/@playwright/test/package.json').version)")
+          echo "version=$PW_VERSION" >> "$GITHUB_OUTPUT"
+          echo "Playwright version: $PW_VERSION"
+
+      - name: Cache Playwright browsers
+        id: pw-cache
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ steps.pw.outputs.version }}
+          restore-keys: |
+            playwright-${{ runner.os }}-
+
+      - name: Install Playwright browsers (chromium + system deps)
+        # Jeśli cache HIT — instalujemy TYLKO biblioteki systemowe (apt), nie pobieramy przeglądarek.
+        # Jeśli MISS — pełne `install --with-deps` (przeglądarki + system deps).
+        run: |
+          if [ "${{ steps.pw-cache.outputs.cache-hit }}" = "true" ]; then
+            bunx playwright install-deps chromium
+          else
+            bunx playwright install --with-deps chromium
+          fi
+
       - name: Run pełna regresja Kanban PDF (snapshoty + boundaries + E2E formaty + diagnostics + perf)
         run: |
           mkdir -p reports/kanban-pdf-export
@@ -203,6 +235,9 @@ jobs:
             src/test/kanbanLayoutExport.test.ts \
             src/test/pdfExportPerf.test.ts
 
+      - name: Run Playwright E2E (chromium)
+        run: bunx playwright test --project=chromium
+
       - name: Upload Vitest reports (HTML + JUnit) — kanban-pdf-export-suite
         if: always()
         uses: actions/upload-artifact@v4
@@ -211,6 +246,18 @@ jobs:
           path: |
             reports/kanban-pdf-export/**
             html/**
+          if-no-files-found: warn
+          retention-days: 14
+
+      - name: Upload Playwright reports (HTML + JUnit)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report-kanban-pdf-export-suite
+          path: |
+            reports/playwright/**
+            playwright-report/**
+            test-results/**
           if-no-files-found: warn
           retention-days: 14
 
