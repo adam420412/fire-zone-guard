@@ -97,6 +97,52 @@ export default function AuthPage() {
           </div>
         )}
 
+        {forgot ? (
+          <form onSubmit={handleForgot} className="space-y-4 rounded-lg border border-border bg-card p-6">
+            <h2 className="text-center text-sm font-semibold text-card-foreground">Reset hasła</h2>
+            {forgotSent ? (
+              <div className="rounded-md border border-success/30 bg-success/10 p-3 text-center text-xs text-foreground">
+                <MailCheck className="h-5 w-5 mx-auto mb-2 text-success" />
+                Wysłaliśmy link do resetu hasła na <span className="font-mono">{email}</span>.
+                Sprawdź skrzynkę (oraz folder Spam).
+              </div>
+            ) : (
+              <>
+                <p className="text-xs text-muted-foreground text-center">
+                  Podaj swój e-mail, wyślemy link do ustawienia nowego hasła.
+                </p>
+                <input
+                  type="email"
+                  placeholder="Email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  className="w-full rounded-md border border-border bg-secondary px-3 py-2 text-sm text-foreground outline-none focus:border-primary"
+                  maxLength={255}
+                  required
+                />
+                <button
+                  type="submit"
+                  disabled={loading}
+                  className={cn(
+                    "w-full rounded-md py-2.5 text-sm font-semibold transition-colors",
+                    "fire-gradient text-primary-foreground hover:opacity-90 disabled:opacity-50"
+                  )}
+                >
+                  {loading ? "..." : "Wyślij link resetu"}
+                </button>
+              </>
+            )}
+            <p className="text-center text-xs text-muted-foreground">
+              <button
+                type="button"
+                onClick={() => { setForgot(false); setForgotSent(false); }}
+                className="text-primary hover:underline"
+              >
+                ← Wróć do logowania
+              </button>
+            </p>
+          </form>
+        ) : (
         <form onSubmit={handleSubmit} className="space-y-4 rounded-lg border border-border bg-card p-6">
           <h2 className="text-center text-sm font-semibold text-card-foreground">
             {isLogin ? "Logowanie" : "Rejestracja"}
@@ -128,9 +174,14 @@ export default function AuthPage() {
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             className="w-full rounded-md border border-border bg-secondary px-3 py-2 text-sm text-foreground outline-none focus:border-primary"
-            minLength={6}
+            minLength={8}
             required
           />
+          {!isLogin && (
+            <p className="text-[11px] text-muted-foreground -mt-2">
+              Min. 8 znaków. Hasła sprawdzamy w bazie wycieków (HIBP).
+            </p>
+          )}
 
           <button
             type="submit"
@@ -143,6 +194,18 @@ export default function AuthPage() {
             {loading ? "..." : isLogin ? "Zaloguj się" : "Zarejestruj się"}
           </button>
 
+          {isLogin && (
+            <p className="text-center text-xs">
+              <button
+                type="button"
+                onClick={() => { setForgot(true); setForgotSent(false); }}
+                className="text-muted-foreground hover:text-primary hover:underline"
+              >
+                Zapomniałem hasła
+              </button>
+            </p>
+          )}
+
           <p className="text-center text-xs text-muted-foreground">
             {isLogin ? "Nie masz konta?" : "Masz już konto?"}{" "}
             <button
@@ -154,6 +217,7 @@ export default function AuthPage() {
             </button>
           </p>
         </form>
+        )}
       </div>
     </div>
   );
