@@ -91,16 +91,32 @@ jobs:
 
       - name: Run PDF layout + snapshot tests (CI mode, no auto-update)
         # `--reporter=verbose` ułatwia czytanie diffa naszego custom matchera.
+        # `--reporter=junit`  → plik XML czytelny dla GitHub/JUnit viewers.
+        # `--reporter=html`   → statyczny raport HTML (do przeglądania regresji w PR).
         # `--passWithNoTests=false` zabezpiecza przed pomyłkami w pathach.
         run: |
+          mkdir -p reports/pdf-snapshots
           bunx vitest run \
             --reporter=verbose \
+            --reporter=junit --outputFile.junit=reports/pdf-snapshots/junit.xml \
+            --reporter=html --outputFile.html=reports/pdf-snapshots/index.html \
             --passWithNoTests=false \
             src/test/kanbanPdfExport.test.ts \
             src/test/kanbanPdfExport.snapshot.test.ts \
             src/test/kanbanPdfExport.multipage.test.ts \
             src/test/kanbanPdfExport.edgecases.test.ts \
             src/test/kanbanLayoutDiff.test.ts
+
+      - name: Upload Vitest reports (HTML + JUnit) — pdf-snapshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: vitest-report-pdf-snapshots
+          path: |
+            reports/pdf-snapshots/**
+            html/**
+          if-no-files-found: warn
+          retention-days: 14
 
       - name: Wykryj obsolete snapshoty
         # Po przejściu testów uruchamiamy ponownie z flagą reporting.
