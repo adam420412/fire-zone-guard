@@ -103,6 +103,17 @@ function EditBuildingDialog({ building, open, onOpenChange }: { building: any, o
               <Label>Ważność IBP</Label>
               <Input type="date" value={ibpDate} onChange={e => setIbpDate(e.target.value)} />
             </div>
+            <div className="space-y-2">
+              <Label>Opis / uwagi</Label>
+              <textarea
+                value={description}
+                onChange={e => setDescription(e.target.value)}
+                rows={4}
+                maxLength={2000}
+                placeholder="Dojazd, kontakt techniczny, specyfika obiektu..."
+                className="flex min-h-[80px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+              />
+            </div>
           </div>
           <DialogFooter>
             <button type="submit" disabled={updateBuilding.isPending} className="fire-gradient rounded-md px-4 py-2 text-sm font-semibold text-white flex items-center gap-2">
