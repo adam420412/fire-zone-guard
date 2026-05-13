@@ -17,8 +17,10 @@ import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
 import { generateProtocolPDF, detectProtocolType } from "@/lib/pdfProtocols";
 import { useAuth } from "@/hooks/useAuth";
+import { usePermissions } from "@/hooks/usePermissions";
 import { useAiProtocolDraft } from "@/hooks/useAiProtocolDraft";
 import { SignatureDialog } from "@/components/SignatureDialog";
+import { EditableText } from "@/components/EditableText";
 
 // ---- Iter 9: persist e-signature in storage + service_protocols row ----
 function dataUrlToBlob(dataUrl: string): Blob {
