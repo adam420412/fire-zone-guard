@@ -21,6 +21,9 @@ import { generateReportPDF } from "@/lib/pdfGenerator";
 import { useAuth } from "@/hooks/useAuth";
 import { AUDIT_TEMPLATES } from "@/lib/auditTemplates";
 import { SignatureDialog } from "@/components/SignatureDialog";
+import { EditableText } from "@/components/EditableText";
+import { usePermissions } from "@/hooks/usePermissions";
+import { useQueryClient } from "@tanstack/react-query";
 
 export default function AuditDetailPage() {
   const { id } = useParams();
