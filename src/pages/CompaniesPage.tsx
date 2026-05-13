@@ -6,9 +6,11 @@ import {
   useCreateCompanyContact,
   useUpdateCompanyContact,
   useDeleteCompanyContact,
+  usePatchCompanyContact,
   type CompanyContact,
   type CompanyContactInput,
 } from "@/hooks/useCompanyContacts";
+import { EditableText } from "@/components/EditableText";
 import { useAuth } from "@/hooks/useAuth";
 import { usePermissions } from "@/hooks/usePermissions";
 import { cn } from "@/lib/utils";
@@ -253,6 +255,8 @@ function ManageCompanyDialog({ open, onOpenChange, company }: { open: boolean; o
   const { data: buildings } = useBuildings();
   const { data: contacts, isLoading: loadingContacts } = useCompanyContacts(company?.id);
   const deleteContact = useDeleteCompanyContact();
+  const patchContact = usePatchCompanyContact();
+  const { canEdit: canEditContacts } = usePermissions();
 
   const [name, setName] = useState("");
   const [nip, setNip] = useState("");
@@ -418,6 +422,21 @@ function ManageCompanyDialog({ open, onOpenChange, company }: { open: boolean; o
                           <Trash2 className="h-3.5 w-3.5" />
                         </Button>
                       </div>
+                    </div>
+                    <div className="border-t border-border/50 pt-2">
+                      <EditableText
+                        value={c.notes}
+                        canEdit={canEditContacts}
+                        multiline
+                        maxLength={500}
+                        placeholder="Notatka o kontakcie..."
+                        emptyLabel="(brak notatki — kliknij ołówek, aby dodać)"
+                        textClassName="text-xs text-muted-foreground italic"
+                        onSave={async (v) => {
+                          await patchContact.mutateAsync({ id: c.id, company_id: company.id, patch: { notes: v || null as any } });
+                          toast.success("Notatka zapisana");
+                        }}
+                      />
                     </div>
                   </div>
                 );

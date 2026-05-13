@@ -583,6 +583,7 @@ export default function BuildingDetailPage() {
   const { data: templates } = useTaskTemplates(id);
   const { data: deviceTypes } = useDeviceTypes();
   const addDevice = useAddDevice();
+  const updateDevice = useUpdateDevice();
   const createFromTemplate = useCreateTaskFromTemplate();
 
   const [selectedTask, setSelectedTask] = useState<any>(null);
@@ -981,11 +982,26 @@ export default function BuildingDetailPage() {
                         return (
                           <tr key={device.id} className="hover:bg-muted/10 transition-colors group">
                             <td className="px-5 py-4">
-                              <div className="flex items-center gap-3">
-                                {needsService ? <AlertTriangle className="h-4 w-4 text-warning shrink-0" /> : <CheckCircle2 className="h-4 w-4 text-success shrink-0" />}
-                                <div>
+                              <div className="flex items-start gap-3">
+                                {needsService ? <AlertTriangle className="h-4 w-4 text-warning shrink-0 mt-0.5" /> : <CheckCircle2 className="h-4 w-4 text-success shrink-0 mt-0.5" />}
+                                <div className="min-w-0 flex-1">
                                   <p className="font-bold text-card-foreground">{device.name}</p>
                                   <p className="text-[11px] text-muted-foreground uppercase tracking-widest font-mono mt-0.5">{(device as any).device_types?.name ?? "Nieznany Typ"}</p>
+                                  <div className="mt-1">
+                                    <EditableText
+                                      value={device.notes}
+                                      canEdit={canEditBuilding}
+                                      multiline
+                                      maxLength={500}
+                                      placeholder="Notatka o urządzeniu..."
+                                      emptyLabel="(brak notatki)"
+                                      textClassName="text-[11px] text-muted-foreground italic"
+                                      onSave={async (v) => {
+                                        await updateDevice.mutateAsync({ id: device.id, building_id: building.id, updates: { notes: v || null } });
+                                        toast({ title: "Notatka zapisana" });
+                                      }}
+                                    />
+                                  </div>
                                 </div>
                               </div>
                             </td>

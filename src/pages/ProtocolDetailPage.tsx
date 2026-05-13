@@ -17,8 +17,10 @@ import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
 import { generateProtocolPDF, detectProtocolType } from "@/lib/pdfProtocols";
 import { useAuth } from "@/hooks/useAuth";
+import { usePermissions } from "@/hooks/usePermissions";
 import { useAiProtocolDraft } from "@/hooks/useAiProtocolDraft";
 import { SignatureDialog } from "@/components/SignatureDialog";
+import { EditableText } from "@/components/EditableText";
 
 // ---- Iter 9: persist e-signature in storage + service_protocols row ----
 function dataUrlToBlob(dataUrl: string): Blob {
@@ -80,7 +82,9 @@ export default function ProtocolDetailPage() {
   const [repairDialogFor, setRepairDialogFor] = useState<any | null>(null);
   const [repairNotes, setRepairNotes] = useState("");
   const { role } = useAuth();
+  const { canEdit } = usePermissions();
   const isSuperAdmin = role === 'super_admin';
+  const qcLocal = useQueryClient();
 
   const [isAddOpen, setIsAddOpen] = useState(false);
   const [isSignatureOpen, setIsSignatureOpen] = useState(false);
@@ -244,7 +248,26 @@ export default function ProtocolDetailPage() {
             </div>
             <div className="grid gap-2">
               <Label>Uwagi</Label>
-              <Input value={protocol.notes || "Brak uwag."} readOnly />
+              <div className="rounded-md border border-border bg-card/50 px-3 py-2 min-h-[40px]">
+                <EditableText
+                  value={protocol.notes}
+                  canEdit={canEdit}
+                  multiline
+                  maxLength={2000}
+                  placeholder="Wpisz uwagi inspektora..."
+                  emptyLabel="Brak uwag — kliknij ołówek, aby dodać."
+                  textClassName="text-sm"
+                  onSave={async (v) => {
+                    const { error } = await supabase
+                      .from("service_protocols")
+                      .update({ notes: v || null } as any)
+                      .eq("id", protocol.id);
+                    if (error) { toast.error("Błąd zapisu: " + error.message); throw error; }
+                    qcLocal.invalidateQueries({ queryKey: ["service_protocols"] });
+                    toast.success("Uwagi zaktualizowane");
+                  }}
+                />
+              </div>
             </div>
           </CardContent>
         </Card>

@@ -21,6 +21,9 @@ import { generateReportPDF } from "@/lib/pdfGenerator";
 import { useAuth } from "@/hooks/useAuth";
 import { AUDIT_TEMPLATES } from "@/lib/auditTemplates";
 import { SignatureDialog } from "@/components/SignatureDialog";
+import { EditableText } from "@/components/EditableText";
+import { usePermissions } from "@/hooks/usePermissions";
+import { useQueryClient } from "@tanstack/react-query";
 
 export default function AuditDetailPage() {
   const { id } = useParams();
@@ -36,6 +39,8 @@ export default function AuditDetailPage() {
   
   const { role } = useAuth();
   const isSuperAdmin = role === 'super_admin' || role === 'inspektor' || role === 'audytor';
+  const { canEdit } = usePermissions();
+  const qcLocal = useQueryClient();
 
   const [isAddOpen, setIsAddOpen] = useState(false);
   const [isTemplateOpen, setIsTemplateOpen] = useState(false);
@@ -190,6 +195,33 @@ export default function AuditDetailPage() {
               tutaj proper status transition + auto-naprawy. */}
         </div>
       </div>
+
+      {/* Notatki audytu — inline edit */}
+      <Card>
+        <CardHeader className="pb-2">
+          <CardTitle className="text-sm uppercase tracking-wider text-muted-foreground">Notatki ogólne audytu</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <EditableText
+            value={(audit as any).notes}
+            canEdit={canEdit}
+            multiline
+            maxLength={2000}
+            placeholder="Wnioski, ustalenia, uwagi audytora..."
+            emptyLabel="Brak notatek — kliknij ołówek, aby dodać uwagi do audytu."
+            textClassName="text-sm"
+            onSave={async (v) => {
+              const { error } = await supabase
+                .from("audits")
+                .update({ notes: v || null } as any)
+                .eq("id", audit.id);
+              if (error) { toast.error("Błąd zapisu: " + error.message); throw error; }
+              qcLocal.invalidateQueries({ queryKey: ["audits"] });
+              toast.success("Notatki audytu zaktualizowane");
+            }}
+          />
+        </CardContent>
+      </Card>
 
       {/* Progress Card */}
       <div className="grid md:grid-cols-4 gap-4">
