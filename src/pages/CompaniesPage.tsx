@@ -255,6 +255,8 @@ function ManageCompanyDialog({ open, onOpenChange, company }: { open: boolean; o
   const { data: buildings } = useBuildings();
   const { data: contacts, isLoading: loadingContacts } = useCompanyContacts(company?.id);
   const deleteContact = useDeleteCompanyContact();
+  const patchContact = usePatchCompanyContact();
+  const { canEdit: canEditContacts } = usePermissions();
 
   const [name, setName] = useState("");
   const [nip, setNip] = useState("");
