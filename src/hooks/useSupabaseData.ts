@@ -287,6 +287,7 @@ export function useTasks() {
         companyAddress: t.companies?.address ?? null,
         buildingName: t.buildings?.name ?? "",
         buildingAddress: t.buildings?.address ?? null,
+        buildingDescription: t.buildings?.description ?? null,
         contactName: t.contacts?.name ?? null,
         contactPhone: t.contacts?.phone ?? null,
         contactEmail: t.contacts?.email ?? null,
