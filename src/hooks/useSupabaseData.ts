@@ -172,7 +172,7 @@ export function useTasks() {
       const { data, error } = await supabase
         .from("tasks")
         .select(
-          "*, companies(name, nip, address), buildings(name, address), profiles!tasks_assignee_id_fkey(name), contacts(name, phone, email, position), sales_opportunities(company_name)"
+          "*, companies(name, nip, address), buildings(name, address, description), profiles!tasks_assignee_id_fkey(name), contacts(name, phone, email, position), sales_opportunities(company_name)"
         )
         .order("created_at", { ascending: false });
       if (error) throw error;
