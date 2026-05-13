@@ -75,6 +75,11 @@ export default function TaskCustomerContextPanel({ task }: Props) {
               <MapPin className="h-3 w-3 mt-0.5 shrink-0" /> {task.buildingAddress}
             </p>
           )}
+          {task.buildingDescription && (
+            <p className="text-xs text-muted-foreground whitespace-pre-wrap pt-1.5 border-t border-border/50 mt-1.5">
+              {task.buildingDescription}
+            </p>
+          )}
         </div>
 
         {/* KONTAKT */}

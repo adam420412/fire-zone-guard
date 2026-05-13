@@ -27,6 +27,7 @@ import type { SafetyStatus, TaskPriority, TaskStatus, TaskType } from "@/lib/con
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 import TaskDetailDialog from "@/components/TaskDetailDialog";
+import { EditableText } from "@/components/EditableText";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
@@ -56,12 +57,13 @@ function EditBuildingDialog({ building, open, onOpenChange }: { building: any, o
   const [address, setAddress] = useState(building?.address ?? "");
   const [companyId, setCompanyId] = useState(building?.company_id ?? "");
   const [ibpDate, setIbpDate] = useState(building?.ibp_valid_until || "");
+  const [description, setDescription] = useState(building?.description ?? "");
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     updateBuilding.mutate({
       id: building.id,
-      updates: { name, address, company_id: companyId, ibp_valid_until: ibpDate || null }
+      updates: { name, address, company_id: companyId, ibp_valid_until: ibpDate || null, description }
     }, {
       onSuccess: () => {
         toast({ title: "Zaktualizowano dane obiektu" });
@@ -101,6 +103,17 @@ function EditBuildingDialog({ building, open, onOpenChange }: { building: any, o
             <div className="space-y-2">
               <Label>Ważność IBP</Label>
               <Input type="date" value={ibpDate} onChange={e => setIbpDate(e.target.value)} />
+            </div>
+            <div className="space-y-2">
+              <Label>Opis / uwagi</Label>
+              <textarea
+                value={description}
+                onChange={e => setDescription(e.target.value)}
+                rows={4}
+                maxLength={2000}
+                placeholder="Dojazd, kontakt techniczny, specyfika obiektu..."
+                className="flex min-h-[80px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+              />
             </div>
           </div>
           <DialogFooter>
@@ -561,6 +574,8 @@ export default function BuildingDetailPage() {
   const { toast } = useToast();
   const { role } = useAuth();
   const isSuperAdmin = role === 'super_admin';
+  const canEditBuilding = role === 'super_admin' || role === 'admin';
+  const updateBuilding = useUpdateBuilding();
 
   const { data: building, isLoading: loadingBuilding } = useBuildingDetail(id ?? "");
   const { data: devices, isLoading: loadingDevices } = useBuildingDevices(id ?? "");
@@ -713,6 +728,27 @@ export default function BuildingDetailPage() {
                 <span>IBP: {new Date(building.ibp_valid_until).toLocaleDateString("pl-PL")}</span>
               </div>
             )}
+          </div>
+          <div className="mt-3 rounded-lg border border-border bg-card/40 p-3">
+            <div className="text-[11px] uppercase tracking-wider text-muted-foreground mb-1">Opis / uwagi</div>
+            <EditableText
+              value={building.description}
+              canEdit={canEditBuilding}
+              multiline
+              maxLength={2000}
+              placeholder="Dojazd, kontakt techniczny, specyfika obiektu..."
+              emptyLabel="Brak opisu — kliknij ołówek, aby dodać uwagi do obiektu."
+              textClassName="text-sm text-foreground"
+              onSave={async (v) => {
+                try {
+                  await updateBuilding.mutateAsync({ id: building.id, updates: { description: v } });
+                  toast({ title: "Opis zaktualizowany" });
+                } catch (e: any) {
+                  toast({ title: "Błąd", description: e.message, variant: "destructive" });
+                  throw e;
+                }
+              }}
+            />
           </div>
         </div>
       </div>

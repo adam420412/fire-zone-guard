@@ -142,6 +142,7 @@ export interface TaskWithDetails extends Tables<"tasks"> {
   companyAddress?: string | null;
   buildingName?: string;
   buildingAddress?: string | null;
+  buildingDescription?: string | null;
   contactName?: string | null;
   contactPhone?: string | null;
   contactEmail?: string | null;
@@ -171,7 +172,7 @@ export function useTasks() {
       const { data, error } = await supabase
         .from("tasks")
         .select(
-          "*, companies(name, nip, address), buildings(name, address), profiles!tasks_assignee_id_fkey(name), contacts(name, phone, email, position), sales_opportunities(company_name)"
+          "*, companies(name, nip, address), buildings(name, address, description), profiles!tasks_assignee_id_fkey(name), contacts(name, phone, email, position), sales_opportunities(company_name)"
         )
         .order("created_at", { ascending: false });
       if (error) throw error;
@@ -286,6 +287,7 @@ export function useTasks() {
         companyAddress: t.companies?.address ?? null,
         buildingName: t.buildings?.name ?? "",
         buildingAddress: t.buildings?.address ?? null,
+        buildingDescription: t.buildings?.description ?? null,
         contactName: t.contacts?.name ?? null,
         contactPhone: t.contacts?.phone ?? null,
         contactEmail: t.contacts?.email ?? null,
