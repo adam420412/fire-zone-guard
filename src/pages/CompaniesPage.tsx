@@ -469,7 +469,7 @@ export default function CompaniesPage() {
           <h1 className="text-2xl font-bold tracking-tight">Firmy (Klienci)</h1>
           <p className="text-sm text-muted-foreground">Rejestr spółek i kontrahentów w systemie.</p>
         </div>
-        {role === "super_admin" && (
+        {isSuperAdmin && (
           <Button onClick={() => setCreateOpen(true)} className="fire-gradient">
             <Plus className="mr-2 h-4 w-4" />
             Dodaj Klienta
