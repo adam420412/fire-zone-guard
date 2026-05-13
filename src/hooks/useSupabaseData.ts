@@ -142,6 +142,7 @@ export interface TaskWithDetails extends Tables<"tasks"> {
   companyAddress?: string | null;
   buildingName?: string;
   buildingAddress?: string | null;
+  buildingDescription?: string | null;
   contactName?: string | null;
   contactPhone?: string | null;
   contactEmail?: string | null;
