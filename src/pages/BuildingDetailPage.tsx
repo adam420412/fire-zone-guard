@@ -726,6 +726,27 @@ export default function BuildingDetailPage() {
               </div>
             )}
           </div>
+          <div className="mt-3 rounded-lg border border-border bg-card/40 p-3">
+            <div className="text-[11px] uppercase tracking-wider text-muted-foreground mb-1">Opis / uwagi</div>
+            <EditableText
+              value={building.description}
+              canEdit={canEditBuilding}
+              multiline
+              maxLength={2000}
+              placeholder="Dojazd, kontakt techniczny, specyfika obiektu..."
+              emptyLabel="Brak opisu — kliknij ołówek, aby dodać uwagi do obiektu."
+              textClassName="text-sm text-foreground"
+              onSave={async (v) => {
+                try {
+                  await updateBuilding.mutateAsync({ id: building.id, updates: { description: v } });
+                  toast({ title: "Opis zaktualizowany" });
+                } catch (e: any) {
+                  toast({ title: "Błąd", description: e.message, variant: "destructive" });
+                  throw e;
+                }
+              }}
+            />
+          </div>
         </div>
       </div>
 
