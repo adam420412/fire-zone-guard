@@ -734,19 +734,57 @@ export default function FinancePage() {
                 const statusInfo = OPP_STATUS_MAP[opp.status] ?? OPP_STATUS_MAP["nowy_lead"];
                 const currentIdx = OPP_FLOW.indexOf(opp.status);
                 const nextStatus = currentIdx < OPP_FLOW.length - 2 ? OPP_FLOW[currentIdx + 1] : null;
+                const buildingName = (buildings ?? []).find((b: any) => b.id === opp.building_id)?.name;
+                const linkedTask = (tasks ?? []).find((t: any) => t.id === opp.task_id);
+                const assigneeName = (profiles ?? []).find((p: any) => p.id === opp.assignee_id)?.name;
+                const followUp = opp.follow_up_at ? new Date(opp.follow_up_at) : null;
+                const overdue = followUp && followUp < new Date() && opp.status !== "archiwum";
+
+                const saveField = (field: string) => async (val: string) => {
+                  await new Promise<void>((resolve, reject) => {
+                    updateOpportunity(
+                      { id: opp.id, updates: { [field]: val, updated_at: new Date().toISOString() } },
+                      { onSuccess: () => { toast.success("Zaktualizowano."); resolve(); }, onError: (e: any) => { toast.error(e?.message ?? "Błąd zapisu"); reject(e); } }
+                    );
+                  });
+                };
 
                 return (
                   <Card key={opp.id} className="group relative">
                     <CardContent className="pt-5 pb-4 space-y-3">
-                      <div className="flex items-start justify-between">
-                        <div>
-                          <p className="font-semibold text-sm">{opp.company_name}</p>
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="min-w-0">
+                          {opp.title && <p className="font-semibold text-sm truncate">{opp.title}</p>}
+                          <p className={opp.title ? "text-xs text-muted-foreground truncate" : "font-semibold text-sm truncate"}>{opp.company_name}</p>
                           {opp.contact_name && <p className="text-xs text-muted-foreground">{opp.contact_name}</p>}
                         </div>
-                        <Badge className={`${statusInfo.color} border-0 text-xs`}>{statusInfo.label}</Badge>
+                        <Badge className={`${statusInfo.color} border-0 text-xs shrink-0`}>{statusInfo.label}</Badge>
                       </div>
 
-                      {opp.description && <p className="text-xs text-muted-foreground line-clamp-2">{opp.description}</p>}
+                      <div className="text-xs">
+                        <div className="text-muted-foreground mb-1">Treść / opis:</div>
+                        <EditableText
+                          value={opp.description}
+                          onSave={saveField("description")}
+                          multiline
+                          canEdit={isSuperAdmin}
+                          emptyLabel="— brak opisu —"
+                          textClassName="text-xs"
+                          maxLength={2000}
+                        />
+                      </div>
+
+                      <div className="flex flex-wrap gap-1.5 text-xs">
+                        {buildingName && <Badge variant="outline" className="gap-1"><Building2 className="h-3 w-3" />{buildingName}</Badge>}
+                        {linkedTask && <Badge variant="outline" className="gap-1"><Briefcase className="h-3 w-3" />{linkedTask.title.slice(0, 28)}</Badge>}
+                        {assigneeName && <Badge variant="outline" className="gap-1"><UserCircle className="h-3 w-3" />{assigneeName}</Badge>}
+                        {followUp && (
+                          <Badge variant={overdue ? "destructive" : "outline"} className="gap-1">
+                            <CalendarClock className="h-3 w-3" />
+                            {followUp.toLocaleString("pl-PL", { dateStyle: "short", timeStyle: "short" })}
+                          </Badge>
+                        )}
+                      </div>
 
                       <div className="flex items-center justify-between text-xs">
                         {opp.estimated_value > 0 && (
@@ -758,6 +796,47 @@ export default function FinancePage() {
                       {opp.contact_phone && <p className="text-xs text-muted-foreground">📞 {opp.contact_phone}</p>}
                       {opp.contact_email && <p className="text-xs text-muted-foreground">✉️ {opp.contact_email}</p>}
 
+                      {/* Inline assignee + follow-up edit */}
+                      {isSuperAdmin && opp.status !== "archiwum" && (
+                        <div className="grid grid-cols-2 gap-2 pt-2 border-t border-border">
+                          <div className="space-y-1">
+                            <Label className="text-[10px] text-muted-foreground">Przypisany</Label>
+                            <Select
+                              value={opp.assignee_id ?? "none"}
+                              onValueChange={(v) =>
+                                updateOpportunity(
+                                  { id: opp.id, updates: { assignee_id: v === "none" ? null : v, updated_at: new Date().toISOString() } },
+                                  { onSuccess: () => toast.success("Przypisano.") }
+                                )
+                              }
+                            >
+                              <SelectTrigger className="h-7 text-xs"><SelectValue placeholder="Nikt" /></SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="none">— nikt —</SelectItem>
+                                {(profiles ?? []).map((p: any) => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}
+                              </SelectContent>
+                            </Select>
+                          </div>
+                          <div className="space-y-1">
+                            <Label className="text-[10px] text-muted-foreground">Termin</Label>
+                            <Input
+                              type="datetime-local"
+                              className="h-7 text-xs"
+                              value={opp.follow_up_at ? new Date(opp.follow_up_at).toISOString().slice(0, 16) : ""}
+                              onChange={(e) =>
+                                updateOpportunity({
+                                  id: opp.id,
+                                  updates: {
+                                    follow_up_at: e.target.value ? new Date(e.target.value).toISOString() : null,
+                                    updated_at: new Date().toISOString(),
+                                  },
+                                })
+                              }
+                            />
+                          </div>
+                        </div>
+                      )}
+
                       {/* Actions */}
                       {isSuperAdmin && opp.status !== "archiwum" && (
                         <div className="flex gap-1.5 pt-2 border-t border-border flex-wrap">
@@ -768,7 +847,12 @@ export default function FinancePage() {
                           )}
                           {!opp.company_id && opp.status !== "archiwum" && (
                             <Button size="sm" variant="default" className="h-7 text-xs fire-gradient" onClick={() => handleConvertToCompany(opp)}>
-                              <Building2 className="mr-1 h-3 w-3" /> Konwertuj na klienta
+                              <Building2 className="mr-1 h-3 w-3" /> Przerób na zlecenie
+                            </Button>
+                          )}
+                          {opp.company_id && !opp.task_id && (
+                            <Button size="sm" variant="default" className="h-7 text-xs fire-gradient" onClick={() => handleConvertToCompany(opp)}>
+                              <Briefcase className="mr-1 h-3 w-3" /> Utwórz zlecenie
                             </Button>
                           )}
                           {opp.company_id && (
