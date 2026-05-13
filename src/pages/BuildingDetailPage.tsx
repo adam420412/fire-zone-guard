@@ -56,12 +56,13 @@ function EditBuildingDialog({ building, open, onOpenChange }: { building: any, o
   const [address, setAddress] = useState(building?.address ?? "");
   const [companyId, setCompanyId] = useState(building?.company_id ?? "");
   const [ibpDate, setIbpDate] = useState(building?.ibp_valid_until || "");
+  const [description, setDescription] = useState(building?.description ?? "");
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     updateBuilding.mutate({
       id: building.id,
-      updates: { name, address, company_id: companyId, ibp_valid_until: ibpDate || null }
+      updates: { name, address, company_id: companyId, ibp_valid_until: ibpDate || null, description }
     }, {
       onSuccess: () => {
         toast({ title: "Zaktualizowano dane obiektu" });
