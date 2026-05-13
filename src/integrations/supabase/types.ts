@@ -1600,6 +1600,8 @@ export type Database = {
       }
       sales_opportunities: {
         Row: {
+          assignee_id: string | null
+          building_id: string | null
           company_id: string | null
           company_name: string
           contact_email: string | null
@@ -1608,13 +1610,18 @@ export type Database = {
           created_at: string
           description: string | null
           estimated_value: number | null
+          follow_up_at: string | null
           id: string
           notes: string | null
           source: string | null
           status: string
+          task_id: string | null
+          title: string | null
           updated_at: string
         }
         Insert: {
+          assignee_id?: string | null
+          building_id?: string | null
           company_id?: string | null
           company_name: string
           contact_email?: string | null
@@ -1623,13 +1630,18 @@ export type Database = {
           created_at?: string
           description?: string | null
           estimated_value?: number | null
+          follow_up_at?: string | null
           id?: string
           notes?: string | null
           source?: string | null
           status?: string
+          task_id?: string | null
+          title?: string | null
           updated_at?: string
         }
         Update: {
+          assignee_id?: string | null
+          building_id?: string | null
           company_id?: string | null
           company_name?: string
           contact_email?: string | null
@@ -1638,18 +1650,42 @@ export type Database = {
           created_at?: string
           description?: string | null
           estimated_value?: number | null
+          follow_up_at?: string | null
           id?: string
           notes?: string | null
           source?: string | null
           status?: string
+          task_id?: string | null
+          title?: string | null
           updated_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "sales_opportunities_building_id_fkey"
+            columns: ["building_id"]
+            isOneToOne: false
+            referencedRelation: "building_cost_summary"
+            referencedColumns: ["building_id"]
+          },
+          {
+            foreignKeyName: "sales_opportunities_building_id_fkey"
+            columns: ["building_id"]
+            isOneToOne: false
+            referencedRelation: "buildings"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "sales_opportunities_company_id_fkey"
             columns: ["company_id"]
             isOneToOne: false
             referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sales_opportunities_task_id_fkey"
+            columns: ["task_id"]
+            isOneToOne: false
+            referencedRelation: "tasks"
             referencedColumns: ["id"]
           },
         ]

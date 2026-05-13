@@ -1,7 +1,8 @@
 import { useState, useMemo, useEffect } from "react";
 import { useSearchParams } from "react-router-dom";
 import { useQuotes, useQuoteItems, useServices, useContacts, useCreateQuote, useCreateQuoteItem, useUpdateQuote, useSalesOpportunities, useCreateOpportunity, useUpdateOpportunity, useDeleteOpportunity } from "@/hooks/useCrmData";
-import { useCompanies, useCreateCompany, useTaskFinanceSummary } from "@/hooks/useSupabaseData";
+import { useCompanies, useCreateCompany, useTaskFinanceSummary, useBuildings, useTasks, useProfiles } from "@/hooks/useSupabaseData";
+import { EditableText } from "@/components/EditableText";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -15,7 +16,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
-import { Plus, Loader2, FileText, Search, ShoppingCart, CheckCircle, XCircle, DollarSign, TrendingUp, BarChart3, Percent, Target, Building2, Archive, ArrowRight, Trash2 } from "lucide-react";
+import { Plus, Loader2, FileText, Search, ShoppingCart, CheckCircle, XCircle, DollarSign, TrendingUp, BarChart3, Percent, Target, Building2, Archive, ArrowRight, Trash2, CalendarClock, UserCircle, Briefcase } from "lucide-react";
 import { generateReportPDF } from "@/lib/pdfGenerator";
 import ConvertOpportunityDialog from "@/components/ConvertOpportunityDialog";
 
@@ -394,39 +395,157 @@ const OPP_STATUS_MAP: Record<string, { label: string; variant: "default" | "seco
 
 const OPP_FLOW = ["nowy_lead", "kontakt", "oferta", "zlecenie", "archiwum"];
 
-// ---- Add Opportunity Dialog ----
+// ---- Add Opportunity Dialog (Quick) ----
 function AddOpportunityDialog({ open, onOpenChange }: { open: boolean; onOpenChange: (o: boolean) => void }) {
   const { mutate: create, isPending } = useCreateOpportunity();
-  const [form, setForm] = useState({ company_name: "", contact_name: "", contact_email: "", contact_phone: "", description: "", estimated_value: 0, source: "manual" });
+  const { data: companies } = useCompanies();
+  const { data: buildings } = useBuildings();
+  const { data: tasks } = useTasks();
+  const { data: profiles } = useProfiles();
+
+  const empty = {
+    title: "",
+    company_name: "",
+    contact_name: "",
+    contact_email: "",
+    contact_phone: "",
+    description: "",
+    estimated_value: 0,
+    source: "manual",
+    company_id: "",
+    building_id: "",
+    task_id: "",
+    assignee_id: "",
+    follow_up_at: "",
+  };
+  const [form, setForm] = useState(empty);
+
+  const filteredBuildings = useMemo(
+    () => (buildings ?? []).filter((b: any) => !form.company_id || b.company_id === form.company_id),
+    [buildings, form.company_id]
+  );
+  const filteredTasks = useMemo(
+    () => (tasks ?? []).filter((t: any) =>
+      (!form.company_id || t.company_id === form.company_id) &&
+      (!form.building_id || t.building_id === form.building_id)
+    ),
+    [tasks, form.company_id, form.building_id]
+  );
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!form.company_name.trim()) { toast.error("Podaj nazwę firmy/klienta."); return; }
-    create(form, {
-      onSuccess: () => { toast.success("Szansa sprzedażowa dodana!"); onOpenChange(false); setForm({ company_name: "", contact_name: "", contact_email: "", contact_phone: "", description: "", estimated_value: 0, source: "manual" }); },
+    if (!form.company_name.trim() && !form.company_id) {
+      toast.error("Podaj nazwę firmy lub wybierz istniejącą.");
+      return;
+    }
+    const linkedCompanyName = form.company_id
+      ? (companies ?? []).find((c: any) => c.id === form.company_id)?.name ?? form.company_name
+      : form.company_name;
+
+    const payload: any = {
+      title: form.title || null,
+      company_name: linkedCompanyName || form.company_name,
+      contact_name: form.contact_name,
+      contact_email: form.contact_email,
+      contact_phone: form.contact_phone,
+      description: form.description,
+      estimated_value: form.estimated_value,
+      source: form.source,
+      company_id: form.company_id || null,
+      building_id: form.building_id || null,
+      task_id: form.task_id || null,
+      assignee_id: form.assignee_id || null,
+      follow_up_at: form.follow_up_at ? new Date(form.follow_up_at).toISOString() : null,
+    };
+
+    create(payload, {
+      onSuccess: () => { toast.success("Szansa sprzedażowa dodana!"); onOpenChange(false); setForm(empty); },
       onError: (err) => toast.error("Błąd: " + err.message),
     });
   };
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-lg">
+      <DialogContent className="max-w-xl max-h-[90vh] overflow-y-auto">
         <form onSubmit={handleSubmit}>
           <DialogHeader>
-            <DialogTitle>Nowa szansa sprzedażowa</DialogTitle>
-            <DialogDescription>Dodaj potencjalnego klienta lub lead.</DialogDescription>
+            <DialogTitle>Szybka szansa sprzedażowa</DialogTitle>
+            <DialogDescription>Zarejestruj zapytanie/lead i przypisz osobę oraz termin kontaktu.</DialogDescription>
           </DialogHeader>
           <div className="grid gap-4 py-4">
-            <div className="space-y-2"><Label>Nazwa firmy / klienta *</Label><Input value={form.company_name} onChange={e => setForm({ ...form, company_name: e.target.value })} required placeholder="np. ABC Sp. z o.o." /></div>
+            <div className="space-y-2">
+              <Label>Tytuł / sprawa</Label>
+              <Input value={form.title} onChange={e => setForm({ ...form, title: e.target.value })} placeholder="np. Zapytanie o gaśnice — biuro Warszawa" />
+            </div>
+
             <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2"><Label>Osoba kontaktowa</Label><Input value={form.contact_name} onChange={e => setForm({ ...form, contact_name: e.target.value })} /></div>
+              <div className="space-y-2">
+                <Label>Powiązana firma (opcjonalnie)</Label>
+                <Select value={form.company_id || "none"} onValueChange={v => setForm({ ...form, company_id: v === "none" ? "" : v, building_id: "", task_id: "" })}>
+                  <SelectTrigger><SelectValue placeholder="Wybierz firmę..." /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">— brak —</SelectItem>
+                    {(companies ?? []).map((c: any) => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label>Nowa firma / klient {!form.company_id && "*"}</Label>
+                <Input value={form.company_name} onChange={e => setForm({ ...form, company_name: e.target.value })} placeholder="np. ABC Sp. z o.o." disabled={!!form.company_id} />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label>Obiekt (opcjonalnie)</Label>
+                <Select value={form.building_id || "none"} onValueChange={v => setForm({ ...form, building_id: v === "none" ? "" : v, task_id: "" })}>
+                  <SelectTrigger><SelectValue placeholder={form.company_id ? "Wybierz obiekt..." : "Najpierw wybierz firmę"} /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">— brak —</SelectItem>
+                    {filteredBuildings.map((b: any) => <SelectItem key={b.id} value={b.id}>{b.name}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label>Powiązane zlecenie (opcjonalnie)</Label>
+                <Select value={form.task_id || "none"} onValueChange={v => setForm({ ...form, task_id: v === "none" ? "" : v })}>
+                  <SelectTrigger><SelectValue placeholder="Wybierz zlecenie..." /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">— brak —</SelectItem>
+                    {filteredTasks.slice(0, 50).map((t: any) => <SelectItem key={t.id} value={t.id}>{t.title}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2"><Label>Osoba zgłaszająca / kto</Label><Input value={form.contact_name} onChange={e => setForm({ ...form, contact_name: e.target.value })} placeholder="Imię i nazwisko" /></div>
               <div className="space-y-2"><Label>Telefon</Label><Input value={form.contact_phone} onChange={e => setForm({ ...form, contact_phone: e.target.value })} placeholder="+48..." /></div>
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2"><Label>Email</Label><Input type="email" value={form.contact_email} onChange={e => setForm({ ...form, contact_email: e.target.value })} /></div>
               <div className="space-y-2"><Label>Szacowana wartość (zł)</Label><Input type="number" min={0} value={form.estimated_value} onChange={e => setForm({ ...form, estimated_value: parseFloat(e.target.value) || 0 })} /></div>
             </div>
-            <div className="space-y-2"><Label>Opis / czego dotyczy</Label><Textarea value={form.description} onChange={e => setForm({ ...form, description: e.target.value })} placeholder="Czego ma dotyczyć zlecenie..." rows={3} /></div>
+
+            <div className="space-y-2"><Label>Treść / opis (np. treść maila)</Label><Textarea value={form.description} onChange={e => setForm({ ...form, description: e.target.value })} placeholder="Treść zapytania, maila, notatka z rozmowy..." rows={4} /></div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label>Osoba przypisana (opcjonalnie)</Label>
+                <Select value={form.assignee_id || "none"} onValueChange={v => setForm({ ...form, assignee_id: v === "none" ? "" : v })}>
+                  <SelectTrigger><SelectValue placeholder="Wybierz osobę..." /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">— nikt —</SelectItem>
+                    {(profiles ?? []).map((p: any) => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label>Termin zajęcia się sprawą</Label>
+                <Input type="datetime-local" value={form.follow_up_at} onChange={e => setForm({ ...form, follow_up_at: e.target.value })} />
+              </div>
+            </div>
+
             <div className="space-y-2"><Label>Źródło</Label>
               <Select value={form.source} onValueChange={v => setForm({ ...form, source: v })}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
@@ -455,6 +574,9 @@ export default function FinancePage() {
   const { role } = useAuth();
   const { data: quotes, isLoading: quotesLoading } = useQuotes();
   const { data: companies } = useCompanies();
+  const { data: buildings } = useBuildings();
+  const { data: tasks } = useTasks();
+  const { data: profiles } = useProfiles();
   const { data: services, isLoading: servicesLoading } = useServices();
   const { data: opportunities, isLoading: oppsLoading } = useSalesOpportunities();
   const { data: financeSummary, isLoading: financeLoading } = useTaskFinanceSummary();
@@ -612,19 +734,57 @@ export default function FinancePage() {
                 const statusInfo = OPP_STATUS_MAP[opp.status] ?? OPP_STATUS_MAP["nowy_lead"];
                 const currentIdx = OPP_FLOW.indexOf(opp.status);
                 const nextStatus = currentIdx < OPP_FLOW.length - 2 ? OPP_FLOW[currentIdx + 1] : null;
+                const buildingName = (buildings ?? []).find((b: any) => b.id === opp.building_id)?.name;
+                const linkedTask = (tasks ?? []).find((t: any) => t.id === opp.task_id);
+                const assigneeName = (profiles ?? []).find((p: any) => p.id === opp.assignee_id)?.name;
+                const followUp = opp.follow_up_at ? new Date(opp.follow_up_at) : null;
+                const overdue = followUp && followUp < new Date() && opp.status !== "archiwum";
+
+                const saveField = (field: string) => async (val: string) => {
+                  await new Promise<void>((resolve, reject) => {
+                    updateOpportunity(
+                      { id: opp.id, updates: { [field]: val, updated_at: new Date().toISOString() } },
+                      { onSuccess: () => { toast.success("Zaktualizowano."); resolve(); }, onError: (e: any) => { toast.error(e?.message ?? "Błąd zapisu"); reject(e); } }
+                    );
+                  });
+                };
 
                 return (
                   <Card key={opp.id} className="group relative">
                     <CardContent className="pt-5 pb-4 space-y-3">
-                      <div className="flex items-start justify-between">
-                        <div>
-                          <p className="font-semibold text-sm">{opp.company_name}</p>
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="min-w-0">
+                          {opp.title && <p className="font-semibold text-sm truncate">{opp.title}</p>}
+                          <p className={opp.title ? "text-xs text-muted-foreground truncate" : "font-semibold text-sm truncate"}>{opp.company_name}</p>
                           {opp.contact_name && <p className="text-xs text-muted-foreground">{opp.contact_name}</p>}
                         </div>
-                        <Badge className={`${statusInfo.color} border-0 text-xs`}>{statusInfo.label}</Badge>
+                        <Badge className={`${statusInfo.color} border-0 text-xs shrink-0`}>{statusInfo.label}</Badge>
                       </div>
 
-                      {opp.description && <p className="text-xs text-muted-foreground line-clamp-2">{opp.description}</p>}
+                      <div className="text-xs">
+                        <div className="text-muted-foreground mb-1">Treść / opis:</div>
+                        <EditableText
+                          value={opp.description}
+                          onSave={saveField("description")}
+                          multiline
+                          canEdit={isSuperAdmin}
+                          emptyLabel="— brak opisu —"
+                          textClassName="text-xs"
+                          maxLength={2000}
+                        />
+                      </div>
+
+                      <div className="flex flex-wrap gap-1.5 text-xs">
+                        {buildingName && <Badge variant="outline" className="gap-1"><Building2 className="h-3 w-3" />{buildingName}</Badge>}
+                        {linkedTask && <Badge variant="outline" className="gap-1"><Briefcase className="h-3 w-3" />{linkedTask.title.slice(0, 28)}</Badge>}
+                        {assigneeName && <Badge variant="outline" className="gap-1"><UserCircle className="h-3 w-3" />{assigneeName}</Badge>}
+                        {followUp && (
+                          <Badge variant={overdue ? "destructive" : "outline"} className="gap-1">
+                            <CalendarClock className="h-3 w-3" />
+                            {followUp.toLocaleString("pl-PL", { dateStyle: "short", timeStyle: "short" })}
+                          </Badge>
+                        )}
+                      </div>
 
                       <div className="flex items-center justify-between text-xs">
                         {opp.estimated_value > 0 && (
@@ -636,6 +796,47 @@ export default function FinancePage() {
                       {opp.contact_phone && <p className="text-xs text-muted-foreground">📞 {opp.contact_phone}</p>}
                       {opp.contact_email && <p className="text-xs text-muted-foreground">✉️ {opp.contact_email}</p>}
 
+                      {/* Inline assignee + follow-up edit */}
+                      {isSuperAdmin && opp.status !== "archiwum" && (
+                        <div className="grid grid-cols-2 gap-2 pt-2 border-t border-border">
+                          <div className="space-y-1">
+                            <Label className="text-[10px] text-muted-foreground">Przypisany</Label>
+                            <Select
+                              value={opp.assignee_id ?? "none"}
+                              onValueChange={(v) =>
+                                updateOpportunity(
+                                  { id: opp.id, updates: { assignee_id: v === "none" ? null : v, updated_at: new Date().toISOString() } },
+                                  { onSuccess: () => toast.success("Przypisano.") }
+                                )
+                              }
+                            >
+                              <SelectTrigger className="h-7 text-xs"><SelectValue placeholder="Nikt" /></SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="none">— nikt —</SelectItem>
+                                {(profiles ?? []).map((p: any) => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}
+                              </SelectContent>
+                            </Select>
+                          </div>
+                          <div className="space-y-1">
+                            <Label className="text-[10px] text-muted-foreground">Termin</Label>
+                            <Input
+                              type="datetime-local"
+                              className="h-7 text-xs"
+                              value={opp.follow_up_at ? new Date(opp.follow_up_at).toISOString().slice(0, 16) : ""}
+                              onChange={(e) =>
+                                updateOpportunity({
+                                  id: opp.id,
+                                  updates: {
+                                    follow_up_at: e.target.value ? new Date(e.target.value).toISOString() : null,
+                                    updated_at: new Date().toISOString(),
+                                  },
+                                })
+                              }
+                            />
+                          </div>
+                        </div>
+                      )}
+
                       {/* Actions */}
                       {isSuperAdmin && opp.status !== "archiwum" && (
                         <div className="flex gap-1.5 pt-2 border-t border-border flex-wrap">
@@ -646,7 +847,12 @@ export default function FinancePage() {
                           )}
                           {!opp.company_id && opp.status !== "archiwum" && (
                             <Button size="sm" variant="default" className="h-7 text-xs fire-gradient" onClick={() => handleConvertToCompany(opp)}>
-                              <Building2 className="mr-1 h-3 w-3" /> Konwertuj na klienta
+                              <Building2 className="mr-1 h-3 w-3" /> Przerób na zlecenie
+                            </Button>
+                          )}
+                          {opp.company_id && !opp.task_id && (
+                            <Button size="sm" variant="default" className="h-7 text-xs fire-gradient" onClick={() => handleConvertToCompany(opp)}>
+                              <Briefcase className="mr-1 h-3 w-3" /> Utwórz zlecenie
                             </Button>
                           )}
                           {opp.company_id && (
