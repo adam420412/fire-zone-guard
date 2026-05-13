@@ -66,7 +66,7 @@ export default function TaskCustomerContextPanel({ task }: Props) {
             {task.building_id && (
               <Link to={`/buildings/${task.building_id}`}>
                 <Button variant="ghost" size="sm" className="h-6 text-[10px] uppercase font-bold tracking-wider gap-1">
-                  Edytuj obiekt <ExternalLink className="h-2.5 w-2.5" />
+                  {canEdit ? "Edytuj obiekt" : "Otwórz"} <ExternalLink className="h-2.5 w-2.5" />
                 </Button>
               </Link>
             )}
