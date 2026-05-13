@@ -1,7 +1,8 @@
 import { useState, useMemo, useEffect } from "react";
 import { useSearchParams } from "react-router-dom";
 import { useQuotes, useQuoteItems, useServices, useContacts, useCreateQuote, useCreateQuoteItem, useUpdateQuote, useSalesOpportunities, useCreateOpportunity, useUpdateOpportunity, useDeleteOpportunity } from "@/hooks/useCrmData";
-import { useCompanies, useCreateCompany, useTaskFinanceSummary } from "@/hooks/useSupabaseData";
+import { useCompanies, useCreateCompany, useTaskFinanceSummary, useBuildings, useTasks, useProfiles } from "@/hooks/useSupabaseData";
+import { EditableText } from "@/components/EditableText";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
