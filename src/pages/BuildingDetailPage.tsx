@@ -696,9 +696,28 @@ export default function BuildingDetailPage() {
             <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-secondary shrink-0">
               <Building2 className="h-6 w-6 text-secondary-foreground" />
             </div>
-            <div className="flex-1">
+            <div className="flex-1 min-w-0">
               <div className="flex items-center gap-3">
-                <h1 className="text-2xl font-bold tracking-tight text-foreground">{building.name}</h1>
+                <div className="flex-1 min-w-0">
+                  <EditableText
+                    value={building.name}
+                    canEdit={canEditBuilding}
+                    maxLength={200}
+                    placeholder="Nazwa obiektu"
+                    emptyLabel="(brak nazwy)"
+                    textClassName="text-2xl font-bold tracking-tight text-foreground"
+                    onSave={async (v) => {
+                      if (!v.trim()) { toast({ title: "Nazwa nie może być pusta", variant: "destructive" }); throw new Error("empty"); }
+                      try {
+                        await updateBuilding.mutateAsync({ id: building.id, updates: { name: v.trim() } });
+                        toast({ title: "Nazwa zaktualizowana" });
+                      } catch (e: any) {
+                        toast({ title: "Błąd", description: e.message, variant: "destructive" });
+                        throw e;
+                      }
+                    }}
+                  />
+                </div>
                 <StatusIcon className={cn("h-6 w-6 shrink-0", statusConf.color)} />
               </div>
               <p className="text-sm font-medium text-muted-foreground">{building.companyName}</p>
@@ -708,16 +727,34 @@ export default function BuildingDetailPage() {
             <div className="flex items-center gap-2">
               <ReportFaultButton buildingId={building.id} variant="prominent" />
               {isSuperAdmin && (
-                <button onClick={() => setShowEditBuilding(true)} className="rounded-full bg-secondary p-2.5 hover:bg-primary/20 hover:text-primary transition-colors">
+                <button onClick={() => setShowEditBuilding(true)} className="rounded-full bg-secondary p-2.5 hover:bg-primary/20 hover:text-primary transition-colors" title="Pełna edycja obiektu">
                   <Edit className="h-4 w-4" />
                 </button>
               )}
             </div>
           </div>
           <div className="mt-4 flex flex-wrap items-center gap-4 text-xs font-medium text-muted-foreground">
-            <div className="flex items-center gap-1.5">
-              <MapPin className="h-4 w-4 text-primary" />
-              <span>{building.address}</span>
+            <div className="flex items-start gap-1.5 flex-1 min-w-[240px]">
+              <MapPin className="h-4 w-4 text-primary mt-0.5" />
+              <div className="flex-1">
+                <EditableText
+                  value={building.address}
+                  canEdit={canEditBuilding}
+                  maxLength={300}
+                  placeholder="ul., kod, miasto"
+                  emptyLabel="(brak adresu)"
+                  textClassName="text-xs font-medium text-muted-foreground"
+                  onSave={async (v) => {
+                    try {
+                      await updateBuilding.mutateAsync({ id: building.id, updates: { address: v.trim() } });
+                      toast({ title: "Adres zaktualizowany" });
+                    } catch (e: any) {
+                      toast({ title: "Błąd", description: e.message, variant: "destructive" });
+                      throw e;
+                    }
+                  }}
+                />
+              </div>
             </div>
             {building.ibp_valid_until && (
               <div className={cn(
