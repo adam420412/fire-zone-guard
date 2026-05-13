@@ -398,6 +398,7 @@ export type Database = {
           address: string
           company_id: string
           created_at: string
+          description: string | null
           evacuation_last_date: string | null
           floor_plan_url: string | null
           geocoded_at: string | null
@@ -412,6 +413,7 @@ export type Database = {
           address?: string
           company_id: string
           created_at?: string
+          description?: string | null
           evacuation_last_date?: string | null
           floor_plan_url?: string | null
           geocoded_at?: string | null
@@ -426,6 +428,7 @@ export type Database = {
           address?: string
           company_id?: string
           created_at?: string
+          description?: string | null
           evacuation_last_date?: string | null
           floor_plan_url?: string | null
           geocoded_at?: string | null
