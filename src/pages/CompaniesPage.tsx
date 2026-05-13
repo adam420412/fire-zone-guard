@@ -423,6 +423,21 @@ function ManageCompanyDialog({ open, onOpenChange, company }: { open: boolean; o
                         </Button>
                       </div>
                     </div>
+                    <div className="border-t border-border/50 pt-2">
+                      <EditableText
+                        value={c.notes}
+                        canEdit={canEditContacts}
+                        multiline
+                        maxLength={500}
+                        placeholder="Notatka o kontakcie..."
+                        emptyLabel="(brak notatki — kliknij ołówek, aby dodać)"
+                        textClassName="text-xs text-muted-foreground italic"
+                        onSave={async (v) => {
+                          await patchContact.mutateAsync({ id: c.id, company_id: company.id, patch: { notes: v || null as any } });
+                          toast.success("Notatka zapisana");
+                        }}
+                      />
+                    </div>
                   </div>
                 );
               })}
