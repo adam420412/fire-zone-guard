@@ -583,6 +583,7 @@ export default function BuildingDetailPage() {
   const { data: templates } = useTaskTemplates(id);
   const { data: deviceTypes } = useDeviceTypes();
   const addDevice = useAddDevice();
+  const updateDevice = useUpdateDevice();
   const createFromTemplate = useCreateTaskFromTemplate();
 
   const [selectedTask, setSelectedTask] = useState<any>(null);
