@@ -574,6 +574,9 @@ export default function FinancePage() {
   const { role } = useAuth();
   const { data: quotes, isLoading: quotesLoading } = useQuotes();
   const { data: companies } = useCompanies();
+  const { data: buildings } = useBuildings();
+  const { data: tasks } = useTasks();
+  const { data: profiles } = useProfiles();
   const { data: services, isLoading: servicesLoading } = useServices();
   const { data: opportunities, isLoading: oppsLoading } = useSalesOpportunities();
   const { data: financeSummary, isLoading: financeLoading } = useTaskFinanceSummary();
