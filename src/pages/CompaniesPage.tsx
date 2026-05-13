@@ -10,6 +10,7 @@ import {
   type CompanyContactInput,
 } from "@/hooks/useCompanyContacts";
 import { useAuth } from "@/hooks/useAuth";
+import { usePermissions } from "@/hooks/usePermissions";
 import { cn } from "@/lib/utils";
 import {
   Briefcase, Building2, ClipboardList, TrendingUp, Loader2, Settings, Save, Search, Plus,
