@@ -196,6 +196,33 @@ export default function AuditDetailPage() {
         </div>
       </div>
 
+      {/* Notatki audytu — inline edit */}
+      <Card>
+        <CardHeader className="pb-2">
+          <CardTitle className="text-sm uppercase tracking-wider text-muted-foreground">Notatki ogólne audytu</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <EditableText
+            value={(audit as any).notes}
+            canEdit={canEdit}
+            multiline
+            maxLength={2000}
+            placeholder="Wnioski, ustalenia, uwagi audytora..."
+            emptyLabel="Brak notatek — kliknij ołówek, aby dodać uwagi do audytu."
+            textClassName="text-sm"
+            onSave={async (v) => {
+              const { error } = await supabase
+                .from("audits")
+                .update({ notes: v || null } as any)
+                .eq("id", audit.id);
+              if (error) { toast.error("Błąd zapisu: " + error.message); throw error; }
+              qcLocal.invalidateQueries({ queryKey: ["audits"] });
+              toast.success("Notatki audytu zaktualizowane");
+            }}
+          />
+        </CardContent>
+      </Card>
+
       {/* Progress Card */}
       <div className="grid md:grid-cols-4 gap-4">
         <Card>
