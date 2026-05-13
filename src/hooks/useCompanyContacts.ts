@@ -159,3 +159,28 @@ export function useDeleteCompanyContact() {
     },
   });
 }
+
+/** Patch pojedynczego pola kontaktu (np. inline edycja notatki). */
+export function usePatchCompanyContact() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({
+      id,
+      company_id: _company_id,
+      patch,
+    }: {
+      id: string;
+      company_id: string;
+      patch: Partial<Pick<CompanyContact, "notes" | "full_name" | "position" | "phone" | "email">>;
+    }) => {
+      const { error } = await (supabase as any)
+        .from("company_contacts")
+        .update(patch)
+        .eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: (_d, vars) => {
+      qc.invalidateQueries({ queryKey: ["company_contacts", vars.company_id] });
+    },
+  });
+}
