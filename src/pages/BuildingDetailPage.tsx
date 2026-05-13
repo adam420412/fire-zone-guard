@@ -573,6 +573,8 @@ export default function BuildingDetailPage() {
   const { toast } = useToast();
   const { role } = useAuth();
   const isSuperAdmin = role === 'super_admin';
+  const canEditBuilding = role === 'super_admin' || role === 'admin';
+  const updateBuilding = useUpdateBuilding();
 
   const { data: building, isLoading: loadingBuilding } = useBuildingDetail(id ?? "");
   const { data: devices, isLoading: loadingDevices } = useBuildingDevices(id ?? "");
