@@ -39,6 +39,8 @@ export default function AuditDetailPage() {
   
   const { role } = useAuth();
   const isSuperAdmin = role === 'super_admin' || role === 'inspektor' || role === 'audytor';
+  const { canEdit } = usePermissions();
+  const qcLocal = useQueryClient();
 
   const [isAddOpen, setIsAddOpen] = useState(false);
   const [isTemplateOpen, setIsTemplateOpen] = useState(false);
