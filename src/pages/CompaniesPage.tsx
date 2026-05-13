@@ -6,9 +6,11 @@ import {
   useCreateCompanyContact,
   useUpdateCompanyContact,
   useDeleteCompanyContact,
+  usePatchCompanyContact,
   type CompanyContact,
   type CompanyContactInput,
 } from "@/hooks/useCompanyContacts";
+import { EditableText } from "@/components/EditableText";
 import { useAuth } from "@/hooks/useAuth";
 import { usePermissions } from "@/hooks/usePermissions";
 import { cn } from "@/lib/utils";
