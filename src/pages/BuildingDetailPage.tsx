@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
+import { usePermissions } from "@/hooks/usePermissions";
 import {
   useBuildingDetail,
   useBuildingDevices,
@@ -573,8 +574,7 @@ export default function BuildingDetailPage() {
   const navigate = useNavigate();
   const { toast } = useToast();
   const { role } = useAuth();
-  const isSuperAdmin = role === 'super_admin';
-  const canEditBuilding = role === 'super_admin' || role === 'admin';
+  const { isSuperAdmin, canEdit: canEditBuilding } = usePermissions();
   const updateBuilding = useUpdateBuilding();
 
   const { data: building, isLoading: loadingBuilding } = useBuildingDetail(id ?? "");
