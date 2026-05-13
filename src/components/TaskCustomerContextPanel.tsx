@@ -2,6 +2,7 @@ import { Link } from "react-router-dom";
 import { Building2, MapPin, Phone, Mail, User, Hash, ExternalLink, Briefcase, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { usePermissions } from "@/hooks/usePermissions";
 import type { TaskWithDetails } from "@/hooks/useSupabaseData";
 
 interface Props {
@@ -9,6 +10,7 @@ interface Props {
 }
 
 export default function TaskCustomerContextPanel({ task }: Props) {
+  const { canEdit } = usePermissions();
   const hasContact = !!(task.contactName || task.contactPhone || task.contactEmail);
   const cleanPhone = (task.contactPhone || "").replace(/\s/g, "");
 
