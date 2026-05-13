@@ -446,8 +446,7 @@ function ManageCompanyDialog({ open, onOpenChange, company }: { open: boolean; o
 export default function CompaniesPage() {
   const navigate = useNavigate();
   const { data: companies, isLoading } = useCompaniesWithStats();
-  const { role } = useAuth();
-  const canManage = role === "super_admin" || role === "admin";
+  const { isSuperAdmin, canEdit: canManage } = usePermissions();
 
   const [selectedCompany, setSelectedCompany] = useState<any>(null);
   const [manageOpen, setManageOpen] = useState(false);
