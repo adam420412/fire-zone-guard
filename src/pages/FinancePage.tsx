@@ -16,7 +16,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
-import { Plus, Loader2, FileText, Search, ShoppingCart, CheckCircle, XCircle, DollarSign, TrendingUp, BarChart3, Percent, Target, Building2, Archive, ArrowRight, Trash2 } from "lucide-react";
+import { Plus, Loader2, FileText, Search, ShoppingCart, CheckCircle, XCircle, DollarSign, TrendingUp, BarChart3, Percent, Target, Building2, Archive, ArrowRight, Trash2, CalendarClock, UserCircle, Briefcase } from "lucide-react";
 import { generateReportPDF } from "@/lib/pdfGenerator";
 import ConvertOpportunityDialog from "@/components/ConvertOpportunityDialog";
 
