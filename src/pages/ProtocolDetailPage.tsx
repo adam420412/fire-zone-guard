@@ -82,7 +82,9 @@ export default function ProtocolDetailPage() {
   const [repairDialogFor, setRepairDialogFor] = useState<any | null>(null);
   const [repairNotes, setRepairNotes] = useState("");
   const { role } = useAuth();
+  const { canEdit } = usePermissions();
   const isSuperAdmin = role === 'super_admin';
+  const qcLocal = useQueryClient();
 
   const [isAddOpen, setIsAddOpen] = useState(false);
   const [isSignatureOpen, setIsSignatureOpen] = useState(false);
