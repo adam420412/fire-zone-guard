@@ -35,9 +35,13 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import {
   ArrowLeft, ArrowRight, Loader2, CheckCircle2, Package,
   Building2, Plus, Pencil, Wrench, AlertTriangle, Layers, ListChecks,
+  CalendarClock, Clock,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
+import { Link } from "react-router-dom";
+import { useQuery } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
 import DeviceFormDialog from "@/components/DeviceFormDialog";
 import ReportDeviceFaultButton from "@/components/ReportDeviceFaultButton";
 import BulkDeviceServiceDialog from "@/components/BulkDeviceServiceDialog";
