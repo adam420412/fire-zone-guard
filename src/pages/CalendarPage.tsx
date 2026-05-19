@@ -643,8 +643,11 @@ export default function CalendarPage() {
             ) : (
               dayTasks.map((task) => (
                 <button
-                  key={task.id}
-                  onClick={() => { if (task._type === "task") setSelectedTask(task); }}
+                  key={`${task._type}-${task.id}`}
+                  onClick={() => {
+                    if (task._type === "task") setSelectedTask(task);
+                    else if (task._type === "opportunity") setSelectedOpportunity(task._raw);
+                  }}
                   className="w-full p-4 text-left hover:bg-secondary/50 transition-colors"
                 >
                   <div className="flex items-start gap-3">
@@ -660,12 +663,14 @@ export default function CalendarPage() {
                           task._type === "meeting" ? "bg-accent/30 text-accent-foreground" :
                           task._type === "audit" ? "bg-secondary text-secondary-foreground" :
                           task._type === "protocol" ? "bg-muted text-muted-foreground" :
+                          task._type === "opportunity" ? "bg-purple-500/15 text-purple-400" :
                           "bg-primary/10 text-primary"
                         )}>
                           {task._type === "subtask" ? "Podzadanie" :
                            task._type === "meeting" ? "Spotkanie" :
                            task._type === "audit" ? "Audyt" :
-                           task._type === "protocol" ? "Protokół" : "Zadanie"}
+                           task._type === "protocol" ? "Protokół" :
+                           task._type === "opportunity" ? "Callback" : "Zadanie"}
                         </span>
                         {task.deadline && (
                           <span className={cn(
