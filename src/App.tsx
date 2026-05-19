@@ -68,6 +68,9 @@ function ProtectedRoutes() {
   if (location.pathname === "/zgloszenie") {
     return <PublicSlaIntakePage />;
   }
+  if (location.pathname === "/demo-klient") {
+    return <DemoClientPanel />;
+  }
   if (location.pathname === "/reset-password" || location.hash.includes("type=recovery")) {
     return <ResetPasswordPage />;
   }
