@@ -25,6 +25,12 @@ const adminNavItems = [
   { icon: Building2, label: "Obiekty", path: "/buildings" },
   { icon: Map, label: "Mapa obiektów", path: "/map" },
   { icon: Briefcase, label: "Firmy", path: "/companies" },
+  { icon: Contact, label: "CRM", path: "/crm" },
+  { icon: DollarSign, label: "Finanse", path: "/finance", children: [
+    { icon: Receipt, label: "Faktury", path: "/finance/invoices" },
+    { icon: CreditCard, label: "Płatności", path: "/finance/payments" },
+    { icon: Scale, label: "Rozliczenia", path: "/finance/settlements" },
+  ] },
   { icon: ClipboardCheck, label: "Audyty PPOŻ", path: "/audits" },
   { icon: ListChecks, label: "Checklisty", path: "/checklists" },
   { icon: FileText, label: "Protokoły", path: "/protocols" },
@@ -38,12 +44,6 @@ const adminNavItems = [
   { icon: Activity, label: "Audyt Systemu", path: "/system-audit" },
   { icon: CalendarDays, label: "Kalendarz", path: "/calendar" },
   { icon: Factory, label: "Producenci", path: "/manufacturers" },
-  { icon: Contact, label: "CRM", path: "/crm" },
-  { icon: DollarSign, label: "Finanse", path: "/finance", children: [
-    { icon: Receipt, label: "Faktury", path: "/finance/invoices" },
-    { icon: CreditCard, label: "Płatności", path: "/finance/payments" },
-    { icon: Scale, label: "Rozliczenia", path: "/finance/settlements" },
-  ] },
   { icon: Settings, label: "Ustawienia", path: "/settings" },
 ];
 
@@ -105,7 +105,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       </div>
 
       {/* Nav Items */}
-      <nav className="flex-1 space-y-1 p-2">
+      <nav className="min-h-0 flex-1 space-y-1 overflow-y-auto p-2 scrollbar-thin">
         {navItems.map((item: any) => {
           const isActive = location.pathname === item.path;
           const childActive = item.children?.some((c: any) => location.pathname === c.path);
