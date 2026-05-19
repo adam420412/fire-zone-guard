@@ -235,6 +235,11 @@ export default function TaskDetailDialog({ task, open, onOpenChange }: Props) {
             <span className="rounded bg-secondary px-1.5 py-0.5 text-[10px] font-medium text-secondary-foreground">
               {taskTypeLabels[type]}
             </span>
+            {(task as any).task_code && (
+              <span className="rounded bg-primary/15 px-2 py-0.5 font-mono text-[11px] font-semibold text-primary">
+                {(task as any).task_code}
+              </span>
+            )}
           </div>
           {editingTitle && isAdmin ? (
             <div className="flex gap-2 items-center">
