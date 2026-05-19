@@ -393,6 +393,8 @@ export default function DeviceFormDialog({
             <Label>Notatki</Label>
             <Textarea rows={3} value={form.notes} onChange={(e) => set("notes", e.target.value)} placeholder="Uwagi, defekty, historia, link do DTR..." />
           </div>
+
+          {isEdit && device?.id && <DeviceHistoryPanel deviceId={device.id} />}
         </div>
 
         <DialogFooter className="flex-col sm:flex-row gap-2">
