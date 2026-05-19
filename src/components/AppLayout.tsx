@@ -39,7 +39,11 @@ const adminNavItems = [
   { icon: CalendarDays, label: "Kalendarz", path: "/calendar" },
   { icon: Factory, label: "Producenci", path: "/manufacturers" },
   { icon: Contact, label: "CRM", path: "/crm" },
-  { icon: DollarSign, label: "Finanse", path: "/finance" },
+  { icon: DollarSign, label: "Finanse", path: "/finance", children: [
+    { icon: Receipt, label: "Faktury", path: "/finance/invoices" },
+    { icon: CreditCard, label: "Płatności", path: "/finance/payments" },
+    { icon: Scale, label: "Rozliczenia", path: "/finance/settlements" },
+  ] },
   { icon: Settings, label: "Ustawienia", path: "/settings" },
 ];
 
