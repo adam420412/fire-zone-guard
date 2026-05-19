@@ -64,27 +64,26 @@ export function useAddDevice() {
       building_id: string;
       device_type_id: string;
       name: string;
-      manufacturer?: string;
-      model?: string;
-      serial_number?: string;
-      location_in_building?: string;
-      installed_at?: string;
+      [key: string]: any;
     }) => {
-      // Calculate next service date from device type interval
-      const { data: dt } = await supabase
-        .from("device_types")
-        .select("service_interval_days")
-        .eq("id", device.device_type_id)
-        .single();
-
-      const nextService = new Date();
-      nextService.setDate(nextService.getDate() + (dt?.service_interval_days ?? 365));
+      // Auto next_service_date from device type interval, only if not provided
+      let nextStr: string | null = device.next_service_date ?? null;
+      if (!nextStr) {
+        const { data: dt } = await supabase
+          .from("device_types")
+          .select("service_interval_days")
+          .eq("id", device.device_type_id)
+          .single();
+        const nextService = new Date();
+        nextService.setDate(nextService.getDate() + (dt?.service_interval_days ?? 365));
+        nextStr = nextService.toISOString().split("T")[0];
+      }
 
       const { data, error } = await supabase
         .from("devices")
         .insert({
           ...device,
-          next_service_date: nextService.toISOString().split("T")[0],
+          next_service_date: nextStr,
         })
         .select()
         .single();
@@ -93,9 +92,11 @@ export function useAddDevice() {
     },
     onSuccess: (_, vars) => {
       qc.invalidateQueries({ queryKey: ["devices", vars.building_id] });
+      qc.invalidateQueries({ queryKey: ["building_device_summary", vars.building_id] });
     },
   });
 }
+
 
 // ---- Iter 9: edit / delete device (super_admin) ---------------------------
 export function useUpdateDevice() {
