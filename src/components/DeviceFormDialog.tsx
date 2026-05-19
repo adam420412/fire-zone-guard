@@ -11,6 +11,7 @@ import { useProfiles, useCreateTask } from "@/hooks/useSupabaseData";
 import { supabase } from "@/integrations/supabase/client";
 import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
+import DeviceHistoryPanel from "./DeviceHistoryPanel";
 
 const STATUSES = ["aktywne", "do serwisu", "uszkodzone", "wycofane"] as const;
 const UNASSIGNED = "__none__";
@@ -392,6 +393,8 @@ export default function DeviceFormDialog({
             <Label>Notatki</Label>
             <Textarea rows={3} value={form.notes} onChange={(e) => set("notes", e.target.value)} placeholder="Uwagi, defekty, historia, link do DTR..." />
           </div>
+
+          {isEdit && device?.id && <DeviceHistoryPanel deviceId={device.id} />}
         </div>
 
         <DialogFooter className="flex-col sm:flex-row gap-2">
