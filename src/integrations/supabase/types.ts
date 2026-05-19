@@ -865,6 +865,7 @@ export type Database = {
           created_at: string
           email: string | null
           employment_date: string | null
+          fire_role: string | null
           first_name: string | null
           health_exam_valid_until: string | null
           id: string
@@ -887,6 +888,7 @@ export type Database = {
           created_at?: string
           email?: string | null
           employment_date?: string | null
+          fire_role?: string | null
           first_name?: string | null
           health_exam_valid_until?: string | null
           id?: string
@@ -909,6 +911,7 @@ export type Database = {
           created_at?: string
           email?: string | null
           employment_date?: string | null
+          fire_role?: string | null
           first_name?: string | null
           health_exam_valid_until?: string | null
           id?: string
