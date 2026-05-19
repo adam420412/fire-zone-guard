@@ -19,6 +19,8 @@ export function useRealtimeNotifications() {
   const { toast } = useToast();
 
   const qc = useQueryClient();
+  const notificationsRef = useRef<Notification[]>([]);
+  useEffect(() => { notificationsRef.current = notifications; }, [notifications]);
 
   // Basic notification utilities (omitted from display but unchanged)
   const addNotification = useCallback((n: Omit<Notification, "id" | "timestamp" | "read">) => {
