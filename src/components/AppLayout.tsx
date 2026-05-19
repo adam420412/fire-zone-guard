@@ -6,6 +6,7 @@ import {
   Siren, Wrench, CalendarClock, BookOpen, BarChart3, History, Gauge, ListChecks,
   Map, Sliders, Activity, ChevronDown, Receipt, CreditCard, Scale
 } from "lucide-react";
+import type { LucideIcon } from "lucide-react";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { useState, useEffect } from "react";
 import { cn } from "@/lib/utils";
@@ -15,7 +16,14 @@ import { NotificationBell } from "@/components/NotificationBell";
 import QuickOpportunityFAB from "@/components/QuickOpportunityFAB";
 import { useIsMobile } from "@/hooks/use-mobile";
 
-const adminNavItems = [
+type NavItem = {
+  icon: LucideIcon;
+  label: string;
+  path: string;
+  children?: NavItem[];
+};
+
+const adminNavItems: NavItem[] = [
   { icon: LayoutDashboard, label: "Dashboard", path: "/" },
   { icon: Siren, label: "SLA — Zgłoszenia", path: "/sla" },
   { icon: History, label: "Audyt SLA", path: "/sla-audit" },
@@ -25,6 +33,12 @@ const adminNavItems = [
   { icon: Building2, label: "Obiekty", path: "/buildings" },
   { icon: Map, label: "Mapa obiektów", path: "/map" },
   { icon: Briefcase, label: "Firmy", path: "/companies" },
+  { icon: Contact, label: "CRM", path: "/crm" },
+  { icon: DollarSign, label: "Finanse", path: "/finance", children: [
+    { icon: Receipt, label: "Faktury", path: "/finance/invoices" },
+    { icon: CreditCard, label: "Płatności", path: "/finance/payments" },
+    { icon: Scale, label: "Rozliczenia", path: "/finance/settlements" },
+  ] },
   { icon: ClipboardCheck, label: "Audyty PPOŻ", path: "/audits" },
   { icon: ListChecks, label: "Checklisty", path: "/checklists" },
   { icon: FileText, label: "Protokoły", path: "/protocols" },
@@ -38,20 +52,14 @@ const adminNavItems = [
   { icon: Activity, label: "Audyt Systemu", path: "/system-audit" },
   { icon: CalendarDays, label: "Kalendarz", path: "/calendar" },
   { icon: Factory, label: "Producenci", path: "/manufacturers" },
-  { icon: Contact, label: "CRM", path: "/crm" },
-  { icon: DollarSign, label: "Finanse", path: "/finance", children: [
-    { icon: Receipt, label: "Faktury", path: "/finance/invoices" },
-    { icon: CreditCard, label: "Płatności", path: "/finance/payments" },
-    { icon: Scale, label: "Rozliczenia", path: "/finance/settlements" },
-  ] },
   { icon: Settings, label: "Ustawienia", path: "/settings" },
 ];
 
-const superAdminNavItems = [
+const superAdminNavItems: NavItem[] = [
   { icon: Sliders, label: "Panel admina", path: "/admin" },
 ];
 
-const clientNavItems = [
+const clientNavItems: NavItem[] = [
   { icon: LayoutDashboard, label: "Panel", path: "/" },
   { icon: Siren, label: "Moje zgłoszenia", path: "/sla" },
   { icon: BookOpen, label: "Biblioteka", path: "/library" },
@@ -105,10 +113,10 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       </div>
 
       {/* Nav Items */}
-      <nav className="flex-1 space-y-1 p-2">
-        {navItems.map((item: any) => {
+      <nav className="min-h-0 flex-1 space-y-1 overflow-y-auto p-2 scrollbar-thin">
+        {navItems.map((item) => {
           const isActive = location.pathname === item.path;
-          const childActive = item.children?.some((c: any) => location.pathname === c.path);
+          const childActive = item.children?.some((child) => location.pathname === child.path);
           const showChildren = item.children && (isActive || childActive) && (!collapsed || isMobile);
           return (
             <div key={item.path}>
@@ -129,7 +137,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
               </Link>
               {showChildren && (
                 <div className="ml-5 mt-1 space-y-1 border-l border-sidebar-border pl-2">
-                  {item.children.map((child: any) => {
+                  {item.children.map((child) => {
                     const cActive = location.pathname === child.path;
                     return (
                       <Link
