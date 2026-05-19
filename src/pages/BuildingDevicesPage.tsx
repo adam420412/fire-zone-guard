@@ -403,9 +403,40 @@ function CategoryDevicesPanel({
   onEdit: (d: any) => void;
 }) {
   const cat = DEVICE_CATEGORIES.find((c) => c.code === categoryCode);
+  const list = (cat ? devicesByCategory[categoryCode] : []) ?? [];
+  const stats = cat ? installedByCategory[categoryCode] : undefined;
+
+  const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [bulkOpen, setBulkOpen] = useState(false);
+
+  // Reset selection when changing category or device list shrinks
+  useEffect(() => {
+    setSelected((prev) => {
+      const next = new Set<string>();
+      const ids = new Set(list.map((d: any) => d.id));
+      prev.forEach((id) => { if (ids.has(id)) next.add(id); });
+      return next;
+    });
+  }, [categoryCode, list.length]);
+
   if (!cat) return null;
-  const list = devicesByCategory[categoryCode] ?? [];
-  const stats = installedByCategory[categoryCode];
+
+  const allSelected = list.length > 0 && selected.size === list.length;
+  const someSelected = selected.size > 0 && !allSelected;
+
+  const toggleOne = (id: string, on: boolean) => {
+    setSelected((prev) => {
+      const next = new Set(prev);
+      if (on) next.add(id); else next.delete(id);
+      return next;
+    });
+  };
+  const toggleAll = (on: boolean) => {
+    setSelected(on ? new Set(list.map((d: any) => d.id)) : new Set());
+  };
+
+  const selectedIds = Array.from(selected);
+  const targetIds = selectedIds.length > 0 ? selectedIds : list.map((d: any) => d.id);
 
   return (
     <Card>
@@ -441,6 +472,36 @@ function CategoryDevicesPanel({
         </div>
       </CardHeader>
       <CardContent>
+        {/* Bulk action toolbar */}
+        {canEdit && list.length > 0 && (
+          <div className="mb-3 flex flex-wrap items-center gap-3 rounded-lg border bg-secondary/30 p-2.5">
+            <label className="flex items-center gap-2 cursor-pointer pl-1">
+              <Checkbox
+                checked={allSelected}
+                data-state={someSelected ? "indeterminate" : allSelected ? "checked" : "unchecked"}
+                onCheckedChange={(v) => toggleAll(!!v)}
+              />
+              <span className="text-xs font-medium">
+                {selected.size > 0 ? `Zaznaczono ${selected.size} z ${list.length}` : `Zaznacz wszystkie (${list.length})`}
+              </span>
+            </label>
+            <div className="flex-1" />
+            <Button
+              size="sm"
+              variant="default"
+              className="fire-gradient"
+              onClick={() => setBulkOpen(true)}
+              disabled={list.length === 0}
+              title={selected.size === 0 ? "Bez zaznaczenia — zastosowane do wszystkich w kategorii" : undefined}
+            >
+              <Wrench className="h-4 w-4 mr-1" />
+              {selected.size > 0
+                ? `Grupowy serwis (${selected.size})`
+                : `Serwis całej kategorii (${list.length})`}
+            </Button>
+          </div>
+        )}
+
         {list.length === 0 ? (
           <div className="py-10 text-center space-y-3 border-2 border-dashed border-border rounded-lg">
             <Package className="h-10 w-10 mx-auto text-muted-foreground/40" />
@@ -455,14 +516,23 @@ function CategoryDevicesPanel({
           <div className="space-y-2">
             {list.map((d: any) => {
               const overdue = d.next_service_date && new Date(d.next_service_date) < new Date();
+              const isSel = selected.has(d.id);
               return (
                 <div
                   key={d.id}
                   className={cn(
                     "flex items-start gap-3 rounded-lg border p-3 transition-colors",
+                    isSel ? "border-primary/60 ring-1 ring-primary/30 bg-primary/5" :
                     overdue ? "border-warning/40 bg-warning/5" : "border-border bg-card hover:bg-secondary/30"
                   )}
                 >
+                  {canEdit && (
+                    <Checkbox
+                      checked={isSel}
+                      onCheckedChange={(v) => toggleOne(d.id, !!v)}
+                      className="mt-1"
+                    />
+                  )}
                   <div className="flex-1 min-w-0 space-y-1">
                     <div className="flex items-center gap-2 flex-wrap">
                       <span className="font-semibold text-sm">{d.name}</span>
@@ -510,6 +580,15 @@ function CategoryDevicesPanel({
           </div>
         )}
       </CardContent>
+
+      <BulkDeviceServiceDialog
+        open={bulkOpen}
+        onOpenChange={setBulkOpen}
+        buildingId={buildingId}
+        categoryLabel={`${cat.shortLabel} — ${cat.label}`}
+        deviceIds={targetIds}
+      />
     </Card>
   );
 }
+
