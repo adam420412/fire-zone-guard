@@ -592,6 +592,39 @@ function CategoryDevicesPanel({
                         Następny serwis: {d.next_service_date}
                       </div>
                     )}
+                    {(tasksByDevice[d.id]?.length ?? 0) > 0 && (
+                      <div className="flex flex-wrap gap-1 mt-1" onClick={(e) => e.stopPropagation()}>
+                        {tasksByDevice[d.id].map((t: any) => {
+                          const isClosed = t.status === "Zamknięte";
+                          const tOverdue = !isClosed && t.deadline && new Date(t.deadline) < new Date();
+                          const variant = isClosed
+                            ? "bg-success/15 text-success border-success/30"
+                            : tOverdue
+                              ? "bg-destructive/15 text-destructive border-destructive/40"
+                              : "bg-primary/15 text-primary border-primary/30";
+                          const Icon = isClosed ? CheckCircle2 : tOverdue ? AlertTriangle : CalendarClock;
+                          return (
+                            <Link
+                              key={t.id}
+                              to={`/kanban?task=${t.id}`}
+                              className={cn(
+                                "inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] font-semibold hover:opacity-90 transition-opacity",
+                                variant
+                              )}
+                              title={t.title}
+                            >
+                              <Icon className="h-2.5 w-2.5" />
+                              {t.task_code ? `${t.task_code} • ` : ""}{t.status}
+                              {t.deadline && (
+                                <span className="opacity-75 ml-0.5">
+                                  · {new Date(t.deadline).toLocaleDateString("pl-PL")}
+                                </span>
+                              )}
+                            </Link>
+                          );
+                        })}
+                      </div>
+                    )}
                     {d.notes && (
                       <p className="text-xs text-muted-foreground italic mt-1 line-clamp-2">{d.notes}</p>
                     )}
