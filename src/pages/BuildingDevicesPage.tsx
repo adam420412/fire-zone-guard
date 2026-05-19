@@ -533,14 +533,23 @@ function CategoryDevicesPanel({
                       className="mt-1"
                     />
                   )}
-                  <div className="flex-1 min-w-0 space-y-1">
+                  <button
+                    type="button"
+                    onClick={() => canEdit && onEdit(d)}
+                    className="flex-1 min-w-0 space-y-1 text-left cursor-pointer hover:opacity-90"
+                    title={canEdit ? "Kliknij aby edytować" : undefined}
+                  >
                     <div className="flex items-center gap-2 flex-wrap">
+                      {d.inventory_number && (
+                        <Badge variant="outline" className="font-mono text-[10px] bg-primary/10 border-primary/30">{d.inventory_number}</Badge>
+                      )}
                       <span className="font-semibold text-sm">{d.name}</span>
                       {d.quantity > 1 && <Badge variant="secondary" className="text-[10px]">×{d.quantity}</Badge>}
                       <Badge variant="outline" className="text-[10px]">{(d as any).device_types?.name ?? "?"}</Badge>
                       {d.status && d.status !== "aktywne" && (
                         <Badge variant={d.status === "uszkodzone" ? "destructive" : "secondary"} className="text-[10px]">{d.status}</Badge>
                       )}
+                      {d.photo_url && <Badge variant="secondary" className="text-[10px]">📷</Badge>}
                     </div>
                     <div className="flex items-center gap-3 text-xs text-muted-foreground flex-wrap">
                       {d.location_in_building && <span>📍 {d.location_in_building}</span>}
