@@ -47,6 +47,7 @@ import { Button } from "@/components/ui/button";
 import { BUILDING_DOCUMENT_CATEGORIES, BUILDING_DOCUMENT_CATEGORY_LABELS, type BuildingDocumentCategory } from "@/lib/constants";
 import CreateTaskDialog from "@/components/CreateTaskDialog";
 import BuildingTrainingsTab from "@/components/BuildingTrainingsTab";
+import BuildingScheduleTab from "@/components/BuildingScheduleTab";
 import ReportFaultButton from "@/components/ReportFaultButton";
 
 function EditBuildingDialog({ building, open, onOpenChange }: { building: any, open: boolean, onOpenChange: (o: boolean) => void }) {
