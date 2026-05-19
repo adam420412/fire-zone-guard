@@ -33,6 +33,7 @@ export default function DeviceFormDialog({
   const updateMut = useUpdateDevice();
   const deleteMut = useDeleteDevice();
   const createTask = useCreateTask();
+  const qc = useQueryClient();
 
   const isEdit = !!device;
   const allowedTypes = (typesAll ?? []).filter((t: any) => allowedTypeNames.includes(t.name));
