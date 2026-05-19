@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { useQueryClient } from "@tanstack/react-query";
@@ -19,6 +19,8 @@ export function useRealtimeNotifications() {
   const { toast } = useToast();
 
   const qc = useQueryClient();
+  const notificationsRef = useRef<Notification[]>([]);
+  useEffect(() => { notificationsRef.current = notifications; }, [notifications]);
 
   // Basic notification utilities (omitted from display but unchanged)
   const addNotification = useCallback((n: Omit<Notification, "id" | "timestamp" | "read">) => {
@@ -187,7 +189,7 @@ export function useRealtimeNotifications() {
     // Check overdue items periodically - wrapped in try/catch so missing V2 tables don't crash the app
     const interval = setInterval(async () => {
       const today = new Date().toISOString();
-      const notifiedIds = new Set(notifications.filter(n => n.type === "overdue").map(n => n.taskId));
+      const notifiedIds = new Set(notificationsRef.current.filter(n => n.type === "overdue").map(n => n.taskId));
       const newNotifications: Array<Omit<Notification, "id" | "timestamp" | "read">> = [];
 
       try {
@@ -296,7 +298,8 @@ export function useRealtimeNotifications() {
       supabase.removeChannel(channel);
       clearInterval(interval);
     };
-  }, [addNotification, notifications]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   return { notifications, unreadCount, markRead, markAllRead };
 }
