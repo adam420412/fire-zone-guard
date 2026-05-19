@@ -52,8 +52,10 @@ function getTaskColor(task: any) {
   if (task._type === 'meeting') return "bg-accent/30 text-accent-foreground border-accent/40";
   if (task._type === 'audit') return "bg-secondary text-secondary-foreground border-border";
   if (task._type === 'protocol') return "bg-muted text-muted-foreground border-border";
+  if (task._type === 'opportunity') return "bg-purple-500/15 text-purple-400 border-purple-500/30";
   return getDeadlineColor(task.deadline, task.status);
 }
+
 
 function CreateMeetingDialog({ open, onOpenChange }: { open: boolean; onOpenChange: (o: boolean) => void }) {
   const { data: companies } = useCompanies();
