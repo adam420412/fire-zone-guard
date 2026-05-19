@@ -1566,6 +1566,44 @@ export type Database = {
           },
         ]
       }
+      opportunity_updates: {
+        Row: {
+          author_id: string | null
+          author_name: string | null
+          content: string
+          created_at: string
+          id: string
+          opportunity_id: string
+          type: string
+        }
+        Insert: {
+          author_id?: string | null
+          author_name?: string | null
+          content?: string
+          created_at?: string
+          id?: string
+          opportunity_id: string
+          type?: string
+        }
+        Update: {
+          author_id?: string | null
+          author_name?: string | null
+          content?: string
+          created_at?: string
+          id?: string
+          opportunity_id?: string
+          type?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "opportunity_updates_opportunity_id_fkey"
+            columns: ["opportunity_id"]
+            isOneToOne: false
+            referencedRelation: "sales_opportunities"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profiles: {
         Row: {
           company_id: string | null
