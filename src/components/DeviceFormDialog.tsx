@@ -209,7 +209,8 @@ export default function DeviceFormDialog({
         source: "service",
         source_id: device?.id ?? null,
       });
-      toast.success("Zadanie serwisowe utworzone");
+      toast.success("Zadanie serwisowe utworzone — widoczne w ewidencji urządzenia");
+      qc.invalidateQueries({ queryKey: ["device-service-tasks"] });
     } catch (e: any) {
       toast.error(e?.message ?? "Błąd tworzenia zadania");
     } finally {
