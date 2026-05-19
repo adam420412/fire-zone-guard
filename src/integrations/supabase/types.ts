@@ -432,6 +432,7 @@ export type Database = {
       buildings: {
         Row: {
           address: string
+          building_number: number | null
           company_id: string
           created_at: string
           description: string | null
@@ -447,6 +448,7 @@ export type Database = {
         }
         Insert: {
           address?: string
+          building_number?: number | null
           company_id: string
           created_at?: string
           description?: string | null
@@ -462,6 +464,7 @@ export type Database = {
         }
         Update: {
           address?: string
+          building_number?: number | null
           company_id?: string
           created_at?: string
           description?: string | null
@@ -2706,6 +2709,9 @@ export type Database = {
           source: string | null
           source_id: string | null
           status: Database["public"]["Enums"]["task_status"]
+          task_code: string | null
+          task_seq: number | null
+          task_year: number | null
           title: string
           type: Database["public"]["Enums"]["task_type"]
           workflow_stage: string | null
@@ -2732,6 +2738,9 @@ export type Database = {
           source?: string | null
           source_id?: string | null
           status?: Database["public"]["Enums"]["task_status"]
+          task_code?: string | null
+          task_seq?: number | null
+          task_year?: number | null
           title: string
           type?: Database["public"]["Enums"]["task_type"]
           workflow_stage?: string | null
@@ -2758,6 +2767,9 @@ export type Database = {
           source?: string | null
           source_id?: string | null
           status?: Database["public"]["Enums"]["task_status"]
+          task_code?: string | null
+          task_seq?: number | null
+          task_year?: number | null
           title?: string
           type?: Database["public"]["Enums"]["task_type"]
           workflow_stage?: string | null
