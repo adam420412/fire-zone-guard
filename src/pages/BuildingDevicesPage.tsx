@@ -565,7 +565,7 @@ function CategoryDevicesPanel({
                     {d.notes && (
                       <p className="text-xs text-muted-foreground italic mt-1 line-clamp-2">{d.notes}</p>
                     )}
-                  </div>
+                  </button>
                   <div className="flex flex-col items-end gap-1 shrink-0">
                     {canEdit && (
                       <Button size="sm" variant="ghost" onClick={() => onEdit(d)}>
