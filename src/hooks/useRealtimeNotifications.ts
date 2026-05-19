@@ -189,7 +189,7 @@ export function useRealtimeNotifications() {
     // Check overdue items periodically - wrapped in try/catch so missing V2 tables don't crash the app
     const interval = setInterval(async () => {
       const today = new Date().toISOString();
-      const notifiedIds = new Set(notifications.filter(n => n.type === "overdue").map(n => n.taskId));
+      const notifiedIds = new Set(notificationsRef.current.filter(n => n.type === "overdue").map(n => n.taskId));
       const newNotifications: Array<Omit<Notification, "id" | "timestamp" | "read">> = [];
 
       try {
