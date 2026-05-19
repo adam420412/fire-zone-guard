@@ -163,6 +163,7 @@ export default function CalendarPage() {
   const [createTaskDay, setCreateTaskDay] = useState<Date | null>(null);
   // Drag&drop state
   const [draggedTaskId, setDraggedTaskId] = useState<string | null>(null);
+  const [draggedOppId, setDraggedOppId] = useState<string | null>(null);
   const [dragOverDay, setDragOverDay] = useState<string | null>(null);
   // Type filters
   const [enabledTypes, setEnabledTypes] = useState<Set<CalendarItemType>>(new Set(ALL_TYPES));
