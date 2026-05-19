@@ -1097,7 +1097,7 @@ export function useUpdateEmployee() {
       }
       const { data, error } = await supabase
         .from("employee_development_plans")
-        .update(allowed)
+        .update(allowed as any)
         .eq("id", id)
         .select()
         .single();
