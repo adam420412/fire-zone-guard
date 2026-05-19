@@ -298,7 +298,8 @@ export function useRealtimeNotifications() {
       supabase.removeChannel(channel);
       clearInterval(interval);
     };
-  }, [addNotification, notifications]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   return { notifications, unreadCount, markRead, markAllRead };
 }
