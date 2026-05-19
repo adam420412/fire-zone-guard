@@ -240,13 +240,12 @@ export default function QuickOpportunityFAB() {
               <div className="grid grid-cols-3 gap-4">
                 <div className="space-y-2">
                   <Label>Osoba przypisana</Label>
-                  <Select value={form.assignee_id || "none"} onValueChange={v => setForm({ ...form, assignee_id: v === "none" ? "" : v })}>
-                    <SelectTrigger><SelectValue placeholder="Opcjonalnie..." /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="none">— nikt —</SelectItem>
-                      {(profiles ?? []).map((p: any) => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}
-                    </SelectContent>
-                  </Select>
+                  <SearchableSelect
+                    value={form.assignee_id}
+                    onChange={(v) => setForm({ ...form, assignee_id: v })}
+                    placeholder="Opcjonalnie..."
+                    options={(profiles ?? []).map((p: any) => ({ value: p.id, label: p.name, hint: p.email ?? undefined }))}
+                  />
                 </div>
                 <div className="space-y-2">
                   <Label>Termin zajęcia się</Label>
