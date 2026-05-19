@@ -183,8 +183,28 @@ export default function CalendarPage() {
     });
   };
 
-  // Drag&Drop handlers — moves task deadline to the dropped day
+  // Drag&Drop handlers — moves task deadline or opportunity follow_up to the dropped day
   const handleDropOnDay = (day: Date) => {
+    if (draggedOppId) {
+      const opp = (opportunities ?? []).find((o: any) => o.id === draggedOppId);
+      const newDate = new Date(day);
+      if (opp?.follow_up_at) {
+        const old = new Date(opp.follow_up_at);
+        newDate.setHours(old.getHours(), old.getMinutes(), 0, 0);
+      } else {
+        newDate.setHours(9, 0, 0, 0);
+      }
+      updateOpp(
+        { id: draggedOppId, updates: { follow_up_at: newDate.toISOString() } },
+        {
+          onSuccess: () => toast.success(`Callback przeniesiony na ${format(newDate, "d MMM, HH:mm", { locale: pl })}`),
+          onError: (err: any) => toast.error(err.message),
+        }
+      );
+      setDraggedOppId(null);
+      setDragOverDay(null);
+      return;
+    }
     if (!draggedTaskId) return;
     const task = allTasks.find((t) => t.id === draggedTaskId);
     if (!task) {
@@ -192,7 +212,6 @@ export default function CalendarPage() {
       setDragOverDay(null);
       return;
     }
-    // Preserve original time-of-day if any, otherwise default 09:00
     const newDate = new Date(day);
     if (task.deadline) {
       const old = new Date(task.deadline);
