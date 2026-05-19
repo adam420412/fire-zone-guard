@@ -822,9 +822,12 @@ export default function BuildingDetailPage() {
       </div>
 
       <Tabs defaultValue="tasks" className="w-full">
-        <TabsList className="grid w-full sm:w-[850px] grid-cols-5 mb-6 bg-secondary p-1 rounded-xl">
+        <TabsList className="grid w-full sm:w-[980px] grid-cols-6 mb-6 bg-secondary p-1 rounded-xl">
           <TabsTrigger value="tasks" className="rounded-lg data-[state=active]:bg-card data-[state=active]:shadow-sm text-xs font-semibold py-2">
             Zadania operacyjne
+          </TabsTrigger>
+          <TabsTrigger value="schedule" className="rounded-lg data-[state=active]:bg-card data-[state=active]:shadow-sm text-xs font-semibold py-2">
+            Terminarz
           </TabsTrigger>
           <TabsTrigger value="devices" className="rounded-lg data-[state=active]:bg-card data-[state=active]:shadow-sm text-xs font-semibold py-2">
             Urządzenia PPOŻ
