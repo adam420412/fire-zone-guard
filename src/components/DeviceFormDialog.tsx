@@ -11,6 +11,7 @@ import { useProfiles, useCreateTask } from "@/hooks/useSupabaseData";
 import { supabase } from "@/integrations/supabase/client";
 import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
+import DeviceHistoryPanel from "./DeviceHistoryPanel";
 
 const STATUSES = ["aktywne", "do serwisu", "uszkodzone", "wycofane"] as const;
 const UNASSIGNED = "__none__";
