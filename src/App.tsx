@@ -124,6 +124,9 @@ function ProtectedRoutes() {
             <Route path="/manufacturers" element={<ManufacturersPage />} />
             <Route path="/crm" element={<CrmPage />} />
             <Route path="/finance" element={<FinancePage />} />
+            <Route path="/finance/invoices" element={<FinanceInvoicesPage />} />
+            <Route path="/finance/payments" element={<FinancePaymentsPage />} />
+            <Route path="/finance/settlements" element={<FinanceSettlementsPage />} />
             <Route path="/system-audit" element={<SystemAuditPage />} />
             <Route path="/settings" element={<SettingsPage />} />
             <Route path="/admin" element={<AdminPage />} />
