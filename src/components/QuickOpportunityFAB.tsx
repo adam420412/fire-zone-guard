@@ -192,13 +192,12 @@ export default function QuickOpportunityFAB() {
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label>Powiązana firma (opcjonalnie)</Label>
-                  <Select value={form.company_id || "none"} onValueChange={v => setForm({ ...form, company_id: v === "none" ? "" : v, building_id: "", task_id: "" })}>
-                    <SelectTrigger><SelectValue placeholder="Wybierz firmę..." /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="none">— brak —</SelectItem>
-                      {(companies ?? []).map((c: any) => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
-                    </SelectContent>
-                  </Select>
+                  <SearchableSelect
+                    value={form.company_id}
+                    onChange={(v) => setForm({ ...form, company_id: v, building_id: "", task_id: "" })}
+                    placeholder="Wybierz firmę..."
+                    options={(companies ?? []).map((c: any) => ({ value: c.id, label: c.name, hint: c.nip ?? undefined }))}
+                  />
                 </div>
                 <div className="space-y-2">
                   <Label>Nowa firma / klient {!form.company_id && "*"}</Label>
@@ -209,23 +208,21 @@ export default function QuickOpportunityFAB() {
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label>Obiekt (opcjonalnie)</Label>
-                  <Select value={form.building_id || "none"} onValueChange={v => setForm({ ...form, building_id: v === "none" ? "" : v, task_id: "" })}>
-                    <SelectTrigger><SelectValue placeholder={form.company_id ? "Wybierz obiekt..." : "Najpierw wybierz firmę"} /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="none">— brak —</SelectItem>
-                      {filteredBuildings.map((b: any) => <SelectItem key={b.id} value={b.id}>{b.name}</SelectItem>)}
-                    </SelectContent>
-                  </Select>
+                  <SearchableSelect
+                    value={form.building_id}
+                    onChange={(v) => setForm({ ...form, building_id: v, task_id: "" })}
+                    placeholder={form.company_id ? "Wybierz obiekt..." : "Najpierw wybierz firmę"}
+                    options={filteredBuildings.map((b: any) => ({ value: b.id, label: b.name, hint: b.address ?? undefined }))}
+                  />
                 </div>
                 <div className="space-y-2">
                   <Label>Powiązane zlecenie (opcjonalnie)</Label>
-                  <Select value={form.task_id || "none"} onValueChange={v => setForm({ ...form, task_id: v === "none" ? "" : v })}>
-                    <SelectTrigger><SelectValue placeholder="Wybierz zlecenie..." /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="none">— brak —</SelectItem>
-                      {filteredTasks.slice(0, 50).map((t: any) => <SelectItem key={t.id} value={t.id}>{t.title}</SelectItem>)}
-                    </SelectContent>
-                  </Select>
+                  <SearchableSelect
+                    value={form.task_id}
+                    onChange={(v) => setForm({ ...form, task_id: v })}
+                    placeholder="Wybierz zlecenie..."
+                    options={filteredTasks.slice(0, 200).map((t: any) => ({ value: t.id, label: t.title, hint: t.task_code ?? undefined }))}
+                  />
                 </div>
               </div>
 
