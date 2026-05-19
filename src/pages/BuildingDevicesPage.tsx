@@ -442,6 +442,32 @@ function CategoryDevicesPanel({
   const selectedIds = Array.from(selected);
   const targetIds = selectedIds.length > 0 ? selectedIds : list.map((d: any) => d.id);
 
+  // Pobierz aktywne zadania serwisowe powiązane z urządzeniami z tej kategorii
+  const deviceIds = list.map((d: any) => d.id);
+  const tasksQ = useQuery({
+    queryKey: ["device-service-tasks", buildingId, categoryCode, deviceIds.join(",")],
+    enabled: deviceIds.length > 0,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("tasks")
+        .select("id, title, status, deadline, source_id, assignee_id, task_code")
+        .eq("source", "service")
+        .in("source_id", deviceIds);
+      if (error) throw error;
+      return data ?? [];
+    },
+  });
+  const tasksByDevice = useMemo(() => {
+    const m: Record<string, any[]> = {};
+    (tasksQ.data ?? []).forEach((t: any) => {
+      if (!t.source_id) return;
+      (m[t.source_id] ??= []).push(t);
+    });
+    Object.values(m).forEach(arr => arr.sort((a: any, b: any) =>
+      (a.deadline ?? "").localeCompare(b.deadline ?? "")));
+    return m;
+  }, [tasksQ.data]);
+
   return (
     <Card>
       <CardHeader>
