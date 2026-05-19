@@ -158,6 +158,7 @@ export default function CalendarPage() {
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [selectedDay, setSelectedDay] = useState<Date | null>(null);
   const [selectedTask, setSelectedTask] = useState<any>(null);
+  const [selectedOpportunity, setSelectedOpportunity] = useState<any>(null);
   const [isMeetingOpen, setIsMeetingOpen] = useState(false);
   const [createTaskDay, setCreateTaskDay] = useState<Date | null>(null);
   // Drag&drop state
