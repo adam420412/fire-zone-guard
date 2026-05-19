@@ -1,14 +1,16 @@
 import { useState, useMemo } from "react";
 import { useTasks, useProfiles, useProtocols, useAudits, useMeetings, useCompanies, useBuildings, useCreateMeeting, useAllSubtasks, useUpdateTask } from "@/hooks/useSupabaseData";
+import { useSalesOpportunities, useUpdateOpportunity } from "@/hooks/useCrmData";
 import { useAuth } from "@/hooks/useAuth";
 import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameMonth, isSameDay, isToday, addMonths, subMonths, getDay } from "date-fns";
 import { pl } from "date-fns/locale";
 import { cn } from "@/lib/utils";
-import { ChevronLeft, ChevronRight, Calendar, AlertTriangle, Clock, CheckCircle2, Loader2, Plus, Users, User, Filter } from "lucide-react";
+import { ChevronLeft, ChevronRight, Calendar, AlertTriangle, Clock, CheckCircle2, Loader2, Plus, Users, User, Filter, Phone } from "lucide-react";
 import { priorityColors } from "@/lib/constants";
 import type { TaskPriority } from "@/lib/constants";
 import TaskDetailDialog from "@/components/TaskDetailDialog";
 import CreateTaskDialog from "@/components/CreateTaskDialog";
+import EditOpportunityFollowUpDialog from "@/components/EditOpportunityFollowUpDialog";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
@@ -18,15 +20,17 @@ import { Badge } from "@/components/ui/badge";
 import { Toggle } from "@/components/ui/toggle";
 import { toast } from "sonner";
 
-type CalendarItemType = "task" | "subtask" | "meeting" | "audit" | "protocol";
-const ALL_TYPES: CalendarItemType[] = ["task", "subtask", "meeting", "audit", "protocol"];
+type CalendarItemType = "task" | "subtask" | "meeting" | "audit" | "protocol" | "opportunity";
+const ALL_TYPES: CalendarItemType[] = ["task", "subtask", "meeting", "audit", "protocol", "opportunity"];
 const TYPE_LABELS: Record<CalendarItemType, string> = {
   task: "Zadania",
   subtask: "Podzadania",
   meeting: "Spotkania",
   audit: "Audyty",
   protocol: "Protokoły",
+  opportunity: "Szanse (callback)",
 };
+
 
 const WEEKDAYS = ["Pon", "Wt", "Śr", "Czw", "Pt", "Sob", "Nie"];
 
@@ -48,8 +52,10 @@ function getTaskColor(task: any) {
   if (task._type === 'meeting') return "bg-accent/30 text-accent-foreground border-accent/40";
   if (task._type === 'audit') return "bg-secondary text-secondary-foreground border-border";
   if (task._type === 'protocol') return "bg-muted text-muted-foreground border-border";
+  if (task._type === 'opportunity') return "bg-purple-500/15 text-purple-400 border-purple-500/30";
   return getDeadlineColor(task.deadline, task.status);
 }
+
 
 function CreateMeetingDialog({ open, onOpenChange }: { open: boolean; onOpenChange: (o: boolean) => void }) {
   const { data: companies } = useCompanies();
@@ -140,19 +146,24 @@ export default function CalendarPage() {
   const { data: meetings, isLoading: mtL } = useMeetings();
   const { data: profiles, isLoading: pfL } = useProfiles();
   const { data: allSubtasks } = useAllSubtasks();
+  const { data: opportunities } = useSalesOpportunities();
   const { role, profileId } = useAuth();
 
   const isAdmin = role === "super_admin" || role === "admin";
 
   const { mutate: updateTask } = useUpdateTask();
+  const { mutate: updateOpp } = useUpdateOpportunity();
+
 
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [selectedDay, setSelectedDay] = useState<Date | null>(null);
   const [selectedTask, setSelectedTask] = useState<any>(null);
+  const [selectedOpportunity, setSelectedOpportunity] = useState<any>(null);
   const [isMeetingOpen, setIsMeetingOpen] = useState(false);
   const [createTaskDay, setCreateTaskDay] = useState<Date | null>(null);
   // Drag&drop state
   const [draggedTaskId, setDraggedTaskId] = useState<string | null>(null);
+  const [draggedOppId, setDraggedOppId] = useState<string | null>(null);
   const [dragOverDay, setDragOverDay] = useState<string | null>(null);
   // Type filters
   const [enabledTypes, setEnabledTypes] = useState<Set<CalendarItemType>>(new Set(ALL_TYPES));
@@ -172,8 +183,28 @@ export default function CalendarPage() {
     });
   };
 
-  // Drag&Drop handlers — moves task deadline to the dropped day
+  // Drag&Drop handlers — moves task deadline or opportunity follow_up to the dropped day
   const handleDropOnDay = (day: Date) => {
+    if (draggedOppId) {
+      const opp = (opportunities ?? []).find((o: any) => o.id === draggedOppId);
+      const newDate = new Date(day);
+      if (opp?.follow_up_at) {
+        const old = new Date(opp.follow_up_at);
+        newDate.setHours(old.getHours(), old.getMinutes(), 0, 0);
+      } else {
+        newDate.setHours(9, 0, 0, 0);
+      }
+      updateOpp(
+        { id: draggedOppId, updates: { follow_up_at: newDate.toISOString() } },
+        {
+          onSuccess: () => toast.success(`Callback przeniesiony na ${format(newDate, "d MMM, HH:mm", { locale: pl })}`),
+          onError: (err: any) => toast.error(err.message),
+        }
+      );
+      setDraggedOppId(null);
+      setDragOverDay(null);
+      return;
+    }
     if (!draggedTaskId) return;
     const task = allTasks.find((t) => t.id === draggedTaskId);
     if (!task) {
@@ -181,7 +212,6 @@ export default function CalendarPage() {
       setDragOverDay(null);
       return;
     }
-    // Preserve original time-of-day if any, otherwise default 09:00
     const newDate = new Date(day);
     if (task.deadline) {
       const old = new Date(task.deadline);
@@ -297,7 +327,25 @@ export default function CalendarPage() {
         assigneeName: s.assigneeName,
       }));
 
-    const all = [...dayTasks, ...daySubtasks, ...dayProtocols, ...dayAudits, ...dayMeetings];
+    const dayOpportunities = (opportunities ?? [])
+      .filter((o: any) => {
+        if (!o.follow_up_at || !isSameDay(new Date(o.follow_up_at), day)) return false;
+        if (o.status === "zamkniety_wygrany" || o.status === "zamkniety_przegrany") return false;
+        if (activeFilterId === "all") return true;
+        return o.assignee_id === activeFilterId;
+      })
+      .map((o: any) => ({
+        id: o.id,
+        title: `📞 ${o.title || o.company_name}${o.contact_name ? ` — ${o.contact_name}` : ""}`,
+        status: o.status,
+        deadline: o.follow_up_at,
+        buildingName: o.linked_company_name || o.company_name,
+        priority: "wysoki",
+        _type: "opportunity",
+        _raw: o,
+      }));
+
+    const all = [...dayTasks, ...daySubtasks, ...dayProtocols, ...dayAudits, ...dayMeetings, ...dayOpportunities];
     return all.filter((it: any) => enabledTypes.has(it._type as CalendarItemType));
   };
 
@@ -497,7 +545,7 @@ export default function CalendarPage() {
                   key={i}
                   onClick={() => setSelectedDay((prev) => (prev && isSameDay(prev, day) ? null : day))}
                   onDragOver={(e) => {
-                    if (draggedTaskId) {
+                    if (draggedTaskId || draggedOppId) {
                       e.preventDefault();
                       e.dataTransfer.dropEffect = "move";
                       if (dragOverDay !== dayKey) setDragOverDay(dayKey);
@@ -541,24 +589,28 @@ export default function CalendarPage() {
                   <div className="space-y-0.5">
                     {dayItems.slice(0, 3).map((task) => {
                       const isTaskItem = task._type === "task";
+                      const isOpp = task._type === "opportunity";
+                      const isDraggable = isTaskItem || isOpp;
                       return (
                         <div
-                          key={task.id}
-                          draggable={isTaskItem}
+                          key={`${task._type}-${task.id}`}
+                          draggable={isDraggable}
                           onDragStart={(e) => {
-                            if (!isTaskItem) return;
-                            setDraggedTaskId(task.id);
+                            if (isTaskItem) setDraggedTaskId(task.id);
+                            else if (isOpp) setDraggedOppId(task.id);
+                            else return;
                             e.dataTransfer.effectAllowed = "move";
                           }}
-                          onDragEnd={() => { setDraggedTaskId(null); setDragOverDay(null); }}
+                          onDragEnd={() => { setDraggedTaskId(null); setDraggedOppId(null); setDragOverDay(null); }}
                           onClick={(e) => {
                             e.stopPropagation();
                             if (isTaskItem) setSelectedTask(task);
+                            else if (isOpp) setSelectedOpportunity(task._raw);
                           }}
                           className={cn(
                             "truncate rounded px-1 py-0.5 text-[9px] font-semibold border cursor-pointer hover:opacity-80 transition-opacity",
-                            isTaskItem && "active:cursor-grabbing",
-                            draggedTaskId === task.id && "opacity-40",
+                            isDraggable && "active:cursor-grabbing",
+                            (draggedTaskId === task.id || draggedOppId === task.id) && "opacity-40",
                             getTaskColor(task)
                           )}
                         >
@@ -591,8 +643,11 @@ export default function CalendarPage() {
             ) : (
               dayTasks.map((task) => (
                 <button
-                  key={task.id}
-                  onClick={() => { if (task._type === "task") setSelectedTask(task); }}
+                  key={`${task._type}-${task.id}`}
+                  onClick={() => {
+                    if (task._type === "task") setSelectedTask(task);
+                    else if (task._type === "opportunity") setSelectedOpportunity(task._raw);
+                  }}
                   className="w-full p-4 text-left hover:bg-secondary/50 transition-colors"
                 >
                   <div className="flex items-start gap-3">
@@ -608,12 +663,14 @@ export default function CalendarPage() {
                           task._type === "meeting" ? "bg-accent/30 text-accent-foreground" :
                           task._type === "audit" ? "bg-secondary text-secondary-foreground" :
                           task._type === "protocol" ? "bg-muted text-muted-foreground" :
+                          task._type === "opportunity" ? "bg-purple-500/15 text-purple-400" :
                           "bg-primary/10 text-primary"
                         )}>
                           {task._type === "subtask" ? "Podzadanie" :
                            task._type === "meeting" ? "Spotkanie" :
                            task._type === "audit" ? "Audyt" :
-                           task._type === "protocol" ? "Protokół" : "Zadanie"}
+                           task._type === "protocol" ? "Protokół" :
+                           task._type === "opportunity" ? "Callback" : "Zadanie"}
                         </span>
                         {task.deadline && (
                           <span className={cn(
@@ -646,6 +703,11 @@ export default function CalendarPage() {
 
       <TaskDetailDialog task={selectedTask} open={!!selectedTask} onOpenChange={(o) => !o && setSelectedTask(null)} />
       <CreateMeetingDialog open={isMeetingOpen} onOpenChange={setIsMeetingOpen} />
+      <EditOpportunityFollowUpDialog
+        opportunity={selectedOpportunity}
+        open={!!selectedOpportunity}
+        onOpenChange={(o) => !o && setSelectedOpportunity(null)}
+      />
       <CreateTaskDialog
         open={!!createTaskDay}
         onOpenChange={(o) => { if (!o) setCreateTaskDay(null); }}
