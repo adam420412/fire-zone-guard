@@ -23,7 +23,7 @@ import {
   useDocuments, useUploadDocument, useDeleteDocument
 } from "@/hooks/useSupabaseData";
 import { useExtractPdfMetadata } from "@/hooks/useExtractPdfMetadata";
-import { safetyStatusConfig, priorityColors, statusColors, taskTypeLabels } from "@/lib/constants";
+import { safetyStatusConfig, priorityColors, statusColors, taskTypeLabels, DEVICE_CATEGORIES, DEVICE_TYPE_TO_CATEGORY } from "@/lib/constants";
 import type { SafetyStatus, TaskPriority, TaskStatus, TaskType } from "@/lib/constants";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
