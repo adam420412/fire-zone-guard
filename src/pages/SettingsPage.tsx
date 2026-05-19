@@ -745,6 +745,7 @@ export default function SettingsPage() {
           {activeTab === "profile" && <ProfileTab />}
           {activeTab === "password" && <PasswordTab />}
           {activeTab === "notifications" && <NotificationsTab />}
+          {activeTab === "help" && <HelpTab />}
           {activeTab === "users" && currentRole === "super_admin" && <UsersTab />}
         </div>
       </div>
