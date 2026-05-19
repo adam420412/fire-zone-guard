@@ -46,6 +46,7 @@ import SlaAuditLogPage from "@/pages/SlaAuditLogPage";
 import SlaKpiPage from "@/pages/SlaKpiPage";
 import SystemAuditPage from "@/pages/SystemAuditPage";
 import PublicSlaIntakePage from "@/pages/PublicSlaIntakePage";
+import DemoClientPanel from "@/pages/DemoClientPanel";
 import OnboardingPage from "@/pages/OnboardingPage";
 import NotFound from "./pages/NotFound";
 import { Loader2 } from "lucide-react";
