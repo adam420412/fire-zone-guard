@@ -40,6 +40,7 @@ import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import DeviceFormDialog from "@/components/DeviceFormDialog";
 import ReportDeviceFaultButton from "@/components/ReportDeviceFaultButton";
+import BulkDeviceServiceDialog from "@/components/BulkDeviceServiceDialog";
 
 type Step = "categories" | "details";
 
