@@ -964,92 +964,123 @@ export default function BuildingDetailPage() {
                   <Package className="h-10 w-10 mb-3" />
                   <p className="text-sm font-semibold">Brak wprowadzonych urządzeń. Kliknij "Wynotuj nowe" powyżej.</p>
                 </div>
-              ) : (
-                <div className="overflow-x-auto">
-                  <table className="w-full text-left text-sm">
-                    <thead className="border-b border-border bg-muted/40 text-xs uppercase text-muted-foreground">
-                      <tr>
-                        <th className="px-5 py-3 font-semibold">Urządzenie</th>
-                        <th className="px-5 py-3 font-semibold">Lokalizacja</th>
-                        <th className="px-5 py-3 font-semibold">Numer Seryjny</th>
-                        <th className="px-5 py-3 font-semibold">Następny Serwis</th>
-                        <th className="px-5 py-3 font-semibold text-right">Akcje</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-border">
-                      {(devices ?? []).map((device: any) => {
-                        const needsService = device.next_service_date && new Date(device.next_service_date) <= new Date();
-                        return (
-                          <tr key={device.id} className="hover:bg-muted/10 transition-colors group">
-                            <td className="px-5 py-4">
-                              <div className="flex items-start gap-3">
-                                {needsService ? <AlertTriangle className="h-4 w-4 text-warning shrink-0 mt-0.5" /> : <CheckCircle2 className="h-4 w-4 text-success shrink-0 mt-0.5" />}
-                                <div className="min-w-0 flex-1">
-                                  <p className="font-bold text-card-foreground">{device.name}</p>
-                                  <p className="text-[11px] text-muted-foreground uppercase tracking-widest font-mono mt-0.5">{(device as any).device_types?.name ?? "Nieznany Typ"}</p>
-                                  <div className="mt-1">
-                                    <EditableText
-                                      value={device.notes}
-                                      canEdit={canEditBuilding}
-                                      multiline
-                                      maxLength={500}
-                                      placeholder="Notatka o urządzeniu..."
-                                      emptyLabel="(brak notatki)"
-                                      textClassName="text-[11px] text-muted-foreground italic"
-                                      onSave={async (v) => {
-                                        await updateDevice.mutateAsync({ id: device.id, building_id: building.id, updates: { notes: v || null } });
-                                        toast({ title: "Notatka zapisana" });
-                                      }}
-                                    />
-                                  </div>
-                                </div>
-                              </div>
-                            </td>
-                            <td className="px-5 py-4 font-medium text-muted-foreground">{device.location_in_building || "—"}</td>
-                            <td className="px-5 py-4 font-mono text-[11px] text-muted-foreground">{device.serial_number || "—"}</td>
-                            <td className="px-5 py-4">
-                              <span className={cn(
-                                "inline-flex items-center px-2.5 py-1 rounded-full text-xs font-bold", 
-                                needsService ? "bg-warning/10 text-warning" : "bg-success/10 text-success"
-                              )}>
-                                {device.next_service_date || "Brak danych"}
-                              </span>
-                            </td>
-                            <td className="px-5 py-4 text-right">
-                              <div className="flex items-center justify-end gap-1">
-                                {isSuperAdmin && (
-                                  <button
-                                    onClick={() => { setEditDeviceTarget(device); setEditDeviceOpen(true); }}
-                                    className="inline-flex items-center justify-center p-2 hover:bg-secondary rounded-lg text-muted-foreground hover:text-primary transition-colors"
-                                    title="Edytuj urządzenie"
-                                  >
-                                    <Edit className="h-4 w-4" />
-                                  </button>
-                                )}
-                                <button
-                                  onClick={() => setRepairDevice(device)}
-                                  className="inline-flex items-center justify-center p-2 hover:bg-warning/10 rounded-lg text-muted-foreground hover:text-warning transition-colors"
-                                  title="Zgłoś naprawę — utwórz zadanie serwisowe"
-                                >
-                                  <Hammer className="h-4 w-4" />
-                                </button>
-                                <button
-                                  onClick={() => setQrDevice(device)}
-                                  className="inline-flex items-center justify-center p-2 hover:bg-secondary rounded-lg text-muted-foreground hover:text-primary transition-colors"
-                                  title="Karta i Kod QR"
-                                >
-                                  <QrCode className="h-5 w-5" />
-                                </button>
-                              </div>
-                            </td>
-                          </tr>
-                        );
-                      })}
-                    </tbody>
-                  </table>
-                </div>
-              )}
+              ) : (() => {
+                // Grupowanie urządzeń po kategoriach master checklist (G/H/SSP/PWP/OŚ.AWAR./DSO/DRZWI/KLAPY/ODDYM)
+                const groups: Record<string, any[]> = {};
+                DEVICE_CATEGORIES.forEach((c) => { groups[c.code] = []; });
+                const other: any[] = [];
+                (devices ?? []).forEach((d: any) => {
+                  const typeName = (d as any).device_types?.name;
+                  const code = typeName ? DEVICE_TYPE_TO_CATEGORY[typeName] : null;
+                  if (code && groups[code]) groups[code].push(d);
+                  else other.push(d);
+                });
+                const allGroups = [
+                  ...DEVICE_CATEGORIES.map((c) => ({ cat: c, items: groups[c.code] })),
+                  ...(other.length > 0 ? [{ cat: { code: "OTHER", shortLabel: "INNE", label: "Bez kategorii", description: "" }, items: other }] : []),
+                ].filter((g) => g.items.length > 0);
+
+                return (
+                  <div className="divide-y divide-border">
+                    {allGroups.map(({ cat, items }) => (
+                      <div key={cat.code}>
+                        <div className="flex items-center gap-2 px-5 py-3 bg-secondary/40">
+                          <span className="inline-flex items-center justify-center font-mono text-[10px] font-bold rounded border border-border bg-card px-2 py-0.5 min-w-[42px] text-center">
+                            {cat.shortLabel}
+                          </span>
+                          <h4 className="text-xs font-bold uppercase tracking-wider text-card-foreground">{cat.label}</h4>
+                          <span className="text-[10px] text-muted-foreground">({items.length})</span>
+                        </div>
+                        <div className="overflow-x-auto">
+                          <table className="w-full text-left text-sm">
+                            <thead className="border-b border-border bg-muted/20 text-xs uppercase text-muted-foreground">
+                              <tr>
+                                <th className="px-5 py-2 font-semibold">Urządzenie</th>
+                                <th className="px-5 py-2 font-semibold">Lokalizacja</th>
+                                <th className="px-5 py-2 font-semibold">Numer Seryjny</th>
+                                <th className="px-5 py-2 font-semibold">Następny Serwis</th>
+                                <th className="px-5 py-2 font-semibold text-right">Akcje</th>
+                              </tr>
+                            </thead>
+                            <tbody className="divide-y divide-border">
+                              {items.map((device: any) => {
+                                const needsService = device.next_service_date && new Date(device.next_service_date) <= new Date();
+                                return (
+                                  <tr key={device.id} className="hover:bg-muted/10 transition-colors group">
+                                    <td className="px-5 py-4">
+                                      <div className="flex items-start gap-3">
+                                        {needsService ? <AlertTriangle className="h-4 w-4 text-warning shrink-0 mt-0.5" /> : <CheckCircle2 className="h-4 w-4 text-success shrink-0 mt-0.5" />}
+                                        <div className="min-w-0 flex-1">
+                                          <p className="font-bold text-card-foreground">{device.name}</p>
+                                          <p className="text-[11px] text-muted-foreground uppercase tracking-widest font-mono mt-0.5">{(device as any).device_types?.name ?? "Nieznany Typ"}</p>
+                                          <div className="mt-1">
+                                            <EditableText
+                                              value={device.notes}
+                                              canEdit={canEditBuilding}
+                                              multiline
+                                              maxLength={500}
+                                              placeholder="Notatka o urządzeniu..."
+                                              emptyLabel="(brak notatki)"
+                                              textClassName="text-[11px] text-muted-foreground italic"
+                                              onSave={async (v) => {
+                                                await updateDevice.mutateAsync({ id: device.id, building_id: building.id, updates: { notes: v || null } });
+                                                toast({ title: "Notatka zapisana" });
+                                              }}
+                                            />
+                                          </div>
+                                        </div>
+                                      </div>
+                                    </td>
+                                    <td className="px-5 py-4 font-medium text-muted-foreground">{device.location_in_building || "—"}</td>
+                                    <td className="px-5 py-4 font-mono text-[11px] text-muted-foreground">{device.serial_number || "—"}</td>
+                                    <td className="px-5 py-4">
+                                      <span className={cn(
+                                        "inline-flex items-center px-2.5 py-1 rounded-full text-xs font-bold",
+                                        needsService ? "bg-warning/10 text-warning" : "bg-success/10 text-success"
+                                      )}>
+                                        {device.next_service_date || "Brak danych"}
+                                      </span>
+                                    </td>
+                                    <td className="px-5 py-4 text-right">
+                                      <div className="flex items-center justify-end gap-1">
+                                        {isSuperAdmin && (
+                                          <button
+                                            onClick={() => { setEditDeviceTarget(device); setEditDeviceOpen(true); }}
+                                            className="inline-flex items-center justify-center p-2 hover:bg-secondary rounded-lg text-muted-foreground hover:text-primary transition-colors"
+                                            title="Edytuj urządzenie"
+                                          >
+                                            <Edit className="h-4 w-4" />
+                                          </button>
+                                        )}
+                                        <button
+                                          onClick={() => setRepairDevice(device)}
+                                          className="inline-flex items-center justify-center p-2 hover:bg-warning/10 rounded-lg text-muted-foreground hover:text-warning transition-colors"
+                                          title="Zgłoś naprawę — utwórz zadanie serwisowe"
+                                        >
+                                          <Hammer className="h-4 w-4" />
+                                        </button>
+                                        <button
+                                          onClick={() => setQrDevice(device)}
+                                          className="inline-flex items-center justify-center p-2 hover:bg-secondary rounded-lg text-muted-foreground hover:text-primary transition-colors"
+                                          title="Karta i Kod QR"
+                                        >
+                                          <QrCode className="h-5 w-5" />
+                                        </button>
+                                      </div>
+                                    </td>
+                                  </tr>
+                                );
+                              })}
+                            </tbody>
+                          </table>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                );
+              })()}
             </div>
+
           </div>
         </TabsContent>
 
