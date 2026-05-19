@@ -703,6 +703,11 @@ export default function CalendarPage() {
 
       <TaskDetailDialog task={selectedTask} open={!!selectedTask} onOpenChange={(o) => !o && setSelectedTask(null)} />
       <CreateMeetingDialog open={isMeetingOpen} onOpenChange={setIsMeetingOpen} />
+      <EditOpportunityFollowUpDialog
+        opportunity={selectedOpportunity}
+        open={!!selectedOpportunity}
+        onOpenChange={(o) => !o && setSelectedOpportunity(null)}
+      />
       <CreateTaskDialog
         open={!!createTaskDay}
         onOpenChange={(o) => { if (!o) setCreateTaskDay(null); }}
