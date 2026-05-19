@@ -35,9 +35,13 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import {
   ArrowLeft, ArrowRight, Loader2, CheckCircle2, Package,
   Building2, Plus, Pencil, Wrench, AlertTriangle, Layers, ListChecks,
+  CalendarClock, Clock,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
+import { Link } from "react-router-dom";
+import { useQuery } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
 import DeviceFormDialog from "@/components/DeviceFormDialog";
 import ReportDeviceFaultButton from "@/components/ReportDeviceFaultButton";
 import BulkDeviceServiceDialog from "@/components/BulkDeviceServiceDialog";
@@ -438,6 +442,32 @@ function CategoryDevicesPanel({
   const selectedIds = Array.from(selected);
   const targetIds = selectedIds.length > 0 ? selectedIds : list.map((d: any) => d.id);
 
+  // Pobierz aktywne zadania serwisowe powiązane z urządzeniami z tej kategorii
+  const deviceIds = list.map((d: any) => d.id);
+  const tasksQ = useQuery({
+    queryKey: ["device-service-tasks", buildingId, categoryCode, deviceIds.join(",")],
+    enabled: deviceIds.length > 0,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("tasks")
+        .select("id, title, status, deadline, source_id, assignee_id, task_code")
+        .eq("source", "service")
+        .in("source_id", deviceIds);
+      if (error) throw error;
+      return data ?? [];
+    },
+  });
+  const tasksByDevice = useMemo(() => {
+    const m: Record<string, any[]> = {};
+    (tasksQ.data ?? []).forEach((t: any) => {
+      if (!t.source_id) return;
+      (m[t.source_id] ??= []).push(t);
+    });
+    Object.values(m).forEach(arr => arr.sort((a: any, b: any) =>
+      (a.deadline ?? "").localeCompare(b.deadline ?? "")));
+    return m;
+  }, [tasksQ.data]);
+
   return (
     <Card>
       <CardHeader>
@@ -560,6 +590,39 @@ function CategoryDevicesPanel({
                       <div className={cn("text-xs flex items-center gap-1", overdue && "text-warning font-semibold")}>
                         <Wrench className="h-3 w-3" />
                         Następny serwis: {d.next_service_date}
+                      </div>
+                    )}
+                    {(tasksByDevice[d.id]?.length ?? 0) > 0 && (
+                      <div className="flex flex-wrap gap-1 mt-1" onClick={(e) => e.stopPropagation()}>
+                        {tasksByDevice[d.id].map((t: any) => {
+                          const isClosed = t.status === "Zamknięte";
+                          const tOverdue = !isClosed && t.deadline && new Date(t.deadline) < new Date();
+                          const variant = isClosed
+                            ? "bg-success/15 text-success border-success/30"
+                            : tOverdue
+                              ? "bg-destructive/15 text-destructive border-destructive/40"
+                              : "bg-primary/15 text-primary border-primary/30";
+                          const Icon = isClosed ? CheckCircle2 : tOverdue ? AlertTriangle : CalendarClock;
+                          return (
+                            <Link
+                              key={t.id}
+                              to={`/kanban?task=${t.id}`}
+                              className={cn(
+                                "inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] font-semibold hover:opacity-90 transition-opacity",
+                                variant
+                              )}
+                              title={t.title}
+                            >
+                              <Icon className="h-2.5 w-2.5" />
+                              {t.task_code ? `${t.task_code} • ` : ""}{t.status}
+                              {t.deadline && (
+                                <span className="opacity-75 ml-0.5">
+                                  · {new Date(t.deadline).toLocaleDateString("pl-PL")}
+                                </span>
+                              )}
+                            </Link>
+                          );
+                        })}
                       </div>
                     )}
                     {d.notes && (

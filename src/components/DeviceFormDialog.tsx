@@ -9,6 +9,7 @@ import { Loader2, Save, Trash2, Upload, ImageIcon, X, ListPlus } from "lucide-re
 import { useAddDevice, useUpdateDevice, useDeleteDevice, useDeviceTypes } from "@/hooks/useBuildingData";
 import { useProfiles, useCreateTask } from "@/hooks/useSupabaseData";
 import { supabase } from "@/integrations/supabase/client";
+import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 
 const STATUSES = ["aktywne", "do serwisu", "uszkodzone", "wycofane"] as const;
@@ -32,6 +33,7 @@ export default function DeviceFormDialog({
   const updateMut = useUpdateDevice();
   const deleteMut = useDeleteDevice();
   const createTask = useCreateTask();
+  const qc = useQueryClient();
 
   const isEdit = !!device;
   const allowedTypes = (typesAll ?? []).filter((t: any) => allowedTypeNames.includes(t.name));
@@ -207,7 +209,8 @@ export default function DeviceFormDialog({
         source: "service",
         source_id: device?.id ?? null,
       });
-      toast.success("Zadanie serwisowe utworzone");
+      toast.success("Zadanie serwisowe utworzone — widoczne w ewidencji urządzenia");
+      qc.invalidateQueries({ queryKey: ["device-service-tasks"] });
     } catch (e: any) {
       toast.error(e?.message ?? "Błąd tworzenia zadania");
     } finally {
