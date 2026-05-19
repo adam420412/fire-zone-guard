@@ -669,6 +669,7 @@ function HelpTab() {
             Pobierz Prezentację Klienta
           </Button>
         </div>
+      </div>
 
       <div className="rounded-xl border border-border bg-secondary/20 p-5 space-y-3">
         <div className="flex items-center gap-2">
