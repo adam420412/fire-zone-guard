@@ -64,27 +64,26 @@ export function useAddDevice() {
       building_id: string;
       device_type_id: string;
       name: string;
-      manufacturer?: string;
-      model?: string;
-      serial_number?: string;
-      location_in_building?: string;
-      installed_at?: string;
+      [key: string]: any;
     }) => {
-      // Calculate next service date from device type interval
-      const { data: dt } = await supabase
-        .from("device_types")
-        .select("service_interval_days")
-        .eq("id", device.device_type_id)
-        .single();
-
-      const nextService = new Date();
-      nextService.setDate(nextService.getDate() + (dt?.service_interval_days ?? 365));
+      // Auto next_service_date from device type interval, only if not provided
+      let nextStr: string | null = device.next_service_date ?? null;
+      if (!nextStr) {
+        const { data: dt } = await supabase
+          .from("device_types")
+          .select("service_interval_days")
+          .eq("id", device.device_type_id)
+          .single();
+        const nextService = new Date();
+        nextService.setDate(nextService.getDate() + (dt?.service_interval_days ?? 365));
+        nextStr = nextService.toISOString().split("T")[0];
+      }
 
       const { data, error } = await supabase
         .from("devices")
         .insert({
           ...device,
-          next_service_date: nextService.toISOString().split("T")[0],
+          next_service_date: nextStr,
         })
         .select()
         .single();
@@ -93,9 +92,11 @@ export function useAddDevice() {
     },
     onSuccess: (_, vars) => {
       qc.invalidateQueries({ queryKey: ["devices", vars.building_id] });
+      qc.invalidateQueries({ queryKey: ["building_device_summary", vars.building_id] });
     },
   });
 }
+
 
 // ---- Iter 9: edit / delete device (super_admin) ---------------------------
 export function useUpdateDevice() {
@@ -473,3 +474,87 @@ export function useCreateTaskFromTemplate() {
     },
   });
 }
+
+// ============================================================================
+// BUILDING DEVICE CATEGORIES — Etap 1 inwentaryzacji (które kategorie są w obiekcie)
+// ============================================================================
+export interface BuildingDeviceCategoryRow {
+  id: string;
+  building_id: string;
+  category_code: string;
+  is_present: boolean;
+  notes: string | null;
+  confirmed_at: string | null;
+  confirmed_by: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export function useBuildingDeviceCategories(buildingId: string) {
+  return useQuery<BuildingDeviceCategoryRow[], Error>({
+    queryKey: ["building_device_categories", buildingId],
+    queryFn: async () => {
+      const { data, error } = await (supabase as any)
+        .from("building_device_categories")
+        .select("*")
+        .eq("building_id", buildingId);
+      if (error) {
+        if (error.code === "42P01") return [];
+        throw error;
+      }
+      return (data ?? []) as BuildingDeviceCategoryRow[];
+    },
+    enabled: !!buildingId,
+  });
+}
+
+export function useUpsertBuildingDeviceCategory() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (input: {
+      building_id: string;
+      category_code: string;
+      is_present?: boolean;
+      notes?: string | null;
+    }) => {
+      const payload: any = {
+        building_id: input.building_id,
+        category_code: input.category_code,
+      };
+      if (input.is_present !== undefined) payload.is_present = input.is_present;
+      if (input.notes !== undefined) payload.notes = input.notes;
+
+      const { data, error } = await (supabase as any)
+        .from("building_device_categories")
+        .upsert(payload, { onConflict: "building_id,category_code" })
+        .select()
+        .single();
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: (_, vars) => {
+      qc.invalidateQueries({ queryKey: ["building_device_categories", vars.building_id] });
+    },
+  });
+}
+
+export function useConfirmBuildingDeviceCategories() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (params: { building_id: string; user_id?: string }) => {
+      const { error } = await (supabase as any)
+        .from("building_device_categories")
+        .update({
+          confirmed_at: new Date().toISOString(),
+          confirmed_by: params.user_id ?? null,
+        })
+        .eq("building_id", params.building_id)
+        .eq("is_present", true);
+      if (error) throw error;
+    },
+    onSuccess: (_, vars) => {
+      qc.invalidateQueries({ queryKey: ["building_device_categories", vars.building_id] });
+    },
+  });
+}
+
