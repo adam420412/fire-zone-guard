@@ -1,7 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { History, Loader2 } from "lucide-react";
-import { formatRelativeTime } from "@/lib/relativeTime";
+import { formatRelative } from "@/lib/relativeTime";
 
 const FIELD_LABELS: Record<string, string> = {
   created: "Utworzono urządzenie",
