@@ -1,6 +1,6 @@
 import { useState, useMemo, useEffect } from "react";
 import { useSearchParams } from "react-router-dom";
-import { useQuotes, useQuoteItems, useServices, useContacts, useCreateQuote, useCreateQuoteItem, useUpdateQuote, useSalesOpportunities, useCreateOpportunity, useUpdateOpportunity, useDeleteOpportunity } from "@/hooks/useCrmData";
+import { useQuotes, useQuoteItems, useServices, useContacts, useCreateQuote, useCreateQuoteItem, useUpdateQuote, useSalesOpportunities, useCreateOpportunity, useUpdateOpportunity, useDeleteOpportunity, useOpportunityUpdates, useCreateOpportunityUpdate, useOpportunityUpdatesCounts } from "@/hooks/useCrmData";
 import { useCompanies, useCreateCompany, useTaskFinanceSummary, useBuildings, useTasks, useProfiles } from "@/hooks/useSupabaseData";
 import { EditableText } from "@/components/EditableText";
 import { useAuth } from "@/hooks/useAuth";
@@ -16,7 +16,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
-import { Plus, Loader2, FileText, Search, ShoppingCart, CheckCircle, XCircle, DollarSign, TrendingUp, BarChart3, Percent, Target, Building2, Archive, ArrowRight, Trash2, CalendarClock, UserCircle, Briefcase } from "lucide-react";
+import { Plus, Loader2, FileText, Search, ShoppingCart, CheckCircle, XCircle, DollarSign, TrendingUp, BarChart3, Percent, Target, Building2, Archive, ArrowRight, Trash2, CalendarClock, UserCircle, Briefcase, MessageSquarePlus, Clock, Phone, Mail, Send, ChevronDown, ChevronUp, Users } from "lucide-react";
 import { generateReportPDF } from "@/lib/pdfGenerator";
 import ConvertOpportunityDialog from "@/components/ConvertOpportunityDialog";
 
@@ -569,6 +569,95 @@ function AddOpportunityDialog({ open, onOpenChange }: { open: boolean; onOpenCha
   );
 }
 
+// ---- Opportunity History Panel (inline expand) ----
+const UPDATE_TYPE_MAP: Record<string, { label: string; icon: typeof Phone }> = {
+  "note": { label: "Notatka", icon: MessageSquarePlus },
+  "phone": { label: "Kontakt tel.", icon: Phone },
+  "email": { label: "Email", icon: Mail },
+  "meeting": { label: "Spotkanie", icon: Users },
+  "status": { label: "Zmiana statusu", icon: ArrowRight },
+};
+
+function OpportunityHistoryPanel({ opportunityId, authorName }: { opportunityId: string; authorName: string }) {
+  const { data: updates, isLoading } = useOpportunityUpdates(opportunityId);
+  const { mutate: addUpdate, isPending } = useCreateOpportunityUpdate();
+  const [newContent, setNewContent] = useState("");
+  const [newType, setNewType] = useState("note");
+
+  const handleAdd = () => {
+    if (!newContent.trim()) return;
+    addUpdate({
+      opportunity_id: opportunityId,
+      author_name: authorName,
+      type: newType,
+      content: newContent.trim(),
+    }, {
+      onSuccess: () => { setNewContent(""); setNewType("note"); toast.success("Dodano wpis."); },
+      onError: (e) => toast.error("Błąd: " + e.message),
+    });
+  };
+
+  return (
+    <div className="space-y-3 pt-3 border-t border-border">
+      <div className="flex items-center gap-2 text-xs font-semibold text-muted-foreground">
+        <Clock className="h-3 w-3" /> Historia kontaktów
+      </div>
+
+      {/* Add new update form */}
+      <div className="space-y-2">
+        <div className="flex gap-1.5">
+          {Object.entries(UPDATE_TYPE_MAP).filter(([k]) => k !== "status").map(([key, { label, icon: Icon }]) => (
+            <button key={key} onClick={() => setNewType(key)}
+              className={`flex items-center gap-1 px-2 py-1 rounded text-[10px] font-medium transition-colors ${newType === key ? "bg-primary/15 text-primary" : "bg-secondary text-muted-foreground hover:bg-secondary/80"}`}>
+              <Icon className="h-2.5 w-2.5" /> {label}
+            </button>
+          ))}
+        </div>
+        <div className="flex gap-2">
+          <Textarea value={newContent} onChange={e => setNewContent(e.target.value)}
+            placeholder="Treść aktualizacji po kontakcie / spotkaniu..."
+            rows={2} className="text-xs resize-none" />
+          <Button size="sm" variant="default" className="h-auto px-3 shrink-0" onClick={handleAdd} disabled={isPending || !newContent.trim()}>
+            {isPending ? <Loader2 className="h-3 w-3 animate-spin" /> : <Send className="h-3 w-3" />}
+          </Button>
+        </div>
+      </div>
+
+      {/* Updates list */}
+      {isLoading ? (
+        <div className="flex justify-center py-3"><Loader2 className="h-4 w-4 animate-spin text-muted-foreground" /></div>
+      ) : (updates ?? []).length === 0 ? (
+        <p className="text-[11px] text-muted-foreground italic">Brak wpisów — dodaj pierwszą notatkę po kontakcie.</p>
+      ) : (
+        <div className="space-y-2 max-h-48 overflow-y-auto pr-1">
+          {(updates ?? []).map((u: any) => {
+            const typeInfo = UPDATE_TYPE_MAP[u.type] || UPDATE_TYPE_MAP["note"];
+            const TypeIcon = typeInfo.icon;
+            return (
+              <div key={u.id} className="flex gap-2 text-xs">
+                <div className="flex flex-col items-center pt-0.5">
+                  <div className="h-5 w-5 rounded-full bg-secondary flex items-center justify-center shrink-0">
+                    <TypeIcon className="h-2.5 w-2.5 text-muted-foreground" />
+                  </div>
+                  <div className="w-px flex-1 bg-border mt-1" />
+                </div>
+                <div className="pb-3 min-w-0">
+                  <div className="flex items-center gap-2 text-muted-foreground">
+                    <span className="font-semibold text-foreground">{u.author_name || "System"}</span>
+                    <Badge variant="outline" className="text-[9px] h-4 px-1">{typeInfo.label}</Badge>
+                    <span className="text-[10px]">{new Date(u.created_at).toLocaleString("pl-PL", { dateStyle: "short", timeStyle: "short" })}</span>
+                  </div>
+                  <p className="text-foreground mt-0.5 whitespace-pre-wrap">{u.content}</p>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ---- Main Finance Page ----
 export default function FinancePage() {
   const { role } = useAuth();
@@ -591,6 +680,10 @@ export default function FinancePage() {
   const [statusFilter, setStatusFilter] = useState("all");
   const [oppStatusFilter, setOppStatusFilter] = useState("active");
   const [convertOpp, setConvertOpp] = useState<any | null>(null);
+  const [expandedOpp, setExpandedOpp] = useState<string | null>(null);
+
+  const oppIds = useMemo(() => (opportunities ?? []).map((o: any) => o.id), [opportunities]);
+  const { data: updatesCounts } = useOpportunityUpdatesCounts(oppIds);
 
   const [searchParams, setSearchParams] = useSearchParams();
   const tabParam = searchParams.get("tab");
@@ -836,6 +929,24 @@ export default function FinancePage() {
                           </div>
                         </div>
                       )}
+
+                      {/* History toggle */}
+                      <div className="pt-2 border-t border-border">
+                        <button
+                          onClick={() => setExpandedOpp(expandedOpp === opp.id ? null : opp.id)}
+                          className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors w-full"
+                        >
+                          {expandedOpp === opp.id ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
+                          <MessageSquarePlus className="h-3 w-3" />
+                          Historia kontaktów
+                          {(updatesCounts?.[opp.id] ?? 0) > 0 && (
+                            <Badge variant="secondary" className="text-[9px] h-4 px-1 ml-1">{updatesCounts![opp.id]}</Badge>
+                          )}
+                        </button>
+                        {expandedOpp === opp.id && (
+                          <OpportunityHistoryPanel opportunityId={opp.id} authorName={assigneeName || "Operator"} />
+                        )}
+                      </div>
 
                       {/* Actions */}
                       {isSuperAdmin && opp.status !== "archiwum" && (

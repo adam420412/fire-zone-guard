@@ -210,6 +210,95 @@ export function useChecklistTemplate(id: string | undefined) {
   });
 }
 
+// ----- Tworzenie własnego szablonu ------------------------------------------
+export interface CreateTemplateInput {
+  code: string;
+  name: string;
+  description?: string | null;
+  scope: ChecklistScope;
+  device_category?: string | null;
+  items: Array<{
+    sort_order: number;
+    section?: string | null;
+    label: string;
+    description?: string | null;
+    default_severity?: ChecklistSeverity;
+    requires_photo?: boolean;
+    requires_note_on_fail?: boolean;
+  }>;
+}
+
+export function useCreateChecklistTemplate() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (input: CreateTemplateInput): Promise<ChecklistTemplate> => {
+      // 1. user id
+      type GetUserResult = Awaited<ReturnType<typeof supabase.auth.getUser>>;
+      let userId: string | null = null;
+      try {
+        const result = await Promise.race<GetUserResult>([
+          supabase.auth.getUser(),
+          new Promise<GetUserResult>((_, reject) =>
+            setTimeout(() => reject(new Error("auth-getUser-timeout")), 800),
+          ),
+        ]);
+        userId = result?.data?.user?.id ?? null;
+      } catch {
+        userId = null;
+      }
+
+      // 2. company_id z profilu (opcjonalnie)
+      let companyId: string | null = null;
+      if (userId) {
+        const { data: prof } = await supabase
+          .from("profiles")
+          .select("company_id")
+          .eq("id", userId)
+          .maybeSingle();
+        companyId = (prof as any)?.company_id ?? null;
+      }
+
+      // 3. utwórz template
+      const tplPayload: Record<string, unknown> = {
+        code: input.code.trim(),
+        name: input.name.trim(),
+        description: input.description?.trim() || null,
+        scope: input.scope,
+        device_category: input.device_category?.trim() || null,
+        is_system: false,
+        is_active: true,
+        created_by: userId,
+        company_id: companyId,
+      };
+      const { data: tpl, error: tErr } = await (supabase.from as any)("checklist_templates")
+        .insert(tplPayload)
+        .select()
+        .single();
+      if (tErr) throw tErr;
+
+      // 4. items
+      if (input.items.length > 0) {
+        const itemsPayload = input.items.map((it) => ({
+          template_id: tpl.id,
+          sort_order: it.sort_order,
+          section: it.section || null,
+          label: it.label,
+          description: it.description || null,
+          default_severity: it.default_severity ?? "średni",
+          requires_photo: it.requires_photo ?? false,
+          requires_note_on_fail: it.requires_note_on_fail ?? true,
+        }));
+        const { error: iErr } = await (supabase.from as any)("checklist_template_items")
+          .insert(itemsPayload);
+        if (iErr) throw iErr;
+      }
+
+      return tpl as ChecklistTemplate;
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: TEMPLATES_KEY }),
+  });
+}
+
 // ============================================================================
 // URUCHOMIENIA (RUNS)
 // ============================================================================

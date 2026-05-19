@@ -212,3 +212,54 @@ export function useDeleteQuoteItem() {
     onSuccess: () => qc.invalidateQueries({ queryKey: ["quote_items"] }),
   });
 }
+
+// ---- OPPORTUNITY UPDATES (history log) ----
+export function useOpportunityUpdates(opportunityId?: string) {
+  return useQuery({
+    queryKey: ["opportunity_updates", opportunityId],
+    enabled: !!opportunityId,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("opportunity_updates")
+        .select("*")
+        .eq("opportunity_id", opportunityId!)
+        .order("created_at", { ascending: false });
+      if (error) throw error;
+      return data ?? [];
+    },
+  });
+}
+
+export function useCreateOpportunityUpdate() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (update: { opportunity_id: string; author_name: string; type: string; content: string; author_id?: string }) => {
+      const { data, error } = await supabase.from("opportunity_updates").insert(update).select().single();
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: (_, vars) => {
+      qc.invalidateQueries({ queryKey: ["opportunity_updates", vars.opportunity_id] });
+      qc.invalidateQueries({ queryKey: ["opportunity_updates_count"] });
+    },
+  });
+}
+
+export function useOpportunityUpdatesCounts(opportunityIds: string[]) {
+  return useQuery({
+    queryKey: ["opportunity_updates_count", opportunityIds],
+    enabled: opportunityIds.length > 0,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("opportunity_updates")
+        .select("opportunity_id")
+        .in("opportunity_id", opportunityIds);
+      if (error) throw error;
+      const counts: Record<string, number> = {};
+      (data ?? []).forEach((r: any) => {
+        counts[r.opportunity_id] = (counts[r.opportunity_id] || 0) + 1;
+      });
+      return counts;
+    },
+  });
+}

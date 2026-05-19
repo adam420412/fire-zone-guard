@@ -16,6 +16,7 @@ import {
   Building2,
   GraduationCap,
   ShieldCheck,
+  Shield,
   Filter,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -78,6 +79,17 @@ import StatCard from "@/components/StatCard";
 // =============================================================================
 
 const TRAINING_STATUS_OPTIONS = ["Aktualne", "W trakcie", "Brak", "Wygasłe"] as const;
+
+const FIRE_ROLE_LABELS: Record<string, string> = {
+  gaszenie: "Gaszenie pożarów",
+  ewakuacja: "Koordynacja ewakuacji",
+  pierwsza_pomoc: "Pierwsza pomoc",
+  gaszenie_ewakuacja: "Gaszenie + Ewakuacja",
+  wszystkie: "Wszystkie role",
+};
+function fireRoleLabel(role: string | null) {
+  return role ? FIRE_ROLE_LABELS[role] ?? role : "Brak";
+}
 const NONE_VALUE = "__none__"; // Radix <Select> nie akceptuje value="" w SelectItem
 
 function formatDate(date: string | null | undefined) {
@@ -140,6 +152,7 @@ function EmployeeFormDialog({ open, onOpenChange, mode, employee }: EmployeeForm
   const [trainingStatus, setTrainingStatus] = useState(employee?.training_status ?? "Brak");
   const [progress, setProgress] = useState<number>(employee?.onboarding_progress ?? 0);
   const [notes, setNotes] = useState(employee?.notes ?? "");
+  const [fireRole, setFireRole] = useState(employee?.fire_role ?? "");
 
   // Reset stanu gdy dialog otwiera się dla innego pracownika
   // (przy kliknięciu Anuluj / zamknięciu też)
@@ -155,6 +168,7 @@ function EmployeeFormDialog({ open, onOpenChange, mode, employee }: EmployeeForm
     setTrainingStatus("Brak");
     setProgress(0);
     setNotes("");
+    setFireRole("");
   };
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -179,6 +193,7 @@ function EmployeeFormDialog({ open, onOpenChange, mode, employee }: EmployeeForm
       training_status: trainingStatus,
       onboarding_progress: Number.isFinite(progress) ? Math.max(0, Math.min(100, Math.round(progress))) : 0,
       notes: notes.trim() || null,
+      fire_role: fireRole || null,
     };
 
     const onError = (err: any) => {
@@ -344,6 +359,23 @@ function EmployeeFormDialog({ open, onOpenChange, mode, employee }: EmployeeForm
                   onChange={(e) => setProgress(Number(e.target.value))}
                 />
               </div>
+            </div>
+
+            <div className="space-y-2">
+              <Label>Rola pożarowa (ewakuacja / gaszenie / pierwsza pomoc)</Label>
+              <Select value={fireRole || NONE_VALUE} onValueChange={v => setFireRole(v === NONE_VALUE ? "" : v)}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Wybierz rolę..." />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value={NONE_VALUE}>Brak</SelectItem>
+                  <SelectItem value="gaszenie">Gaszenie pożarów</SelectItem>
+                  <SelectItem value="ewakuacja">Koordynacja ewakuacji</SelectItem>
+                  <SelectItem value="pierwsza_pomoc">Pierwsza pomoc medyczna</SelectItem>
+                  <SelectItem value="gaszenie_ewakuacja">Gaszenie + Ewakuacja</SelectItem>
+                  <SelectItem value="wszystkie">Wszystkie role</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
 
             <div className="space-y-2">
@@ -606,6 +638,17 @@ function EmployeeCard({
             {trainingBadge(emp.training_status)}
           </div>
 
+          {emp.fire_role && (
+            <div className="flex justify-between items-center py-1 border-b border-border/50">
+              <span className="text-muted-foreground flex items-center gap-2">
+                <Shield className="h-3.5 w-3.5" /> Rola pożarowa
+              </span>
+              <Badge variant="default" className="text-[10px] h-5 px-1.5 bg-orange-600 hover:bg-orange-600 text-white">
+                {fireRoleLabel(emp.fire_role)}
+              </Badge>
+            </div>
+          )}
+
           {emp.employment_date && (
             <div className="flex justify-between items-center py-1">
               <span className="text-muted-foreground flex items-center gap-2">
@@ -701,6 +744,7 @@ export default function EmployeesPage() {
       "Data zatrudnienia",
       "Badania lekarskie",
       "Szkolenie BHP",
+      "Rola pożarowa",
       "Onboarding %",
     ];
     const rows = filtered.map((emp) => [
@@ -714,6 +758,7 @@ export default function EmployeesPage() {
       emp.employment_date ?? "",
       emp.health_exam_valid_until ?? "",
       emp.training_status ?? "Brak",
+      fireRoleLabel(emp.fire_role),
       emp.onboarding_progress ?? 0,
     ]);
     const csv = [headers, ...rows].map((r) => r.join(";")).join("\n");

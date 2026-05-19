@@ -172,7 +172,7 @@ export function useTasks() {
       const { data, error } = await supabase
         .from("tasks")
         .select(
-          "*, companies(name, nip, address), buildings(name, address, description), profiles!tasks_assignee_id_fkey(name), contacts(name, phone, email, position), sales_opportunities(company_name)"
+          "*, companies(name, nip, address), buildings(name, address, description), profiles!tasks_assignee_id_fkey(name), contacts(name, phone, email, position), sales_opportunities!tasks_opportunity_id_fkey(company_name)"
         )
         .order("created_at", { ascending: false });
       if (error) throw error;
@@ -918,6 +918,7 @@ export interface EmployeeRecord {
   onboarding_progress: number | null;
   training_status: string | null;
   health_exam_valid_until: string | null;
+  fire_role: string | null;
   created_at: string;
   updated_at: string | null;
   // pola pochodne wyliczane na froncie
@@ -1008,6 +1009,7 @@ export function useEmployees(buildingId?: string) {
           onboarding_progress: r.onboarding_progress ?? 0,
           training_status: r.training_status ?? "Brak",
           health_exam_valid_until: r.health_exam_valid_until ?? null,
+          fire_role: r.fire_role ?? null,
           created_at: r.created_at,
           updated_at: r.updated_at ?? null,
           initials: deriveInitials(fullName),
@@ -1031,6 +1033,7 @@ export interface CreateEmployeeInput {
   onboarding_progress?: number | null;
   training_status?: string | null;
   health_exam_valid_until?: string | null;
+  fire_role?: string | null;
 }
 
 export function useCreateEmployee() {
@@ -1056,6 +1059,7 @@ export function useCreateEmployee() {
         onboarding_progress: input.onboarding_progress ?? 0,
         training_status: input.training_status ?? "Brak",
         health_exam_valid_until: input.health_exam_valid_until || null,
+        fire_role: input.fire_role?.trim() || null,
         status: "aktywny",
         is_active: true,
         start_date: input.employment_date || new Date().toISOString().split("T")[0],

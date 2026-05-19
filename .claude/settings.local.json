@@ -2,7 +2,29 @@
   "permissions": {
     "allow": [
       "Bash(gh repo:*)",
-      "Bash(git clone:*)"
+      "Bash(git clone:*)",
+      "Bash(git fetch *)",
+      "Bash(brew install *)",
+      "Bash(pdftoppm -v)",
+      "Bash(pdftotext \"/Users/mac/Downloads/260420 - APLIKACJA 2.pdf\" -)",
+      "Bash(npx tsc *)",
+      "Bash(npx vite *)",
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\" http://localhost:5174/)",
+      "Bash(npm install *)",
+      "Bash(bun install *)",
+      "Bash(pkill -f \"vite --port 5174\")",
+      "mcp__Claude_in_Chrome__tabs_context_mcp",
+      "mcp__Claude_Preview__preview_start",
+      "Bash(grep -E \"\\\\.\\(tsx|ts\\)$\")",
+      "Bash(grep -E \"\\\\.\\(ts|tsx\\)$\")",
+      "Bash(npx supabase *)",
+      "Bash(curl -s -X POST https://jlbcfovlqdqxawshfgld.supabase.co/rest/v1/rpc/exec_sql -H 'apikey: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImpsYmNmb3ZscWRxeGF3c2hmZ2xkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzE0MDMxNzIsImV4cCI6MjA4Njk3OTE3Mn0.2FQ6GKlbYAoZ0BUr4uAj6EABMk5LYlUJGWNDkkvKrxY' -H 'Content-Type: application/json' -d '{\"query\": \"ALTER TABLE public.employee_development_plans ADD COLUMN IF NOT EXISTS fire_role text\"}')",
+      "Bash(curl -s 'https://jlbcfovlqdqxawshfgld.supabase.co/rest/v1/employee_development_plans?select=fire_role&limit=1' -H 'apikey: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImpsYmNmb3ZscWRxeGF3c2hmZ2xkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzE0MDMxNzIsImV4cCI6MjA4Njk3OTE3Mn0.2FQ6GKlbYAoZ0BUr4uAj6EABMk5LYlUJGWNDkkvKrxY' -H 'Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImpsYmNmb3ZscWRxeGF3c2hmZ2xkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzE0MDMxNzIsImV4cCI6MjA4Njk3OTE3Mn0.2FQ6GKlbYAoZ0BUr4uAj6EABMk5LYlUJGWNDkkvKrxY')",
+      "Bash(ls -la /Users/mac/.supabase/ 2>/dev/null)",
+      "Bash(python3 -c \"import sys,json; data=json.load\\(sys.stdin\\); text=data[0]['text']; lines=text.split\\('\\\\n'\\); [print\\(l\\) for l in lines[-30:]]\")",
+      "Bash(curl -s https://jlbcfovlqdqxawshfgld.supabase.co/rest/v1/rpc/is_super_admin -H 'apikey: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImpsYmNmb3ZscWRxeGF3c2hmZ2xkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzE0MDMxNzIsImV4cCI6MjA4Njk3OTE3Mn0.2FQ6GKlbYAoZ0BUr4uAj6EABMk5LYlUJGWNDkkvKrxY' -H 'Content-Type: application/json')",
+      "Bash(npm run *)",
+      "Bash(git add *)"
     ]
   }
 }

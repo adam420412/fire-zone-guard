@@ -8,11 +8,13 @@ import { cn } from "@/lib/utils";
 import {
   Loader2, Users, Shield, Building2, Save, User, Lock, Bell,
   CheckCircle2, Eye, EyeOff, Mail, Phone, AlertTriangle,
-  Settings as SettingsIcon, ChevronRight, Send, Link2, Copy, RefreshCw
+  Settings as SettingsIcon, ChevronRight, Send, Link2, Copy, RefreshCw,
+  HelpCircle, FileText, Download, BookOpen
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
+import { generateClientSummaryPDF } from "@/lib/pdfClientSummary";
 
 // ---------- ADMIN: Users with Roles ----------
 interface UserWithRole {
@@ -84,6 +86,7 @@ const TABS = [
   { id: "profile", label: "Mój profil", icon: User },
   { id: "password", label: "Zmiana hasła", icon: Lock },
   { id: "notifications", label: "Powiadomienia", icon: Bell },
+  { id: "help", label: "Pomoc / Przewodnik", icon: HelpCircle },
   { id: "users", label: "Użytkownicy", icon: Users, adminOnly: true },
 ];
 
@@ -585,6 +588,111 @@ function UsersTab() {
             })}
           </tbody>
         </table>
+      </div>
+    </div>
+  );
+}
+
+// ---------- TAB: Help / Guide ----------
+function HelpTab() {
+  const { toast } = useToast();
+  const [generating, setGenerating] = useState(false);
+
+  const handleDownload = async () => {
+    setGenerating(true);
+    try {
+      await Promise.resolve(generateClientSummaryPDF());
+      toast({ title: "✅ PDF wygenerowany!", description: "Przewodnik po systemie został pobrany." });
+    } catch (e: any) {
+      toast({ title: "Błąd", description: e?.message ?? "Nie udało się wygenerować PDF", variant: "destructive" });
+    } finally {
+      setGenerating(false);
+    }
+  };
+
+  return (
+    <div className="max-w-2xl space-y-5">
+      <div className="rounded-xl border border-primary/30 bg-gradient-to-br from-primary/10 via-card to-card p-6">
+        <div className="flex items-start gap-4">
+          <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-primary/15">
+            <BookOpen className="h-6 w-6 text-primary" />
+          </div>
+          <div className="space-y-1">
+            <h3 className="text-lg font-bold">Przewodnik po systemie Fire Zone</h3>
+            <p className="text-sm text-muted-foreground">
+              Pobierz pełen przewodnik PDF z opisem wszystkich modułów aplikacji.
+              Idealny do prezentacji klientom lub szkolenia nowych użytkowników.
+            </p>
+          </div>
+        </div>
+
+        <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
+          <div className="rounded-lg border border-border bg-secondary/30 p-3 text-center">
+            <p className="text-2xl font-bold text-primary">22</p>
+            <p className="text-[10px] uppercase font-medium text-muted-foreground">Moduły</p>
+          </div>
+          <div className="rounded-lg border border-border bg-secondary/30 p-3 text-center">
+            <p className="text-2xl font-bold text-primary">~25</p>
+            <p className="text-[10px] uppercase font-medium text-muted-foreground">Stron</p>
+          </div>
+          <div className="rounded-lg border border-border bg-secondary/30 p-3 text-center">
+            <p className="text-2xl font-bold text-primary">PL</p>
+            <p className="text-[10px] uppercase font-medium text-muted-foreground">Język</p>
+          </div>
+          <div className="rounded-lg border border-border bg-secondary/30 p-3 text-center">
+            <p className="text-2xl font-bold text-primary">v1.0</p>
+            <p className="text-[10px] uppercase font-medium text-muted-foreground">Wersja</p>
+          </div>
+        </div>
+
+        <Button onClick={handleDownload} disabled={generating} className="mt-5 fire-gradient">
+          {generating ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Download className="mr-2 h-4 w-4" />}
+          Pobierz PDF — Przewodnik po systemie
+        </Button>
+      </div>
+
+      <div className="rounded-xl border border-border bg-secondary/20 p-5 space-y-3">
+        <div className="flex items-center gap-2">
+          <FileText className="h-4 w-4 text-primary" />
+          <h4 className="text-sm font-semibold">Co znajdziesz w przewodniku?</h4>
+        </div>
+        <ul className="grid gap-2 text-sm text-muted-foreground sm:grid-cols-2">
+          <li className="flex items-start gap-2">
+            <span className="mt-1 h-1.5 w-1.5 rounded-full bg-primary shrink-0" />
+            <span>Dashboard, SLA, Naprawy, Kanban</span>
+          </li>
+          <li className="flex items-start gap-2">
+            <span className="mt-1 h-1.5 w-1.5 rounded-full bg-primary shrink-0" />
+            <span>Obiekty, Firmy, Mapa, CRM</span>
+          </li>
+          <li className="flex items-start gap-2">
+            <span className="mt-1 h-1.5 w-1.5 rounded-full bg-primary shrink-0" />
+            <span>Audyty, Checklisty, Protokoły</span>
+          </li>
+          <li className="flex items-start gap-2">
+            <span className="mt-1 h-1.5 w-1.5 rounded-full bg-primary shrink-0" />
+            <span>Certyfikaty, Terminarz, Biblioteka</span>
+          </li>
+          <li className="flex items-start gap-2">
+            <span className="mt-1 h-1.5 w-1.5 rounded-full bg-primary shrink-0" />
+            <span>Raporty, KPI, Analityka</span>
+          </li>
+          <li className="flex items-start gap-2">
+            <span className="mt-1 h-1.5 w-1.5 rounded-full bg-primary shrink-0" />
+            <span>Zespół, Spotkania, Finanse</span>
+          </li>
+        </ul>
+      </div>
+
+      <div className="rounded-xl border border-border bg-secondary/20 p-5">
+        <div className="flex items-center gap-2 mb-2">
+          <HelpCircle className="h-4 w-4 text-primary" />
+          <h4 className="text-sm font-semibold">Potrzebujesz pomocy?</h4>
+        </div>
+        <p className="text-sm text-muted-foreground">
+          W razie pytań lub problemów technicznych skontaktuj się z administratorem systemu lub
+          opiekunem konta Fire Zone.
+        </p>
       </div>
     </div>
   );

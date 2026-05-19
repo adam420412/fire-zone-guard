@@ -172,6 +172,10 @@ export default function TaskCard({ task, onClick }: TaskCardProps) {
       {/* Title */}
       <h4 className="mt-2 text-sm font-medium leading-snug text-card-foreground line-clamp-2">{task.title}</h4>
 
+      {task.description && (
+        <p className="mt-1 text-[11px] leading-relaxed text-muted-foreground line-clamp-2">{task.description}</p>
+      )}
+
       {/* Type + indicators row */}
       <div className="mt-2 flex items-center flex-wrap gap-1">
         <span className="rounded bg-secondary px-1.5 py-0.5 text-[10px] font-medium text-secondary-foreground">

@@ -12,6 +12,7 @@ import { cn } from "@/lib/utils";
 import { useAuth } from "@/hooks/useAuth";
 import { useRealtimeNotifications } from "@/hooks/useRealtimeNotifications";
 import { NotificationBell } from "@/components/NotificationBell";
+import QuickOpportunityFAB from "@/components/QuickOpportunityFAB";
 import { useIsMobile } from "@/hooks/use-mobile";
 
 const adminNavItems = [
@@ -215,6 +216,9 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
         <main className="flex-1 overflow-y-auto scrollbar-thin p-4 sm:p-6">
           {children}
         </main>
+
+        {/* Quick Sales Opportunity FAB — visible to admin/super_admin */}
+        {(role === "admin" || role === "super_admin") && <QuickOpportunityFAB />}
       </div>
     </div>
   );
