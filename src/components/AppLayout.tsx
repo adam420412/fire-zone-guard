@@ -168,55 +168,76 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
         )}
       </div>
 
-      {/* Nav Items */}
-      <nav className="min-h-0 flex-1 space-y-1 overflow-y-auto p-2 scrollbar-thin">
-        {navItems.map((item) => {
-          const isActive = location.pathname === item.path;
-          const childActive = item.children?.some((child) => location.pathname === child.path);
-          const showChildren = item.children && (isActive || childActive) && (!collapsed || isMobile);
+      {/* Nav Groups */}
+      <nav className="min-h-0 flex-1 space-y-3 overflow-y-auto p-2 scrollbar-thin">
+        {navGroups.map((group) => {
+          const groupActive = isGroupActive(group);
+          const expanded = collapsed && !isMobile
+            ? true
+            : (openGroups[group.label] ?? groupActive);
+          const showLabel = !collapsed || isMobile;
           return (
-            <div key={item.path}>
-              <Link
-                to={item.path}
-                className={cn(
-                  "flex items-center gap-3 rounded-md px-3 py-2.5 text-sm font-medium transition-colors",
-                  isActive
-                    ? "bg-primary/15 text-primary"
-                    : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
-                )}
-              >
-                <item.icon className="h-4 w-4 shrink-0" />
-                {(!collapsed || isMobile) && <span className="flex-1">{item.label}</span>}
-                {item.children && (!collapsed || isMobile) && (
-                  <ChevronDown className={cn("h-3.5 w-3.5 transition-transform", showChildren ? "rotate-0" : "-rotate-90")} />
-                )}
-              </Link>
-              {showChildren && (
-                <div className="ml-5 mt-1 space-y-1 border-l border-sidebar-border pl-2">
-                  {item.children.map((child) => {
-                    const cActive = location.pathname === child.path;
-                    return (
-                      <Link
-                        key={child.path}
-                        to={child.path}
-                        className={cn(
-                          "flex items-center gap-2 rounded-md px-2 py-1.5 text-xs font-medium transition-colors",
-                          cActive
-                            ? "bg-primary/15 text-primary"
-                            : "text-sidebar-foreground/80 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
-                        )}
-                      >
-                        <child.icon className="h-3.5 w-3.5 shrink-0" />
-                        <span>{child.label}</span>
-                      </Link>
-                    );
-                  })}
-                </div>
+            <div key={group.label} className="space-y-1">
+              {showLabel && (
+                <button
+                  onClick={() => toggleGroup(group.label)}
+                  className="flex w-full items-center justify-between px-3 pt-2 pb-1 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground hover:text-foreground transition-colors"
+                >
+                  <span>{group.label}</span>
+                  <ChevronDown className={cn("h-3 w-3 transition-transform", expanded ? "rotate-0" : "-rotate-90")} />
+                </button>
               )}
+              {expanded && group.items.map((item) => {
+                const isActive = location.pathname === item.path;
+                const childActive = item.children?.some((child) => location.pathname === child.path);
+                const showChildren = item.children && (isActive || childActive) && (!collapsed || isMobile);
+                return (
+                  <div key={item.path}>
+                    <Link
+                      to={item.path}
+                      className={cn(
+                        "flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors",
+                        isActive
+                          ? "bg-primary/15 text-primary"
+                          : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+                      )}
+                    >
+                      <item.icon className="h-4 w-4 shrink-0" />
+                      {(!collapsed || isMobile) && <span className="flex-1">{item.label}</span>}
+                      {item.children && (!collapsed || isMobile) && (
+                        <ChevronDown className={cn("h-3.5 w-3.5 transition-transform", showChildren ? "rotate-0" : "-rotate-90")} />
+                      )}
+                    </Link>
+                    {showChildren && (
+                      <div className="ml-5 mt-1 space-y-1 border-l border-sidebar-border pl-2">
+                        {item.children!.map((child) => {
+                          const cActive = location.pathname === child.path;
+                          return (
+                            <Link
+                              key={child.path}
+                              to={child.path}
+                              className={cn(
+                                "flex items-center gap-2 rounded-md px-2 py-1.5 text-xs font-medium transition-colors",
+                                cActive
+                                  ? "bg-primary/15 text-primary"
+                                  : "text-sidebar-foreground/80 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+                              )}
+                            >
+                              <child.icon className="h-3.5 w-3.5 shrink-0" />
+                              <span>{child.label}</span>
+                            </Link>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
             </div>
           );
         })}
       </nav>
+
 
       {/* Collapse Toggle (desktop only) */}
       {!isMobile && (
