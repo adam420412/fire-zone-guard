@@ -497,6 +497,277 @@ export type Database = {
           },
         ]
       }
+      checklist_run_items: {
+        Row: {
+          completed_at: string | null
+          completed_by: string | null
+          created_at: string
+          default_severity: string
+          description: string | null
+          id: string
+          label: string
+          note: string | null
+          photo_urls: string[]
+          requires_note_on_fail: boolean
+          requires_photo: boolean
+          run_id: string
+          section: string | null
+          sort_order: number
+          status: string
+          task_id: string | null
+          template_item_id: string | null
+          updated_at: string
+        }
+        Insert: {
+          completed_at?: string | null
+          completed_by?: string | null
+          created_at?: string
+          default_severity?: string
+          description?: string | null
+          id?: string
+          label: string
+          note?: string | null
+          photo_urls?: string[]
+          requires_note_on_fail?: boolean
+          requires_photo?: boolean
+          run_id: string
+          section?: string | null
+          sort_order?: number
+          status?: string
+          task_id?: string | null
+          template_item_id?: string | null
+          updated_at?: string
+        }
+        Update: {
+          completed_at?: string | null
+          completed_by?: string | null
+          created_at?: string
+          default_severity?: string
+          description?: string | null
+          id?: string
+          label?: string
+          note?: string | null
+          photo_urls?: string[]
+          requires_note_on_fail?: boolean
+          requires_photo?: boolean
+          run_id?: string
+          section?: string | null
+          sort_order?: number
+          status?: string
+          task_id?: string | null
+          template_item_id?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "checklist_run_items_run_id_fkey"
+            columns: ["run_id"]
+            isOneToOne: false
+            referencedRelation: "checklist_runs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "checklist_run_items_task_id_fkey"
+            columns: ["task_id"]
+            isOneToOne: false
+            referencedRelation: "tasks"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "checklist_run_items_template_item_id_fkey"
+            columns: ["template_item_id"]
+            isOneToOne: false
+            referencedRelation: "checklist_template_items"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      checklist_runs: {
+        Row: {
+          building_id: string | null
+          company_id: string | null
+          completed_at: string | null
+          created_at: string
+          id: string
+          notes: string | null
+          performed_by: string | null
+          performer_name: string | null
+          protocol_url: string | null
+          started_at: string
+          status: string
+          summary: string | null
+          template_code: string
+          template_id: string
+          template_name: string
+          updated_at: string
+        }
+        Insert: {
+          building_id?: string | null
+          company_id?: string | null
+          completed_at?: string | null
+          created_at?: string
+          id?: string
+          notes?: string | null
+          performed_by?: string | null
+          performer_name?: string | null
+          protocol_url?: string | null
+          started_at?: string
+          status?: string
+          summary?: string | null
+          template_code: string
+          template_id: string
+          template_name: string
+          updated_at?: string
+        }
+        Update: {
+          building_id?: string | null
+          company_id?: string | null
+          completed_at?: string | null
+          created_at?: string
+          id?: string
+          notes?: string | null
+          performed_by?: string | null
+          performer_name?: string | null
+          protocol_url?: string | null
+          started_at?: string
+          status?: string
+          summary?: string | null
+          template_code?: string
+          template_id?: string
+          template_name?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "checklist_runs_building_id_fkey"
+            columns: ["building_id"]
+            isOneToOne: false
+            referencedRelation: "building_cost_summary"
+            referencedColumns: ["building_id"]
+          },
+          {
+            foreignKeyName: "checklist_runs_building_id_fkey"
+            columns: ["building_id"]
+            isOneToOne: false
+            referencedRelation: "buildings"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "checklist_runs_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "checklist_runs_template_id_fkey"
+            columns: ["template_id"]
+            isOneToOne: false
+            referencedRelation: "checklist_templates"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      checklist_template_items: {
+        Row: {
+          created_at: string
+          default_severity: string
+          description: string | null
+          id: string
+          label: string
+          requires_note_on_fail: boolean
+          requires_photo: boolean
+          section: string | null
+          sort_order: number
+          template_id: string
+        }
+        Insert: {
+          created_at?: string
+          default_severity?: string
+          description?: string | null
+          id?: string
+          label: string
+          requires_note_on_fail?: boolean
+          requires_photo?: boolean
+          section?: string | null
+          sort_order?: number
+          template_id: string
+        }
+        Update: {
+          created_at?: string
+          default_severity?: string
+          description?: string | null
+          id?: string
+          label?: string
+          requires_note_on_fail?: boolean
+          requires_photo?: boolean
+          section?: string | null
+          sort_order?: number
+          template_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "checklist_template_items_template_id_fkey"
+            columns: ["template_id"]
+            isOneToOne: false
+            referencedRelation: "checklist_templates"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      checklist_templates: {
+        Row: {
+          code: string
+          company_id: string | null
+          created_at: string
+          created_by: string | null
+          description: string | null
+          device_category: string | null
+          id: string
+          is_active: boolean
+          is_system: boolean
+          name: string
+          scope: string
+          updated_at: string
+        }
+        Insert: {
+          code: string
+          company_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          device_category?: string | null
+          id?: string
+          is_active?: boolean
+          is_system?: boolean
+          name: string
+          scope?: string
+          updated_at?: string
+        }
+        Update: {
+          code?: string
+          company_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          device_category?: string | null
+          id?: string
+          is_active?: boolean
+          is_system?: boolean
+          name?: string
+          scope?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "checklist_templates_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       companies: {
         Row: {
           address: string | null
