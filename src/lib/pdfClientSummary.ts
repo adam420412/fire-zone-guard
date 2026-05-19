@@ -359,6 +359,214 @@ export function generateClientSummaryPDF() {
     });
   });
 
+  // ---- CHANGELOG: Zmiany z ostatniej sesji ----
+  doc.addPage();
+  drawHeader(doc, "Zmiany z ostatniej sesji");
+
+  doc.setFontSize(11);
+  doc.setTextColor(...GRAY);
+  const changelogIntro = doc.splitTextToSize(
+    "Poniżej znajdziesz listę nowych funkcji, usprawnień i poprawek wprowadzonych do systemu Fire Zone w ostatniej iteracji rozwoju.",
+    contentWidth
+  );
+  doc.text(changelogIntro, margin, 48);
+
+  // Sekcja: Nowe funkcje
+  autoTable(doc, {
+    startY: 65,
+    head: [["Nowe funkcje", "Opis"]],
+    body: [
+      [
+        "PDF — Przewodnik po systemie",
+        "Generator pełnego przewodnika klienta z opisem wszystkich 22 modułów. Dostępny w Ustawieniach > Pomoc / Przewodnik (przycisk Pobierz PDF).",
+      ],
+      [
+        "Tworzenie własnych szablonów Checklist",
+        "W zakładce Checklisty pojawił się przycisk 'Nowy szablon'. Dialog pozwala zdefiniować dowolne punkty kontrolne z sekcjami, poziomem ważności, wymogiem zdjęcia i notatki przy NIE OK.",
+      ],
+      [
+        "Rola pożarowa pracowników",
+        "Nowe pole w karcie pracownika: gaszenie, koordynacja ewakuacji, pierwsza pomoc lub kombinacje. Widoczne na liście pracowników oraz w eksporcie CSV.",
+      ],
+      [
+        "Szybka szansa sprzedażowa (FAB)",
+        "Globalny przycisk 'Szybka szansa' w prawym dolnym rogu na każdej stronie. Pozwala dodać szansę bez przechodzenia do CRM.",
+      ],
+      [
+        "Timeline aktualizacji szans",
+        "Każda szansa sprzedażowa ma chronologiczny log aktualizacji (kontakty, spotkania, zmiany etapu).",
+      ],
+      [
+        "Opisy zadań na kartach Kanban",
+        "Karty zadań na tablicy Kanban pokazują teraz 2-liniowy fragment opisu pod tytułem — szybsza orientacja bez otwierania szczegółów.",
+      ],
+      [
+        "Zakładka Pomoc / Przewodnik",
+        "Nowa zakładka w Ustawieniach z brandowaną stroną pomocy, statystykami systemu i pobieraniem PDF.",
+      ],
+    ],
+    theme: "striped",
+    headStyles: { fillColor: BRAND_RED, fontSize: 10, halign: "left" },
+    bodyStyles: { fontSize: 9, valign: "top" },
+    columnStyles: {
+      0: { cellWidth: 55, fontStyle: "bold" },
+      1: { cellWidth: contentWidth - 55 },
+    },
+    margin: { left: margin, right: margin },
+  });
+
+  const afterFeaturesY = (doc as any).lastAutoTable.finalY + 10;
+
+  // Sekcja: Poprawki techniczne
+  autoTable(doc, {
+    startY: afterFeaturesY,
+    head: [["Poprawki techniczne", "Opis"]],
+    body: [
+      [
+        "Naprawa Kanban (HTTP 300)",
+        "Disambiguacja relacji tasks ↔ sales_opportunities przez tasks_opportunity_id_fkey — Kanban ładuje się ponownie poprawnie.",
+      ],
+      [
+        "Renderowanie zakładki Pomoc",
+        "Brakujący warunek renderowania komponentu HelpTab w SettingsPage — naprawione.",
+      ],
+      [
+        "Vercel build (peer deps)",
+        "Wyrównanie wersji @vitest/ui do v3 zgodnie z vitest@3.2.4 — deploy na Vercel ponownie przechodzi.",
+      ],
+      [
+        "Świeży package-lock.json",
+        "Pełna regeneracja lockfile przez czysty npm install — usunięte przestarzałe wpisy.",
+      ],
+    ],
+    theme: "striped",
+    headStyles: { fillColor: BRAND_RED, fontSize: 10, halign: "left" },
+    bodyStyles: { fontSize: 9, valign: "top" },
+    columnStyles: {
+      0: { cellWidth: 55, fontStyle: "bold" },
+      1: { cellWidth: contentWidth - 55 },
+    },
+    margin: { left: margin, right: margin },
+  });
+
+  const afterFixesY = (doc as any).lastAutoTable.finalY + 10;
+
+  // Sekcja: Migracje bazy danych
+  if (afterFixesY < pageHeight - 60) {
+    autoTable(doc, {
+      startY: afterFixesY,
+      head: [["Migracje bazy danych", "Opis"]],
+      body: [
+        [
+          "20260424220000_iter8_checklists",
+          "Pełen schemat checklist: templates, template_items, runs, run_items + 6 szablonów systemowych (audyt, gaśnice, hydranty, SSP, drzwi, oświetlenie).",
+        ],
+        [
+          "20260519100000_opportunity_updates",
+          "Tabela sales_opportunity_updates dla timeline aktualizacji szans sprzedażowych.",
+        ],
+        [
+          "20260519120000_employee_fire_role",
+          "Pole fire_role w employee_development_plans + aktualizacja widoku employees_with_details.",
+        ],
+      ],
+      theme: "striped",
+      headStyles: { fillColor: BRAND_RED, fontSize: 10, halign: "left" },
+      bodyStyles: { fontSize: 9, valign: "top" },
+      columnStyles: {
+        0: { cellWidth: 55, fontStyle: "bold" },
+        1: { cellWidth: contentWidth - 55 },
+      },
+      margin: { left: margin, right: margin },
+    });
+  } else {
+    doc.addPage();
+    drawHeader(doc, "Zmiany z ostatniej sesji (cd.)");
+    autoTable(doc, {
+      startY: 48,
+      head: [["Migracje bazy danych", "Opis"]],
+      body: [
+        [
+          "20260424220000_iter8_checklists",
+          "Pełen schemat checklist: templates, template_items, runs, run_items + 6 szablonów systemowych (audyt, gaśnice, hydranty, SSP, drzwi, oświetlenie).",
+        ],
+        [
+          "20260519100000_opportunity_updates",
+          "Tabela sales_opportunity_updates dla timeline aktualizacji szans sprzedażowych.",
+        ],
+        [
+          "20260519120000_employee_fire_role",
+          "Pole fire_role w employee_development_plans + aktualizacja widoku employees_with_details.",
+        ],
+      ],
+      theme: "striped",
+      headStyles: { fillColor: BRAND_RED, fontSize: 10, halign: "left" },
+      bodyStyles: { fontSize: 9, valign: "top" },
+      columnStyles: {
+        0: { cellWidth: 55, fontStyle: "bold" },
+        1: { cellWidth: contentWidth - 55 },
+      },
+      margin: { left: margin, right: margin },
+    });
+  }
+
+  // ---- PODSUMOWANIE NA OSTATNIEJ STRONIE ----
+  doc.addPage();
+  drawHeader(doc, "Podsumowanie");
+
+  doc.setFontSize(13);
+  doc.setTextColor(...DARK);
+  doc.setFont("helvetica", "bold");
+  doc.text("Fire Zone Operator PPOŻ — system w liczbach", margin, 50);
+
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(11);
+  doc.setTextColor(...GRAY);
+
+  const stats: Array<[string, string]> = [
+    ["Modułów funkcjonalnych", `${MODULES.length}`],
+    ["Zakresów checklist", "4 (audyt, sprzęt, BHP, inne)"],
+    ["Szablonów systemowych", "6 gotowych do użycia"],
+    ["Etapów workflow SLA", "8 (Zgłoszenie → Zamknięte)"],
+    ["Etapów workflow Napraw", "8 (Nowe → Zafakturowane)"],
+    ["Etapów lejka sprzedaży", "5 (Lead → Archiwum)"],
+    ["Statusów zadań Kanban", "5 (Nowe → Zamknięte)"],
+    ["Ról pożarowych pracowników", "5 (gaszenie, ewakuacja, pierwsza pomoc + kombinacje)"],
+  ];
+
+  autoTable(doc, {
+    startY: 60,
+    body: stats,
+    theme: "plain",
+    bodyStyles: { fontSize: 11, valign: "middle" },
+    columnStyles: {
+      0: { cellWidth: 90, fontStyle: "bold", textColor: DARK },
+      1: { cellWidth: contentWidth - 90, textColor: BRAND_RED, fontStyle: "bold" },
+    },
+    margin: { left: margin, right: margin },
+  });
+
+  const summaryY = (doc as any).lastAutoTable.finalY + 15;
+
+  doc.setFontSize(11);
+  doc.setTextColor(...DARK);
+  doc.setFont("helvetica", "bold");
+  doc.text("Co dalej?", margin, summaryY);
+
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(10);
+  doc.setTextColor(...GRAY);
+  const nextSteps = [
+    "• Uruchom Onboarding (Dashboard → Onboarding) by skonfigurować pierwszą firmę, obiekt i zespół.",
+    "• W Checklistach utwórz własny szablon dopasowany do specyfiki Twojego obiektu.",
+    "• Skonfiguruj Telegram w Ustawieniach > Mój profil żeby otrzymywać powiadomienia push.",
+    "• W zakładce Pomoc / Przewodnik w każdej chwili pobierzesz aktualny PDF z opisem systemu.",
+  ];
+  nextSteps.forEach((step, i) => {
+    const lines = doc.splitTextToSize(step, contentWidth);
+    doc.text(lines, margin, summaryY + 8 + i * 7);
+  });
+
   // ---- FOOTER on each page (except cover) ----
   const totalPages = doc.getNumberOfPages();
   for (let p = 2; p <= totalPages; p++) {
