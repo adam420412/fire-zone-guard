@@ -170,7 +170,14 @@ export default function TaskCard({ task, onClick }: TaskCardProps) {
       </div>
 
       {/* Title */}
-      <h4 className="mt-2 text-sm font-medium leading-snug text-card-foreground line-clamp-2">{task.title}</h4>
+      <h4 className="mt-2 text-sm font-medium leading-snug text-card-foreground line-clamp-2">
+        {(task as any).task_code && (
+          <span className="mr-1.5 inline-block rounded bg-primary/15 px-1.5 py-0.5 font-mono text-[10px] font-semibold text-primary align-middle">
+            {(task as any).task_code}
+          </span>
+        )}
+        {task.title}
+      </h4>
 
       {task.description && (
         <p className="mt-1 text-[11px] leading-relaxed text-muted-foreground line-clamp-2">{task.description}</p>
