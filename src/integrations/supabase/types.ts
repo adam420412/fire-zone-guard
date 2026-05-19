@@ -1078,6 +1078,7 @@ export type Database = {
       }
       devices: {
         Row: {
+          assigned_to: string | null
           building_id: string
           created_at: string
           device_type_id: string
@@ -1085,6 +1086,7 @@ export type Database = {
           floor_plan_y: number | null
           id: string
           installed_at: string | null
+          inventory_number: string | null
           last_service_date: string | null
           location_in_building: string | null
           manufacturer: string | null
@@ -1093,6 +1095,7 @@ export type Database = {
           name: string
           next_service_date: string | null
           notes: string | null
+          photo_url: string | null
           production_year: number | null
           quantity: number
           serial_number: string | null
@@ -1100,6 +1103,7 @@ export type Database = {
           warranty_until: string | null
         }
         Insert: {
+          assigned_to?: string | null
           building_id: string
           created_at?: string
           device_type_id: string
@@ -1107,6 +1111,7 @@ export type Database = {
           floor_plan_y?: number | null
           id?: string
           installed_at?: string | null
+          inventory_number?: string | null
           last_service_date?: string | null
           location_in_building?: string | null
           manufacturer?: string | null
@@ -1115,6 +1120,7 @@ export type Database = {
           name: string
           next_service_date?: string | null
           notes?: string | null
+          photo_url?: string | null
           production_year?: number | null
           quantity?: number
           serial_number?: string | null
@@ -1122,6 +1128,7 @@ export type Database = {
           warranty_until?: string | null
         }
         Update: {
+          assigned_to?: string | null
           building_id?: string
           created_at?: string
           device_type_id?: string
@@ -1129,6 +1136,7 @@ export type Database = {
           floor_plan_y?: number | null
           id?: string
           installed_at?: string | null
+          inventory_number?: string | null
           last_service_date?: string | null
           location_in_building?: string | null
           manufacturer?: string | null
@@ -1137,6 +1145,7 @@ export type Database = {
           name?: string
           next_service_date?: string | null
           notes?: string | null
+          photo_url?: string | null
           production_year?: number | null
           quantity?: number
           serial_number?: string | null
@@ -1144,6 +1153,13 @@ export type Database = {
           warranty_until?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "devices_assigned_to_fkey"
+            columns: ["assigned_to"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "devices_building_id_fkey"
             columns: ["building_id"]
