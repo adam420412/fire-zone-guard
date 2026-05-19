@@ -659,11 +659,16 @@ function HelpTab() {
           </div>
         </div>
 
-        <Button onClick={handleDownload} disabled={generating} className="mt-5 fire-gradient">
-          {generating ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Download className="mr-2 h-4 w-4" />}
-          Pobierz PDF — Przewodnik po systemie
-        </Button>
-      </div>
+        <div className="mt-5 flex flex-wrap gap-2">
+          <Button onClick={handleDownload} disabled={generating} className="fire-gradient">
+            {generating ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Download className="mr-2 h-4 w-4" />}
+            Pobierz PDF — Przewodnik po systemie
+          </Button>
+          <Button onClick={handleDownloadPresentation} disabled={generatingPres} variant="outline">
+            {generatingPres ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Download className="mr-2 h-4 w-4" />}
+            Pobierz Prezentację Klienta
+          </Button>
+        </div>
 
       <div className="rounded-xl border border-border bg-secondary/20 p-5 space-y-3">
         <div className="flex items-center gap-2">
