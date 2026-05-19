@@ -47,6 +47,7 @@ import { Button } from "@/components/ui/button";
 import { BUILDING_DOCUMENT_CATEGORIES, BUILDING_DOCUMENT_CATEGORY_LABELS, type BuildingDocumentCategory } from "@/lib/constants";
 import CreateTaskDialog from "@/components/CreateTaskDialog";
 import BuildingTrainingsTab from "@/components/BuildingTrainingsTab";
+import BuildingScheduleTab from "@/components/BuildingScheduleTab";
 import ReportFaultButton from "@/components/ReportFaultButton";
 
 function EditBuildingDialog({ building, open, onOpenChange }: { building: any, open: boolean, onOpenChange: (o: boolean) => void }) {
@@ -821,9 +822,12 @@ export default function BuildingDetailPage() {
       </div>
 
       <Tabs defaultValue="tasks" className="w-full">
-        <TabsList className="grid w-full sm:w-[850px] grid-cols-5 mb-6 bg-secondary p-1 rounded-xl">
+        <TabsList className="grid w-full sm:w-[980px] grid-cols-6 mb-6 bg-secondary p-1 rounded-xl">
           <TabsTrigger value="tasks" className="rounded-lg data-[state=active]:bg-card data-[state=active]:shadow-sm text-xs font-semibold py-2">
             Zadania operacyjne
+          </TabsTrigger>
+          <TabsTrigger value="schedule" className="rounded-lg data-[state=active]:bg-card data-[state=active]:shadow-sm text-xs font-semibold py-2">
+            Terminarz
           </TabsTrigger>
           <TabsTrigger value="devices" className="rounded-lg data-[state=active]:bg-card data-[state=active]:shadow-sm text-xs font-semibold py-2">
             Urządzenia PPOŻ
@@ -921,6 +925,10 @@ export default function BuildingDetailPage() {
               )}
             </div>
           </div>
+        </TabsContent>
+
+        <TabsContent value="schedule" className="mt-0">
+          <BuildingScheduleTab buildingId={id ?? ""} />
         </TabsContent>
 
         <TabsContent value="devices" className="mt-0 space-y-3">
