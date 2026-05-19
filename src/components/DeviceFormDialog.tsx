@@ -9,6 +9,7 @@ import { Loader2, Save, Trash2, Upload, ImageIcon, X, ListPlus } from "lucide-re
 import { useAddDevice, useUpdateDevice, useDeleteDevice, useDeviceTypes } from "@/hooks/useBuildingData";
 import { useProfiles, useCreateTask } from "@/hooks/useSupabaseData";
 import { supabase } from "@/integrations/supabase/client";
+import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 
 const STATUSES = ["aktywne", "do serwisu", "uszkodzone", "wycofane"] as const;
