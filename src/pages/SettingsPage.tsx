@@ -15,6 +15,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { generateClientSummaryPDF } from "@/lib/pdfClientSummary";
+import { generateClientPresentationPDF } from "@/lib/pdfClientPresentation";
 
 // ---------- ADMIN: Users with Roles ----------
 interface UserWithRole {
