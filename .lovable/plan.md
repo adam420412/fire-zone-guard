@@ -1,62 +1,73 @@
-## Status — co już jest zrobione
+## Plan: Moduł Checklisty + PDF podsumowanie aplikacji dla klienta
 
-Po sprawdzeniu kodu, z poprzedniego pakietu zmian wszystkie 3 punkty zostały **wdrożone**:
+### Zakres
+Dwa niezależne zadania:
+1. Uruchomienie migracji modułu Checklisty/Audyty (już istnieje w repo, ale tabele nie są jeszcze w bazie).
+2. Wygenerowanie/„skoroszytu" PDF dla klienta opisującego co aplikacja potrafi (moduł po module).
 
-1. **Edycja danych firmy (NIP + adres)** — `ManageCompanyDialog` w `src/pages/CompaniesPage.tsx` ma już pola Nazwa / NIP / Adres + przycisk pobrania z rejestru MF. Działa dla `super_admin` i `admin`.
-2. **Osoby kontaktowe firmy z wieloma obiektami** — tabele `company_contacts` + `company_contact_buildings` z RLS, hook `useCompanyContacts`, sekcja "Osoby kontaktowe" w karcie klienta z multi-select obiektów, edycją i usuwaniem. Wszystkie pola poza imieniem są opcjonalne.
-3. **Inline edycja tytułu i opisu zadania** — w `TaskDetailDialog.tsx` (ikona ołówka, zapis przez `useUpdateTask`).
+---
 
-## Co zostało do dokończenia
+### 1. Migracja checklistów (priorytet)
 
-Punkt 3 z Twojej uwagi mówił o **edycji opisu OBIEKTU** w kontekście zlecenia — ten konkretny przypadek nie jest jeszcze pełny. Sprawdziłem:
+Plik `supabase/migrations/20260424220000_iter8_checklists.sql` (452 linie) istnieje, ale tabele `checklist_templates`, `checklist_runs` itd. nie zostały jeszcze utworzone w bazie (sprawdzone: `to_regclass` zwraca NULL).
 
-- Tabela `buildings` **nie ma** kolumny `description` ani `notes` — jest tylko nazwa, adres, IBP, plan ewakuacji.
-- `EditBuildingDialog` (BuildingDetailPage.tsx, linia 50) edytuje tylko: nazwa, firma, adres, IBP.
-- Brak miejsca, gdzie można dopisać opis/uwagi do obiektu.
+Migracja tworzy:
+- `checklist_templates` + `checklist_template_items` — szablony (systemowe globalne + per firma)
+- `checklist_runs` + `checklist_run_items` — wykonania audytu + snapshoty pozycji ze statusem OK/NIE_OK/N/A, notatką, zdjęciami
+- Bucket `audit-photos` (public, do zdjęć z audytu) i `audit-protocols` (public, do PDF protokołów)
+- Pełne RLS: super_admin / admin firmy / wykonawca / klient (read-only w firmie)
+- 6 szablonów systemowych (audyt pełny PPOŻ, sprzęt G/H/SSP/DSO, BHP) — wstawiane na końcu pliku
 
-## Plan
+Kroki:
+1. Uruchomić migrację jednym wywołaniem `supabase--migration` (cały plik 1:1, idempotentny dzięki `IF NOT EXISTS` / `DROP POLICY IF EXISTS` / `ON CONFLICT DO NOTHING`).
+2. Po zatwierdzeniu zweryfikować, że strony `src/pages/ChecklistsPage.tsx` i `src/pages/ChecklistRunPage.tsx` oraz hook `src/hooks/useChecklists.ts` (już zbudowane, 1482 linie razem) działają z nowymi tabelami — bez zmian w kodzie, tylko regeneracja `types.ts`.
+3. Sprawdzić, że 6 systemowych szablonów się załadowało (`SELECT code, name FROM checklist_templates WHERE is_system`).
 
-### 1. Dodanie pola "Opis / uwagi" do obiektu
+Nie ruszamy istniejących stron checklist — kod jest już gotowy i czeka na schemat.
 
-- Migracja: `ALTER TABLE buildings ADD COLUMN description text DEFAULT ''`.
-- `EditBuildingDialog` — dodać `Textarea` "Opis obiektu (uwagi, dojazd, kontakt techniczny, specyfika)".
-- `BuildingDetailPage` — wyświetlić opis pod nagłówkiem obiektu (jeśli jest), z ikoną ołówka otwierającą ten sam dialog.
-- W `TaskDetailDialog` — w sekcji informacji o powiązanym obiekcie pokazać ten opis (read-only podgląd) z linkiem "Edytuj obiekt" prowadzącym do strony obiektu — żeby z poziomu zlecenia widzieć kontekst.
+---
 
-### 2. Komponent `EditableText` — uniwersalna inline-edycja
+### 2. PDF „Co umie aplikacja" dla klienta
 
-Wprowadzimy mały reużywalny komponent `src/components/EditableText.tsx`:
+Cel: jeden plik PDF, który właściciel firmy może wysłać do klienta jako prezentację możliwości systemu Fire Zone.
 
-- Props: `value`, `onSave(newValue)`, `placeholder`, `multiline?`, `canEdit?`, `maxLength?`.
-- Klik → input/textarea + Save / Anuluj.
-- Walidacja długości (Zod), toast błędu/sukcesu.
+Realizacja jako **artefakt /mnt/documents/** (jednorazowy skrypt Pythona z reportlab — to nie jest funkcja w aplikacji, tylko dokument do pobrania). Tak szybciej i taniej niż budować nową stronę z generatorem.
 
-Zastosujemy go etapami w miejscach, gdzie dziś brakuje edycji:
+Struktura PDF (~10–14 stron A4):
+1. **Okładka** — logo Fire Zone, tytuł „Operator PPOŻ — przegląd modułów", data, wersja.
+2. **Spis treści** + 1 strona executive summary (co system robi w 5 zdaniach).
+3. **Po jednej kartce na moduł** (każda: ikona + opis + lista funkcji + przykładowy przepływ):
+   - Dashboard + statusy bezpieczeństwa (czerwony/żółty/zielony, auto-kalkulacja)
+   - Firmy + Kontakty firmowe (multi-przypisanie do obiektów)
+   - Obiekty (opis, plany kondygnacji, dokumenty, urządzenia z QR)
+   - Zadania / Kanban (statusy, komentarz przy zamknięciu, finanse, subtaski)
+   - Zgłoszenia SLA (publiczny formularz, AI-analiza zdjęć, czas reakcji)
+   - Audyty + Protokoły + **Checklisty** (świeżo dodane)
+   - Urządzenia + automatyczne interwały serwisowe
+   - Szkolenia + Certyfikaty + Macierz obecności
+   - Pracownicy (rozwój, badania, onboarding)
+   - Spotkania + Kalendarz (kodowanie kolorami)
+   - CRM / Sprzedaż / Szanse (lead → firma+obiekt+zadanie)
+   - Biblioteka + RAG (wyszukiwanie semantyczne dokumentów)
+   - Raporty + KPI + PDF eksport
+   - Integracja Telegram (powiadomienia)
+   - Panel Klienta + role i RLS
+4. **Strona końcowa** — kontakt, kod QR do publishowanego URL.
 
-- Nazwa i adres obiektu (nagłówek BuildingDetailPage) — szybka edycja bez otwierania dialogu.
-- Opis obiektu (po migracji wyżej).
-- Notatki w protokołach (`service_protocols.notes`) — sekcja u góry strony protokołu.
-- Notatki audytu (`audits.notes`).
-- Opis/uwagi urządzenia (`devices.notes`) — z poziomu listy urządzeń obiektu.
-- Notatki kontaktu firmy (`company_contacts.notes`).
+Styl wizualny zgodny z brandem: pomarańczowy nagłówek (#ea580c), ciemna typografia, ramki sekcji, ikony Unicode/emoji.
 
-Każde z tych miejsc dostanie ten sam pattern: tekst + ikona ołówka, klik → edycja → zapis przez odpowiedni hook (`useUpdateBuilding`, `useUpdateDevice`, itp.).
+Plik wyjściowy: `/mnt/documents/fire-zone-prezentacja-klient.pdf`. Po wygenerowaniu QA przez konwersję do JPEG (`pdftoppm`) i przegląd każdej strony pod kątem cięcia tekstu/nakładania.
 
-### 3. Ujednolicenie uprawnień
+Dostarczam jako `<presentation-artifact>` z mime `application/pdf`.
 
-Wszędzie sprawdzamy `role === 'super_admin' || role === 'admin'` (admin firmy) — pracownik / klient widzi tylko podgląd. RLS już to wymusza po stronie bazy, ale dodamy też ukrywanie ikony ołówka w UI, żeby nie pokazywać akcji niedostępnych.
+---
 
-### Pliki do utworzenia / edycji
+### Kolejność wykonania
+1. **Najpierw** migracja checklistów (asynchroniczna, czeka na zatwierdzenie).
+2. **Równolegle** generowanie PDF (skrypt Pythona w `/tmp/`, output do `/mnt/documents/`).
+3. Po obu — krótki raport co działa.
 
-- migracja SQL: dodanie `buildings.description`
-- `src/components/EditableText.tsx` (nowy)
-- `src/pages/BuildingDetailPage.tsx` (dodanie pola opis + użycie EditableText na nazwie/adresie/opisie)
-- `src/components/TaskDetailDialog.tsx` (pokazanie opisu obiektu w karcie zlecenia)
-- `src/pages/ProtocolDetailPage.tsx`, `src/pages/AuditDetailPage.tsx`, `src/pages/BuildingDevicesPage.tsx`, `src/pages/CompaniesPage.tsx` (CompanyContactDialog) — punktowe użycia `EditableText`
-
-### Rekomendacja kolejności
-
-1. Najpierw migracja `buildings.description` + EditBuildingDialog + wyświetlenie w karcie zlecenia (rozwiązuje wprost Twój przykład).
-2. Potem komponent `EditableText` i etapowo nakładanie go na pozostałe pola.
-
-Zaczniemy od kroku 1, bo on bezpośrednio adresuje zgłoszony brak. Jeśli zatwierdzisz plan, przechodzę do implementacji.
+### Co NIE wchodzi w ten plan
+- Nowa strona „/summary" w aplikacji z generatorem PDF — to byłoby zbędne obciążenie kodu pod jednorazowy artefakt. Jeśli zechcesz to mieć **w aplikacji** (np. przycisk w Ustawieniach „Pobierz prezentację dla klienta"), powiedz — to osobny ticket.
+- Modyfikacje stron checklist (są już gotowe).
+- Treści marketingowe poza opisem funkcji.
