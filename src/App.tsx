@@ -34,6 +34,9 @@ import CalendarPage from "@/pages/CalendarPage";
 import ManufacturersPage from "@/pages/ManufacturersPage";
 import CrmPage from "@/pages/CrmPage";
 import FinancePage from "@/pages/FinancePage";
+import FinanceInvoicesPage from "@/pages/FinanceInvoicesPage";
+import FinancePaymentsPage from "@/pages/FinancePaymentsPage";
+import FinanceSettlementsPage from "@/pages/FinanceSettlementsPage";
 import SlaPage from "@/pages/SlaPage";
 import RepairsKanbanPage from "@/pages/RepairsKanbanPage";
 import OfficeTasksPage from "@/pages/OfficeTasksPage";
@@ -121,6 +124,9 @@ function ProtectedRoutes() {
             <Route path="/manufacturers" element={<ManufacturersPage />} />
             <Route path="/crm" element={<CrmPage />} />
             <Route path="/finance" element={<FinancePage />} />
+            <Route path="/finance/invoices" element={<FinanceInvoicesPage />} />
+            <Route path="/finance/payments" element={<FinancePaymentsPage />} />
+            <Route path="/finance/settlements" element={<FinanceSettlementsPage />} />
             <Route path="/system-audit" element={<SystemAuditPage />} />
             <Route path="/settings" element={<SettingsPage />} />
             <Route path="/admin" element={<AdminPage />} />
