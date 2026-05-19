@@ -307,7 +307,25 @@ export default function CalendarPage() {
         assigneeName: s.assigneeName,
       }));
 
-    const all = [...dayTasks, ...daySubtasks, ...dayProtocols, ...dayAudits, ...dayMeetings];
+    const dayOpportunities = (opportunities ?? [])
+      .filter((o: any) => {
+        if (!o.follow_up_at || !isSameDay(new Date(o.follow_up_at), day)) return false;
+        if (o.status === "zamkniety_wygrany" || o.status === "zamkniety_przegrany") return false;
+        if (activeFilterId === "all") return true;
+        return o.assignee_id === activeFilterId;
+      })
+      .map((o: any) => ({
+        id: o.id,
+        title: `📞 ${o.title || o.company_name}${o.contact_name ? ` — ${o.contact_name}` : ""}`,
+        status: o.status,
+        deadline: o.follow_up_at,
+        buildingName: o.linked_company_name || o.company_name,
+        priority: "wysoki",
+        _type: "opportunity",
+        _raw: o,
+      }));
+
+    const all = [...dayTasks, ...daySubtasks, ...dayProtocols, ...dayAudits, ...dayMeetings, ...dayOpportunities];
     return all.filter((it: any) => enabledTypes.has(it._type as CalendarItemType));
   };
 
