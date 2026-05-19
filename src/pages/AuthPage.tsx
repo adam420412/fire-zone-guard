@@ -68,6 +68,15 @@ export default function AuthPage() {
         </div>
 
         {isLogin && (
+          <a
+            href="/demo-klient"
+            className="block rounded-lg border border-amber-500/40 bg-gradient-to-r from-amber-500/10 to-rose-500/10 p-3 text-center text-xs font-semibold text-amber-600 hover:from-amber-500/20 hover:to-rose-500/20 transition-colors"
+          >
+            ✨ Zobacz demo panelu klienta — bez logowania
+          </a>
+        )}
+
+        {isLogin && (
           <div className="rounded-lg border border-primary/20 bg-primary/5 p-4 space-y-3">
             <p className="text-xs font-semibold text-primary text-center">Konta demo</p>
             <div className="space-y-1 text-center">
