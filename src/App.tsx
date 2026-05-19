@@ -46,6 +46,7 @@ import SlaAuditLogPage from "@/pages/SlaAuditLogPage";
 import SlaKpiPage from "@/pages/SlaKpiPage";
 import SystemAuditPage from "@/pages/SystemAuditPage";
 import PublicSlaIntakePage from "@/pages/PublicSlaIntakePage";
+import DemoClientPanel from "@/pages/DemoClientPanel";
 import OnboardingPage from "@/pages/OnboardingPage";
 import NotFound from "./pages/NotFound";
 import { Loader2 } from "lucide-react";
@@ -66,6 +67,9 @@ function ProtectedRoutes() {
   // PUBLIC ROUTES (no auth required) — must run BEFORE auth check
   if (location.pathname === "/zgloszenie") {
     return <PublicSlaIntakePage />;
+  }
+  if (location.pathname === "/demo-klient") {
+    return <DemoClientPanel />;
   }
   if (location.pathname === "/reset-password" || location.hash.includes("type=recovery")) {
     return <ResetPasswordPage />;
