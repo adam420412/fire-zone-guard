@@ -349,12 +349,34 @@ export default function DeviceFormDialog({
                 <Input type="date" value={form.warranty_until} onChange={(e) => set("warranty_until", e.target.value)} />
               </div>
               <div className="space-y-1.5">
-                <Label className="text-xs">Ostatni serwis</Label>
-                <Input type="date" value={form.last_service_date} onChange={(e) => set("last_service_date", e.target.value)} />
+                <Label className="text-xs">Ostatni serwis (wykonanie)</Label>
+                <Input
+                  type="date"
+                  max={new Date().toISOString().slice(0, 10)}
+                  value={form.last_service_date}
+                  onChange={(e) => {
+                    const v = e.target.value;
+                    if (v && v > new Date().toISOString().slice(0, 10)) {
+                      toast.error("Data wykonania nie może być w przyszłości.");
+                      return;
+                    }
+                    set("last_service_date", v);
+                    // auto-prelicz UI: last + interwał typu
+                    const t = allowedTypes.find((x: any) => x.id === form.device_type_id);
+                    const interval = t?.service_interval_days;
+                    if (v && interval) {
+                      const d = new Date(v);
+                      d.setDate(d.getDate() + interval);
+                      set("next_service_date", d.toISOString().slice(0, 10));
+                    }
+                  }}
+                />
+                <p className="text-[10px] text-muted-foreground">Może być wcześniej niż plan — system przeliczy następny termin.</p>
               </div>
               <div className="space-y-1.5">
                 <Label className="text-xs">Następny serwis (termin)</Label>
                 <Input type="date" value={form.next_service_date} onChange={(e) => set("next_service_date", e.target.value)} />
+                <p className="text-[10px] text-muted-foreground">Auto-aktualizowane po wpisaniu wykonania.</p>
               </div>
               <div className="space-y-1.5 sm:col-span-2">
                 <Label className="text-xs">Osoba odpowiedzialna</Label>
