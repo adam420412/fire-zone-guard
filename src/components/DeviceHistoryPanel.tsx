@@ -57,7 +57,7 @@ export default function DeviceHistoryPanel({ deviceId }: { deviceId: string }) {
             <li key={h.id} className="text-xs border-l-2 border-primary/40 pl-2">
               <div className="flex items-center justify-between gap-2">
                 <strong className="text-foreground">{FIELD_LABELS[h.field_name] ?? h.field_name}</strong>
-                <span className="text-muted-foreground whitespace-nowrap">{formatRelativeTime(h.created_at)}</span>
+                <span className="text-muted-foreground whitespace-nowrap">{formatRelative(h.created_at)}</span>
               </div>
               {h.field_name !== "created" && (
                 <div className="mt-0.5 text-muted-foreground">
