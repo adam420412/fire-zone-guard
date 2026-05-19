@@ -15,6 +15,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { generateClientSummaryPDF } from "@/lib/pdfClientSummary";
+import { generateClientPresentationPDF } from "@/lib/pdfClientPresentation";
 
 // ---------- ADMIN: Users with Roles ----------
 interface UserWithRole {
@@ -597,6 +598,7 @@ function UsersTab() {
 function HelpTab() {
   const { toast } = useToast();
   const [generating, setGenerating] = useState(false);
+  const [generatingPres, setGeneratingPres] = useState(false);
 
   const handleDownload = async () => {
     setGenerating(true);
@@ -607,6 +609,18 @@ function HelpTab() {
       toast({ title: "Błąd", description: e?.message ?? "Nie udało się wygenerować PDF", variant: "destructive" });
     } finally {
       setGenerating(false);
+    }
+  };
+
+  const handleDownloadPresentation = async () => {
+    setGeneratingPres(true);
+    try {
+      await Promise.resolve(generateClientPresentationPDF());
+      toast({ title: "✅ PDF wygenerowany!", description: "Prezentacja klienta została pobrana." });
+    } catch (e: any) {
+      toast({ title: "Błąd", description: e?.message ?? "Nie udało się wygenerować PDF", variant: "destructive" });
+    } finally {
+      setGeneratingPres(false);
     }
   };
 
@@ -645,10 +659,16 @@ function HelpTab() {
           </div>
         </div>
 
-        <Button onClick={handleDownload} disabled={generating} className="mt-5 fire-gradient">
-          {generating ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Download className="mr-2 h-4 w-4" />}
-          Pobierz PDF — Przewodnik po systemie
-        </Button>
+        <div className="mt-5 flex flex-wrap gap-2">
+          <Button onClick={handleDownload} disabled={generating} className="fire-gradient">
+            {generating ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Download className="mr-2 h-4 w-4" />}
+            Pobierz PDF — Przewodnik po systemie
+          </Button>
+          <Button onClick={handleDownloadPresentation} disabled={generatingPres} variant="outline">
+            {generatingPres ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Download className="mr-2 h-4 w-4" />}
+            Pobierz Prezentację Klienta
+          </Button>
+        </div>
       </div>
 
       <div className="rounded-xl border border-border bg-secondary/20 p-5 space-y-3">
