@@ -106,22 +106,50 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
 
       {/* Nav Items */}
       <nav className="flex-1 space-y-1 p-2">
-        {navItems.map((item) => {
+        {navItems.map((item: any) => {
           const isActive = location.pathname === item.path;
+          const childActive = item.children?.some((c: any) => location.pathname === c.path);
+          const showChildren = item.children && (isActive || childActive) && (!collapsed || isMobile);
           return (
-            <Link
-              key={item.path}
-              to={item.path}
-              className={cn(
-                "flex items-center gap-3 rounded-md px-3 py-2.5 text-sm font-medium transition-colors",
-                isActive
-                  ? "bg-primary/15 text-primary"
-                  : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+            <div key={item.path}>
+              <Link
+                to={item.path}
+                className={cn(
+                  "flex items-center gap-3 rounded-md px-3 py-2.5 text-sm font-medium transition-colors",
+                  isActive
+                    ? "bg-primary/15 text-primary"
+                    : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+                )}
+              >
+                <item.icon className="h-4 w-4 shrink-0" />
+                {(!collapsed || isMobile) && <span className="flex-1">{item.label}</span>}
+                {item.children && (!collapsed || isMobile) && (
+                  <ChevronDown className={cn("h-3.5 w-3.5 transition-transform", showChildren ? "rotate-0" : "-rotate-90")} />
+                )}
+              </Link>
+              {showChildren && (
+                <div className="ml-5 mt-1 space-y-1 border-l border-sidebar-border pl-2">
+                  {item.children.map((child: any) => {
+                    const cActive = location.pathname === child.path;
+                    return (
+                      <Link
+                        key={child.path}
+                        to={child.path}
+                        className={cn(
+                          "flex items-center gap-2 rounded-md px-2 py-1.5 text-xs font-medium transition-colors",
+                          cActive
+                            ? "bg-primary/15 text-primary"
+                            : "text-sidebar-foreground/80 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+                        )}
+                      >
+                        <child.icon className="h-3.5 w-3.5 shrink-0" />
+                        <span>{child.label}</span>
+                      </Link>
+                    );
+                  })}
+                </div>
               )}
-            >
-              <item.icon className="h-4 w-4 shrink-0" />
-              {(!collapsed || isMobile) && <span>{item.label}</span>}
-            </Link>
+            </div>
           );
         })}
       </nav>
