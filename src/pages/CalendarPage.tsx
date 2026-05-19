@@ -146,11 +146,14 @@ export default function CalendarPage() {
   const { data: meetings, isLoading: mtL } = useMeetings();
   const { data: profiles, isLoading: pfL } = useProfiles();
   const { data: allSubtasks } = useAllSubtasks();
+  const { data: opportunities } = useSalesOpportunities();
   const { role, profileId } = useAuth();
 
   const isAdmin = role === "super_admin" || role === "admin";
 
   const { mutate: updateTask } = useUpdateTask();
+  const { mutate: updateOpp } = useUpdateOpportunity();
+
 
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [selectedDay, setSelectedDay] = useState<Date | null>(null);
