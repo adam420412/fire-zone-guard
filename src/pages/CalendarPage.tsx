@@ -545,7 +545,7 @@ export default function CalendarPage() {
                   key={i}
                   onClick={() => setSelectedDay((prev) => (prev && isSameDay(prev, day) ? null : day))}
                   onDragOver={(e) => {
-                    if (draggedTaskId) {
+                    if (draggedTaskId || draggedOppId) {
                       e.preventDefault();
                       e.dataTransfer.dropEffect = "move";
                       if (dragOverDay !== dayKey) setDragOverDay(dayKey);
