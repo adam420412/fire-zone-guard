@@ -598,6 +598,7 @@ function UsersTab() {
 function HelpTab() {
   const { toast } = useToast();
   const [generating, setGenerating] = useState(false);
+  const [generatingPres, setGeneratingPres] = useState(false);
 
   const handleDownload = async () => {
     setGenerating(true);
@@ -608,6 +609,18 @@ function HelpTab() {
       toast({ title: "Błąd", description: e?.message ?? "Nie udało się wygenerować PDF", variant: "destructive" });
     } finally {
       setGenerating(false);
+    }
+  };
+
+  const handleDownloadPresentation = async () => {
+    setGeneratingPres(true);
+    try {
+      await Promise.resolve(generateClientPresentationPDF());
+      toast({ title: "✅ PDF wygenerowany!", description: "Prezentacja klienta została pobrana." });
+    } catch (e: any) {
+      toast({ title: "Błąd", description: e?.message ?? "Nie udało się wygenerować PDF", variant: "destructive" });
+    } finally {
+      setGeneratingPres(false);
     }
   };
 
