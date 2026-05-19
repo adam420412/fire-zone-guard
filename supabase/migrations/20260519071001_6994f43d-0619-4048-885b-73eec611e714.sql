@@ -1,0 +1,1 @@
+ALTER TABLE public.employee_development_plans ADD COLUMN IF NOT EXISTS fire_role text;
