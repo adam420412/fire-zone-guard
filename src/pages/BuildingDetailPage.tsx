@@ -927,6 +927,10 @@ export default function BuildingDetailPage() {
           </div>
         </TabsContent>
 
+        <TabsContent value="schedule" className="mt-0">
+          <BuildingScheduleTab buildingId={id ?? ""} />
+        </TabsContent>
+
         <TabsContent value="devices" className="mt-0 space-y-3">
           <button
             onClick={() => navigate(`/buildings/${id}/devices`)}
