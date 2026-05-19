@@ -23,46 +23,92 @@ type NavItem = {
   children?: NavItem[];
 };
 
-const adminNavItems: NavItem[] = [
-  { icon: LayoutDashboard, label: "Dashboard", path: "/" },
-  { icon: Siren, label: "SLA — Zgłoszenia", path: "/sla" },
-  { icon: History, label: "Audyt SLA", path: "/sla-audit" },
-  { icon: Gauge, label: "KPI SLA", path: "/sla-kpi" },
-  { icon: Wrench, label: "Naprawy", path: "/repairs" },
-  { icon: KanbanSquare, label: "Kanban", path: "/kanban" },
-  { icon: Building2, label: "Obiekty", path: "/buildings" },
-  { icon: Map, label: "Mapa obiektów", path: "/map" },
-  { icon: Briefcase, label: "Firmy", path: "/companies" },
-  { icon: Contact, label: "CRM", path: "/crm" },
-  { icon: DollarSign, label: "Finanse", path: "/finance", children: [
-    { icon: Receipt, label: "Faktury", path: "/finance/invoices" },
-    { icon: CreditCard, label: "Płatności", path: "/finance/payments" },
-    { icon: Scale, label: "Rozliczenia", path: "/finance/settlements" },
-  ] },
-  { icon: ClipboardCheck, label: "Audyty PPOŻ", path: "/audits" },
-  { icon: ListChecks, label: "Checklisty", path: "/checklists" },
-  { icon: FileText, label: "Protokoły", path: "/protocols" },
-  { icon: Shield, label: "Certyfikaty", path: "/certificates" },
-  { icon: CalendarClock, label: "Terminarz", path: "/office-tasks" },
-  { icon: BookOpen, label: "Biblioteka", path: "/library" },
-  { icon: BarChart3, label: "Raporty", path: "/reports" },
-  { icon: Users, label: "Spotkania", path: "/meetings" },
-  { icon: UsersRound, label: "Zespół", path: "/employees" },
-  { icon: BarChart2, label: "Analityka", path: "/analytics" },
-  { icon: Activity, label: "Audyt Systemu", path: "/system-audit" },
-  { icon: CalendarDays, label: "Kalendarz", path: "/calendar" },
-  { icon: Factory, label: "Producenci", path: "/manufacturers" },
-  { icon: Settings, label: "Ustawienia", path: "/settings" },
+type NavGroup = {
+  label: string;
+  items: NavItem[];
+};
+
+const adminNavGroups: NavGroup[] = [
+  {
+    label: "Pulpit",
+    items: [
+      { icon: LayoutDashboard, label: "Dashboard", path: "/" },
+      { icon: KanbanSquare, label: "Kanban", path: "/kanban" },
+      { icon: CalendarDays, label: "Kalendarz", path: "/calendar" },
+      { icon: CalendarClock, label: "Terminarz", path: "/office-tasks" },
+    ],
+  },
+  {
+    label: "Operacje serwisowe",
+    items: [
+      { icon: Siren, label: "SLA — Zgłoszenia", path: "/sla" },
+      { icon: Gauge, label: "KPI SLA", path: "/sla-kpi" },
+      { icon: History, label: "Audyt SLA", path: "/sla-audit" },
+      { icon: Wrench, label: "Naprawy", path: "/repairs" },
+      { icon: ClipboardCheck, label: "Audyty PPOŻ", path: "/audits" },
+      { icon: ListChecks, label: "Checklisty", path: "/checklists" },
+    ],
+  },
+  {
+    label: "Klienci i obiekty",
+    items: [
+      { icon: Building2, label: "Obiekty", path: "/buildings" },
+      { icon: Map, label: "Mapa obiektów", path: "/map" },
+      { icon: Briefcase, label: "Firmy", path: "/companies" },
+      { icon: Factory, label: "Producenci", path: "/manufacturers" },
+    ],
+  },
+  {
+    label: "Sprzedaż i finanse",
+    items: [
+      { icon: Contact, label: "CRM", path: "/crm" },
+      { icon: DollarSign, label: "Finanse", path: "/finance", children: [
+        { icon: Receipt, label: "Faktury", path: "/finance/invoices" },
+        { icon: CreditCard, label: "Płatności", path: "/finance/payments" },
+        { icon: Scale, label: "Rozliczenia", path: "/finance/settlements" },
+      ] },
+    ],
+  },
+  {
+    label: "Dokumentacja",
+    items: [
+      { icon: FileText, label: "Protokoły", path: "/protocols" },
+      { icon: Shield, label: "Certyfikaty", path: "/certificates" },
+      { icon: BookOpen, label: "Biblioteka", path: "/library" },
+      { icon: BarChart3, label: "Raporty", path: "/reports" },
+    ],
+  },
+  {
+    label: "Zespół",
+    items: [
+      { icon: UsersRound, label: "Pracownicy", path: "/employees" },
+      { icon: Users, label: "Spotkania", path: "/meetings" },
+    ],
+  },
+  {
+    label: "System",
+    items: [
+      { icon: BarChart2, label: "Analityka", path: "/analytics" },
+      { icon: Activity, label: "Audyt Systemu", path: "/system-audit" },
+      { icon: Settings, label: "Ustawienia", path: "/settings" },
+    ],
+  },
 ];
 
-const superAdminNavItems: NavItem[] = [
-  { icon: Sliders, label: "Panel admina", path: "/admin" },
-];
+const superAdminGroup: NavGroup = {
+  label: "Super Admin",
+  items: [{ icon: Sliders, label: "Panel admina", path: "/admin" }],
+};
 
-const clientNavItems: NavItem[] = [
-  { icon: LayoutDashboard, label: "Panel", path: "/" },
-  { icon: Siren, label: "Moje zgłoszenia", path: "/sla" },
-  { icon: BookOpen, label: "Biblioteka", path: "/library" },
+const clientNavGroups: NavGroup[] = [
+  {
+    label: "Mój panel",
+    items: [
+      { icon: LayoutDashboard, label: "Panel", path: "/" },
+      { icon: Siren, label: "Moje zgłoszenia", path: "/sla" },
+      { icon: BookOpen, label: "Biblioteka", path: "/library" },
+    ],
+  },
 ];
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
@@ -84,11 +130,21 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     if (!isMobile) setMobileOpen(false);
   }, [isMobile]);
 
-  const navItems = role === "client"
-    ? clientNavItems
+  const navGroups: NavGroup[] = role === "client"
+    ? clientNavGroups
     : role === "super_admin"
-      ? [...adminNavItems, ...superAdminNavItems]
-      : adminNavItems;
+      ? [...adminNavGroups, superAdminGroup]
+      : adminNavGroups;
+
+  const isGroupActive = (g: NavGroup) =>
+    g.items.some((it) =>
+      location.pathname === it.path ||
+      it.children?.some((c) => location.pathname === c.path)
+    );
+
+  const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({});
+  const toggleGroup = (label: string) =>
+    setOpenGroups((p) => ({ ...p, [label]: !(p[label] ?? isGroupActive(navGroups.find(g => g.label === label)!)) }));
 
   const sidebarContent = (
     <>
