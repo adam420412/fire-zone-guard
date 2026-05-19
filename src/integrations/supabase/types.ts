@@ -151,6 +151,42 @@ export type Database = {
           },
         ]
       }
+      building_device_categories: {
+        Row: {
+          building_id: string
+          category_code: string
+          confirmed_at: string | null
+          confirmed_by: string | null
+          created_at: string
+          id: string
+          is_present: boolean
+          notes: string | null
+          updated_at: string
+        }
+        Insert: {
+          building_id: string
+          category_code: string
+          confirmed_at?: string | null
+          confirmed_by?: string | null
+          created_at?: string
+          id?: string
+          is_present?: boolean
+          notes?: string | null
+          updated_at?: string
+        }
+        Update: {
+          building_id?: string
+          category_code?: string
+          confirmed_at?: string | null
+          confirmed_by?: string | null
+          created_at?: string
+          id?: string
+          is_present?: boolean
+          notes?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       building_documents: {
         Row: {
           building_id: string
@@ -1057,8 +1093,11 @@ export type Database = {
           name: string
           next_service_date: string | null
           notes: string | null
+          production_year: number | null
+          quantity: number
           serial_number: string | null
           status: string
+          warranty_until: string | null
         }
         Insert: {
           building_id: string
@@ -1076,8 +1115,11 @@ export type Database = {
           name: string
           next_service_date?: string | null
           notes?: string | null
+          production_year?: number | null
+          quantity?: number
           serial_number?: string | null
           status?: string
+          warranty_until?: string | null
         }
         Update: {
           building_id?: string
@@ -1095,8 +1137,11 @@ export type Database = {
           name?: string
           next_service_date?: string | null
           notes?: string | null
+          production_year?: number | null
+          quantity?: number
           serial_number?: string | null
           status?: string
+          warranty_until?: string | null
         }
         Relationships: [
           {
