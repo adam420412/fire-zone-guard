@@ -589,24 +589,28 @@ export default function CalendarPage() {
                   <div className="space-y-0.5">
                     {dayItems.slice(0, 3).map((task) => {
                       const isTaskItem = task._type === "task";
+                      const isOpp = task._type === "opportunity";
+                      const isDraggable = isTaskItem || isOpp;
                       return (
                         <div
-                          key={task.id}
-                          draggable={isTaskItem}
+                          key={`${task._type}-${task.id}`}
+                          draggable={isDraggable}
                           onDragStart={(e) => {
-                            if (!isTaskItem) return;
-                            setDraggedTaskId(task.id);
+                            if (isTaskItem) setDraggedTaskId(task.id);
+                            else if (isOpp) setDraggedOppId(task.id);
+                            else return;
                             e.dataTransfer.effectAllowed = "move";
                           }}
-                          onDragEnd={() => { setDraggedTaskId(null); setDragOverDay(null); }}
+                          onDragEnd={() => { setDraggedTaskId(null); setDraggedOppId(null); setDragOverDay(null); }}
                           onClick={(e) => {
                             e.stopPropagation();
                             if (isTaskItem) setSelectedTask(task);
+                            else if (isOpp) setSelectedOpportunity(task._raw);
                           }}
                           className={cn(
                             "truncate rounded px-1 py-0.5 text-[9px] font-semibold border cursor-pointer hover:opacity-80 transition-opacity",
-                            isTaskItem && "active:cursor-grabbing",
-                            draggedTaskId === task.id && "opacity-40",
+                            isDraggable && "active:cursor-grabbing",
+                            (draggedTaskId === task.id || draggedOppId === task.id) && "opacity-40",
                             getTaskColor(task)
                           )}
                         >
