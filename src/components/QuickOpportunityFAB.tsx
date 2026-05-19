@@ -7,10 +7,81 @@ import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 import { useCompanies, useBuildings, useTasks, useProfiles } from "@/hooks/useSupabaseData";
 import { useCreateOpportunity } from "@/hooks/useCrmData";
 import { toast } from "sonner";
-import { Target, Loader2, Zap } from "lucide-react";
+import { Target, Loader2, Zap, ChevronsUpDown, Check } from "lucide-react";
+import { cn } from "@/lib/utils";
+
+type ComboOption = { value: string; label: string; hint?: string };
+
+function SearchableSelect({
+  value,
+  onChange,
+  options,
+  placeholder,
+  emptyLabel = "Brak wyników",
+  disabled,
+  allowClear = true,
+}: {
+  value: string;
+  onChange: (v: string) => void;
+  options: ComboOption[];
+  placeholder: string;
+  emptyLabel?: string;
+  disabled?: boolean;
+  allowClear?: boolean;
+}) {
+  const [open, setOpen] = useState(false);
+  const selected = options.find((o) => o.value === value);
+  return (
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger asChild>
+        <button
+          type="button"
+          disabled={disabled}
+          className="flex h-10 w-full items-center justify-between rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
+        >
+          <span className={cn("truncate", !selected && "text-muted-foreground")}>
+            {selected ? selected.label : placeholder}
+          </span>
+          <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+        </button>
+      </PopoverTrigger>
+      <PopoverContent className="w-[--radix-popover-trigger-width] p-0" align="start">
+        <Command
+          filter={(val, search) => {
+            const opt = options.find((o) => o.value === val);
+            const hay = `${opt?.label ?? ""} ${opt?.hint ?? ""}`.toLowerCase();
+            return hay.includes(search.toLowerCase()) ? 1 : 0;
+          }}
+        >
+          <CommandInput placeholder="Szukaj po nazwie..." />
+          <CommandList>
+            <CommandEmpty>{emptyLabel}</CommandEmpty>
+            <CommandGroup>
+              {allowClear && (
+                <CommandItem value="__none__" onSelect={() => { onChange(""); setOpen(false); }}>
+                  <Check className={cn("mr-2 h-4 w-4", value === "" ? "opacity-100" : "opacity-0")} />
+                  — brak —
+                </CommandItem>
+              )}
+              {options.map((o) => (
+                <CommandItem key={o.value} value={o.value} onSelect={() => { onChange(o.value); setOpen(false); }}>
+                  <Check className={cn("mr-2 h-4 w-4", value === o.value ? "opacity-100" : "opacity-0")} />
+                  <span className="truncate">{o.label}</span>
+                  {o.hint && <span className="ml-2 text-xs text-muted-foreground truncate">{o.hint}</span>}
+                </CommandItem>
+              ))}
+            </CommandGroup>
+          </CommandList>
+        </Command>
+      </PopoverContent>
+    </Popover>
+  );
+}
 
 export default function QuickOpportunityFAB() {
   const [open, setOpen] = useState(false);
@@ -121,13 +192,12 @@ export default function QuickOpportunityFAB() {
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label>Powiązana firma (opcjonalnie)</Label>
-                  <Select value={form.company_id || "none"} onValueChange={v => setForm({ ...form, company_id: v === "none" ? "" : v, building_id: "", task_id: "" })}>
-                    <SelectTrigger><SelectValue placeholder="Wybierz firmę..." /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="none">— brak —</SelectItem>
-                      {(companies ?? []).map((c: any) => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
-                    </SelectContent>
-                  </Select>
+                  <SearchableSelect
+                    value={form.company_id}
+                    onChange={(v) => setForm({ ...form, company_id: v, building_id: "", task_id: "" })}
+                    placeholder="Wybierz firmę..."
+                    options={(companies ?? []).map((c: any) => ({ value: c.id, label: c.name, hint: c.nip ?? undefined }))}
+                  />
                 </div>
                 <div className="space-y-2">
                   <Label>Nowa firma / klient {!form.company_id && "*"}</Label>
@@ -138,23 +208,21 @@ export default function QuickOpportunityFAB() {
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label>Obiekt (opcjonalnie)</Label>
-                  <Select value={form.building_id || "none"} onValueChange={v => setForm({ ...form, building_id: v === "none" ? "" : v, task_id: "" })}>
-                    <SelectTrigger><SelectValue placeholder={form.company_id ? "Wybierz obiekt..." : "Najpierw wybierz firmę"} /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="none">— brak —</SelectItem>
-                      {filteredBuildings.map((b: any) => <SelectItem key={b.id} value={b.id}>{b.name}</SelectItem>)}
-                    </SelectContent>
-                  </Select>
+                  <SearchableSelect
+                    value={form.building_id}
+                    onChange={(v) => setForm({ ...form, building_id: v, task_id: "" })}
+                    placeholder={form.company_id ? "Wybierz obiekt..." : "Najpierw wybierz firmę"}
+                    options={filteredBuildings.map((b: any) => ({ value: b.id, label: b.name, hint: b.address ?? undefined }))}
+                  />
                 </div>
                 <div className="space-y-2">
                   <Label>Powiązane zlecenie (opcjonalnie)</Label>
-                  <Select value={form.task_id || "none"} onValueChange={v => setForm({ ...form, task_id: v === "none" ? "" : v })}>
-                    <SelectTrigger><SelectValue placeholder="Wybierz zlecenie..." /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="none">— brak —</SelectItem>
-                      {filteredTasks.slice(0, 50).map((t: any) => <SelectItem key={t.id} value={t.id}>{t.title}</SelectItem>)}
-                    </SelectContent>
-                  </Select>
+                  <SearchableSelect
+                    value={form.task_id}
+                    onChange={(v) => setForm({ ...form, task_id: v })}
+                    placeholder="Wybierz zlecenie..."
+                    options={filteredTasks.slice(0, 200).map((t: any) => ({ value: t.id, label: t.title, hint: t.task_code ?? undefined }))}
+                  />
                 </div>
               </div>
 
@@ -172,13 +240,12 @@ export default function QuickOpportunityFAB() {
               <div className="grid grid-cols-3 gap-4">
                 <div className="space-y-2">
                   <Label>Osoba przypisana</Label>
-                  <Select value={form.assignee_id || "none"} onValueChange={v => setForm({ ...form, assignee_id: v === "none" ? "" : v })}>
-                    <SelectTrigger><SelectValue placeholder="Opcjonalnie..." /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="none">— nikt —</SelectItem>
-                      {(profiles ?? []).map((p: any) => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}
-                    </SelectContent>
-                  </Select>
+                  <SearchableSelect
+                    value={form.assignee_id}
+                    onChange={(v) => setForm({ ...form, assignee_id: v })}
+                    placeholder="Opcjonalnie..."
+                    options={(profiles ?? []).map((p: any) => ({ value: p.id, label: p.name, hint: p.email ?? undefined }))}
+                  />
                 </div>
                 <div className="space-y-2">
                   <Label>Termin zajęcia się</Label>
