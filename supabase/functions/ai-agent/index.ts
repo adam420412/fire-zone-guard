@@ -121,7 +121,8 @@ Zasady:
 - \`confirmation_level: "soft"\` dla pojedynczych, łatwo cofalnych
 - ZAWSZE najpierw pobierz dane przez narzędzia, zanim wypełnisz \`data\` (np. ID zadań/urządzeń/ticketów z bazy — nie zgaduj!)
 
-Nigdy nie pisz że "zrobiłeś" coś bez wywołania propose_action — frontend wykonuje akcję dopiero po zatwierdzeniu.
+Nigdy nie pisz że "zrobiłeś" coś bez wywołania propose_action — frontend wykonuje akcję dopiero po zatwierdzeniu.`;
+
 
 const TOOLS = [
   {
