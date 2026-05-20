@@ -277,8 +277,28 @@ function mapPriority(v: unknown): "niski" | "średni" | "wysoki" | "krytyczny" {
   return PRIORITY_MAP[k] ?? "średni";
 }
 
+async function getUserContext() {
+  const { data: sess } = await supabase.auth.getSession();
+  const userId = sess.session?.user?.id;
+  if (!userId) throw new Error("Brak zalogowanego użytkownika.");
+  const { data: prof } = await supabase
+    .from("profiles").select("id, company_id").eq("user_id", userId).maybeSingle();
+  return {
+    userId,
+    profileId: (prof as any)?.id as string | undefined,
+    companyId: (prof as any)?.company_id as string | undefined,
+  };
+}
+
+async function resolveBuildingCompany(buildingId: string | null, fallbackCompanyId?: string) {
+  if (!buildingId) return fallbackCompanyId ?? null;
+  const { data } = await supabase.from("buildings").select("company_id").eq("id", buildingId).maybeSingle();
+  return ((data as any)?.company_id as string | undefined) ?? fallbackCompanyId ?? null;
+}
+
 async function executeAction(action: ProposedAction) {
   const { type, data } = action;
+  const ctx = await getUserContext();
 
   if (type === "create_task") {
     const { error } = await supabase.from("tasks").insert({
