@@ -449,11 +449,11 @@ async function searchData(supabase: ReturnType<typeof createClient>, query: stri
   const results: Record<string, unknown[]> = {};
 
   if (!entity || entity === "buildings") {
-    const { data } = await supabase.from("buildings").select("id, name, address, safety_status").ilike("name", `%${q}%`).limit(5);
+    const { data } = await supabase.from("buildings").select("id, name, address, company_id").ilike("name", `%${q}%`).limit(5);
     if (data?.length) results.buildings = data;
   }
   if (!entity || entity === "companies") {
-    const { data } = await supabase.from("companies").select("id, name, nip, contact_email").ilike("name", `%${q}%`).limit(5);
+    const { data } = await supabase.from("companies").select("id, name, nip, address").ilike("name", `%${q}%`).limit(5);
     if (data?.length) results.companies = data;
   }
   if (!entity || entity === "tasks") {
