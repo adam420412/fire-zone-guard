@@ -266,6 +266,17 @@ function cleanUuidList(arr: unknown): string[] {
   return arr.map(cleanUuid).filter((x): x is string => !!x);
 }
 
+const PRIORITY_MAP: Record<string, "niski" | "średni" | "wysoki" | "krytyczny"> = {
+  low: "niski", niski: "niski",
+  medium: "średni", normal: "średni", "średni": "średni", sredni: "średni",
+  high: "wysoki", wysoki: "wysoki",
+  urgent: "krytyczny", critical: "krytyczny", krytyczny: "krytyczny",
+};
+function mapPriority(v: unknown): "niski" | "średni" | "wysoki" | "krytyczny" {
+  const k = String(v ?? "").toLowerCase().trim();
+  return PRIORITY_MAP[k] ?? "średni";
+}
+
 async function executeAction(action: ProposedAction) {
   const { type, data } = action;
 
