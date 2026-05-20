@@ -590,8 +590,8 @@ async function getRecentActivity(supabase: ReturnType<typeof createClient>, hour
 
 async function getCompanySummary(supabase: ReturnType<typeof createClient>, companyId: string) {
   const [company, buildings, tasks, sla] = await Promise.all([
-    supabase.from("companies").select("id, name, nip, contact_email, contact_phone").eq("id", companyId).maybeSingle(),
-    supabase.from("buildings").select("id, name, safety_status").eq("company_id", companyId).limit(50),
+    supabase.from("companies").select("id, name, nip, address").eq("id", companyId).maybeSingle(),
+    supabase.from("buildings").select("id, name, address").eq("company_id", companyId).limit(50),
     supabase.from("tasks").select("id, status, priority").eq("company_id", companyId).neq("status", "Zamknięte").limit(200),
     supabase.from("sla_tickets").select("id, status, priority").eq("company_id", companyId).neq("status", "zamkniete").limit(100),
   ]);
