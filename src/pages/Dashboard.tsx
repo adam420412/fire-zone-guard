@@ -18,6 +18,7 @@ import TaskDetailDialog from "@/components/TaskDetailDialog";
 import DashboardCharts from "@/components/DashboardCharts";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { NextStepWidget } from "@/components/workflow/NextStepWidget";
 
 export default function Dashboard() {
   const navigate = useNavigate();
