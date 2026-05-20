@@ -112,6 +112,24 @@ function MessageBubble({
         )}
       </div>
 
+      {/* Inline action chips — od razu klikalne propozycje wynikające z odpowiedzi */}
+      {!isUser && matchedAutomations.length > 0 && (
+        <div className="max-w-[88%] flex flex-wrap gap-1.5 mt-1">
+          {matchedAutomations.map((a) => (
+            <button
+              key={a.id}
+              onClick={() => onRunAutomation(a)}
+              title={a.prompt}
+              className="inline-flex items-center gap-1 rounded-full border border-primary/40 bg-primary/10 px-2.5 py-1 text-xs font-medium text-primary hover:bg-primary/20 transition-colors"
+            >
+              <Play className="h-3 w-3" />
+              <span>{a.icon}</span>
+              <span>Uruchom: {a.label}</span>
+            </button>
+          ))}
+        </div>
+      )}
+
       {/* Action proposal */}
       {msg.action && msg.actionState === "pending" && (
         <div className="max-w-[85%] rounded-xl border-2 border-primary/20 bg-primary/5 p-3 space-y-2">
