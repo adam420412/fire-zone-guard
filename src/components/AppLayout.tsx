@@ -38,6 +38,7 @@ const adminNavGroups: NavGroup[] = [
     label: "Pulpit",
     items: [
       { icon: LayoutDashboard, label: "Dashboard", path: "/" },
+      { icon: Compass, label: "Przewodnik", path: "/workflow" },
       { icon: KanbanSquare, label: "Kanban", path: "/kanban", badgeKey: "kanban" },
       { icon: CalendarDays, label: "Kalendarz", path: "/calendar" },
       { icon: CalendarClock, label: "Terminarz", path: "/office-tasks", badgeKey: "officeTasks" },
