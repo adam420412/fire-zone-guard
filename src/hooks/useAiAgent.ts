@@ -277,16 +277,41 @@ function mapPriority(v: unknown): "niski" | "średni" | "wysoki" | "krytyczny" {
   return PRIORITY_MAP[k] ?? "średni";
 }
 
+async function getUserContext() {
+  const { data: sess } = await supabase.auth.getSession();
+  const userId = sess.session?.user?.id;
+  if (!userId) throw new Error("Brak zalogowanego użytkownika.");
+  const { data: prof } = await supabase
+    .from("profiles").select("id, company_id").eq("user_id", userId).maybeSingle();
+  return {
+    userId,
+    profileId: (prof as any)?.id as string | undefined,
+    companyId: (prof as any)?.company_id as string | undefined,
+  };
+}
+
+async function resolveBuildingCompany(buildingId: string | null, fallbackCompanyId?: string) {
+  if (!buildingId) return fallbackCompanyId ?? null;
+  const { data } = await supabase.from("buildings").select("company_id").eq("id", buildingId).maybeSingle();
+  return ((data as any)?.company_id as string | undefined) ?? fallbackCompanyId ?? null;
+}
+
 async function executeAction(action: ProposedAction) {
   const { type, data } = action;
+  const ctx = await getUserContext();
 
   if (type === "create_task") {
+    const buildingId = cleanUuid(data.building_id);
+    if (!buildingId) throw new Error("Brak prawidłowego ID obiektu (UUID) — wybierz budynek dla zadania.");
+    const companyId = (await resolveBuildingCompany(buildingId, ctx.companyId)) ?? null;
+    if (!companyId) throw new Error("Nie udało się ustalić firmy dla zadania.");
     const { error } = await supabase.from("tasks").insert({
       title: data.title as string,
-      description: data.description as string,
+      description: (data.description as string) ?? "",
       priority: mapPriority(data.priority),
       status: "Nowe",
-      building_id: cleanUuid(data.building_id) ?? undefined,
+      company_id: companyId,
+      building_id: buildingId,
       deadline: data.deadline as string | undefined,
       assignee_id: cleanUuid(data.assignee_id) ?? undefined,
     } as any);
@@ -296,7 +321,7 @@ async function executeAction(action: ProposedAction) {
       description: (data.description as string) || (data.title as string) || "",
       priority: ((data.priority as string) || "normal") as any,
       building_id: cleanUuid(data.building_id) ?? undefined,
-      company_id: cleanUuid(data.company_id) ?? undefined,
+      company_id: cleanUuid(data.company_id) ?? ctx.companyId ?? undefined,
     } as any);
     if (error) throw error;
   } else if (type === "send_notification") {
@@ -319,15 +344,21 @@ async function executeAction(action: ProposedAction) {
   } else if (type === "bulk_create_tasks") {
     const items = (data.items as any[]) || [];
     if (!items.length) throw new Error("Brak elementów do utworzenia");
-    const rows = items.map((it) => ({
-      title: it.title,
-      description: it.description ?? null,
-      priority: mapPriority(it.priority),
-      status: "Nowe",
-      building_id: cleanUuid(it.building_id),
-      deadline: it.deadline ?? null,
-      assignee_id: cleanUuid(it.assignee_id),
-      company_id: cleanUuid(it.company_id),
+    const rows = await Promise.all(items.map(async (it) => {
+      const buildingId = cleanUuid(it.building_id);
+      if (!buildingId) throw new Error("Każde zadanie musi mieć prawidłowe building_id (UUID).");
+      const companyId = cleanUuid(it.company_id) ?? (await resolveBuildingCompany(buildingId, ctx.companyId));
+      if (!companyId) throw new Error("Nie udało się ustalić firmy dla zadania.");
+      return {
+        title: it.title,
+        description: it.description ?? "",
+        priority: mapPriority(it.priority),
+        status: "Nowe",
+        building_id: buildingId,
+        company_id: companyId,
+        deadline: it.deadline ?? null,
+        assignee_id: cleanUuid(it.assignee_id),
+      };
     }));
     const { error } = await supabase.from("tasks").insert(rows as any);
     if (error) throw error;
@@ -339,16 +370,17 @@ async function executeAction(action: ProposedAction) {
     if (devErr) throw devErr;
     const deadline = (data.deadline as string) || null;
     const assigneeId = cleanUuid(data.assignee_id);
-    const rows = (devices ?? []).map((d: any) => ({
+    const rows = await Promise.all((devices ?? []).map(async (d: any) => ({
       title: `Serwis: ${d.name}${d.location_in_building ? ` (${d.location_in_building})` : ""}`,
       description: `Automatyczne zlecenie serwisowe wygenerowane przez asystenta AI.`,
       priority: "średni" as any,
       status: "Nowe",
       type: "przegląd" as any,
       building_id: d.building_id,
+      company_id: (await resolveBuildingCompany(d.building_id, ctx.companyId)) ?? ctx.companyId,
       deadline,
       assignee_id: assigneeId,
-    }));
+    })));
     if (!rows.length) throw new Error("Nie znaleziono urządzeń o podanych ID.");
     const { error } = await supabase.from("tasks").insert(rows as any);
     if (error) throw error;
