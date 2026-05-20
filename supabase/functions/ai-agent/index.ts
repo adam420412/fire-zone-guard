@@ -353,7 +353,7 @@ async function callClaude(
           } else if (name === "get_overdue_items") {
             result = await getOverdueItems(supabase, input.building_id);
           } else if (name === "get_my_tasks") {
-            result = await getMyTasks(supabase, ctx.userId, input.only_open ?? true);
+            result = await getMyTasks(supabase, ctx.profileId, ctx.userId, input.only_open ?? true);
           } else if (name === "get_sla_tickets") {
             result = await getSlaTickets(supabase, input);
           } else if (name === "get_devices_due") {
@@ -503,13 +503,18 @@ async function getOverdueItems(supabase: ReturnType<typeof createClient>, buildi
   };
 }
 
-async function getMyTasks(supabase: ReturnType<typeof createClient>, userId: string | undefined, onlyOpen: boolean) {
-  if (!userId) return { message: "Brak userId w kontekście — nie mogę odfiltrować zadań tego użytkownika.", hint: "Użyj get_overdue_items lub search_data." };
-  let q = supabase.from("tasks").select("id, task_code, title, status, priority, deadline, building_id").eq("assignee_id", userId).order("deadline", { ascending: true, nullsFirst: false }).limit(30);
+async function getMyTasks(supabase: ReturnType<typeof createClient>, profileId: string | undefined, userId: string | undefined, onlyOpen: boolean) {
+  let assigneeId = profileId;
+  if (!assigneeId && userId) {
+    const { data: profile } = await supabase.from("profiles").select("id").eq("user_id", userId).maybeSingle();
+    assigneeId = profile?.id;
+  }
+  if (!assigneeId) return { message: "Brak profilu użytkownika — nie mogę odfiltrować przypisanych zadań.", hint: "Użyj get_overdue_items lub search_data." };
+  let q = supabase.from("tasks").select("id, task_code, title, status, priority, deadline, building_id").eq("assignee_id", assigneeId).order("deadline", { ascending: true, nullsFirst: false }).limit(30);
   if (onlyOpen) q = q.neq("status", "Zamknięte");
   const { data, error } = await q;
   if (error) return { error: error.message };
-  return { tasks: data ?? [], count: (data ?? []).length };
+  return { tasks: data ?? [], count: (data ?? []).length, assignee_profile_id: assigneeId };
 }
 
 async function getSlaTickets(supabase: ReturnType<typeof createClient>, input: any) {
