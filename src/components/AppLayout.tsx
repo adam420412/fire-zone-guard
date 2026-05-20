@@ -4,7 +4,7 @@ import {
   Shield, Settings, Flame, ChevronLeft, ChevronRight,
   User, LogOut, Menu, X, ClipboardCheck, FileText, Users, UsersRound, Search, Command, BarChart2, CalendarDays, Factory, Contact, DollarSign,
   Siren, Wrench, CalendarClock, BookOpen, BarChart3, History, Gauge, ListChecks,
-  Map, Sliders, Activity, ChevronDown, Receipt, CreditCard, Scale
+  Map, Sliders, Activity, ChevronDown, Receipt, CreditCard, Scale, HardHat,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { ThemeToggle } from "@/components/ThemeToggle";
@@ -15,12 +15,15 @@ import { useRealtimeNotifications } from "@/hooks/useRealtimeNotifications";
 import { NotificationBell } from "@/components/NotificationBell";
 import QuickOpportunityFAB from "@/components/QuickOpportunityFAB";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { useNavBadges } from "@/hooks/useNavBadges";
+import AiBotPanel from "@/components/AiBotPanel";
 
 type NavItem = {
   icon: LucideIcon;
   label: string;
   path: string;
   children?: NavItem[];
+  badgeKey?: "kanban" | "repairs" | "sla" | "audits" | "finance" | "officeTasks";
 };
 
 type NavGroup = {
@@ -33,19 +36,19 @@ const adminNavGroups: NavGroup[] = [
     label: "Pulpit",
     items: [
       { icon: LayoutDashboard, label: "Dashboard", path: "/" },
-      { icon: KanbanSquare, label: "Kanban", path: "/kanban" },
+      { icon: KanbanSquare, label: "Kanban", path: "/kanban", badgeKey: "kanban" },
       { icon: CalendarDays, label: "Kalendarz", path: "/calendar" },
-      { icon: CalendarClock, label: "Terminarz", path: "/office-tasks" },
+      { icon: CalendarClock, label: "Terminarz", path: "/office-tasks", badgeKey: "officeTasks" },
     ],
   },
   {
     label: "Operacje serwisowe",
     items: [
-      { icon: Siren, label: "SLA — Zgłoszenia", path: "/sla" },
+      { icon: Siren, label: "SLA — Zgłoszenia", path: "/sla", badgeKey: "sla" },
       { icon: Gauge, label: "KPI SLA", path: "/sla-kpi" },
       { icon: History, label: "Audyt SLA", path: "/sla-audit" },
-      { icon: Wrench, label: "Naprawy", path: "/repairs" },
-      { icon: ClipboardCheck, label: "Audyty PPOŻ", path: "/audits" },
+      { icon: Wrench, label: "Naprawy", path: "/repairs", badgeKey: "repairs" },
+      { icon: ClipboardCheck, label: "Audyty PPOŻ", path: "/audits", badgeKey: "audits" },
       { icon: ListChecks, label: "Checklisty", path: "/checklists" },
     ],
   },
@@ -111,6 +114,62 @@ const clientNavGroups: NavGroup[] = [
   },
 ];
 
+const servicemanNavGroups: NavGroup[] = [
+  {
+    label: "Moje zlecenia",
+    items: [
+      { icon: HardHat, label: "Mój panel", path: "/" },
+      { icon: KanbanSquare, label: "Zlecenia", path: "/kanban", badgeKey: "kanban" },
+      { icon: Map, label: "Mapa", path: "/map" },
+      { icon: ListChecks, label: "Checklisty", path: "/checklists" },
+    ],
+  },
+  {
+    label: "Dokumentacja",
+    items: [
+      { icon: FileText, label: "Protokoły", path: "/protocols" },
+      { icon: Shield, label: "Moje certyfikaty", path: "/certificates" },
+    ],
+  },
+];
+
+const coordinatorNavGroups: NavGroup[] = [
+  {
+    label: "Pulpit",
+    items: [
+      { icon: LayoutDashboard, label: "Dashboard", path: "/" },
+      { icon: KanbanSquare, label: "Kanban", path: "/kanban", badgeKey: "kanban" },
+      { icon: Map, label: "Mapa obiektów", path: "/map" },
+      { icon: CalendarDays, label: "Kalendarz", path: "/calendar" },
+    ],
+  },
+  {
+    label: "Operacje",
+    items: [
+      { icon: Siren, label: "SLA — Zgłoszenia", path: "/sla", badgeKey: "sla" },
+      { icon: Wrench, label: "Naprawy", path: "/repairs", badgeKey: "repairs" },
+      { icon: ClipboardCheck, label: "Audyty PPOŻ", path: "/audits", badgeKey: "audits" },
+      { icon: ListChecks, label: "Checklisty", path: "/checklists" },
+      { icon: Users, label: "Spotkania", path: "/meetings" },
+    ],
+  },
+  {
+    label: "Klienci i obiekty",
+    items: [
+      { icon: Building2, label: "Obiekty", path: "/buildings" },
+      { icon: Briefcase, label: "Firmy", path: "/companies" },
+      { icon: Contact, label: "CRM", path: "/crm" },
+    ],
+  },
+  {
+    label: "Dokumentacja",
+    items: [
+      { icon: FileText, label: "Protokoły", path: "/protocols" },
+      { icon: BookOpen, label: "Biblioteka", path: "/library" },
+    ],
+  },
+];
+
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   const [collapsed, setCollapsed] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
@@ -119,6 +178,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   const isMobile = useIsMobile();
   
   const { unreadCount, markAllRead } = useRealtimeNotifications();
+  const { data: badges } = useNavBadges();
 
   // Close mobile menu on route change
   useEffect(() => {
@@ -130,11 +190,16 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     if (!isMobile) setMobileOpen(false);
   }, [isMobile]);
 
-  const navGroups: NavGroup[] = role === "client"
-    ? clientNavGroups
-    : role === "super_admin"
-      ? [...adminNavGroups, superAdminGroup]
-      : adminNavGroups;
+  const navGroups: NavGroup[] =
+    role === "client"
+      ? clientNavGroups
+      : role === "serviceman"
+        ? servicemanNavGroups
+        : role === "koordynator"
+          ? coordinatorNavGroups
+          : role === "super_admin"
+            ? [...adminNavGroups, superAdminGroup]
+            : adminNavGroups;
 
   const isGroupActive = (g: NavGroup) =>
     g.items.some((it) =>
@@ -204,6 +269,17 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                     >
                       <item.icon className="h-4 w-4 shrink-0" />
                       {(!collapsed || isMobile) && <span className="flex-1">{item.label}</span>}
+                      {/* Live badge count */}
+                      {item.badgeKey && badges && (badges[item.badgeKey] ?? 0) > 0 && (
+                        <span className={cn(
+                          "flex h-5 min-w-5 items-center justify-center rounded-full px-1 text-[10px] font-bold",
+                          (badges[item.badgeKey] ?? 0) > 0 && item.badgeKey === "sla"
+                            ? "bg-red-500 text-white"
+                            : "bg-primary/20 text-primary",
+                        )}>
+                          {(badges[item.badgeKey] ?? 0) > 99 ? "99+" : badges[item.badgeKey]}
+                        </span>
+                      )}
                       {item.children && (!collapsed || isMobile) && (
                         <ChevronDown className={cn("h-3.5 w-3.5 transition-transform", showChildren ? "rotate-0" : "-rotate-90")} />
                       )}
@@ -336,6 +412,9 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
 
         {/* Quick Sales Opportunity FAB — visible to admin/super_admin */}
         {(role === "admin" || role === "super_admin") && <QuickOpportunityFAB />}
+
+        {/* AI Bot Panel — visible to all internal roles (not client) */}
+        {role !== "client" && <AiBotPanel />}
       </div>
     </div>
   );

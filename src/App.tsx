@@ -48,6 +48,7 @@ import SystemAuditPage from "@/pages/SystemAuditPage";
 import PublicSlaIntakePage from "@/pages/PublicSlaIntakePage";
 import DemoClientPanel from "@/pages/DemoClientPanel";
 import OnboardingPage from "@/pages/OnboardingPage";
+import ServicemanDashboard from "@/pages/ServicemanDashboard";
 import NotFound from "./pages/NotFound";
 import { Loader2 } from "lucide-react";
 
@@ -86,6 +87,7 @@ function ProtectedRoutes() {
   if (!user) return <AuthPage />;
 
   const isClient = role === "client";
+  const isServiceman = role === "serviceman";
 
   return (
     <AppLayout>
@@ -96,6 +98,18 @@ function ProtectedRoutes() {
             <Route path="/sla" element={<ClientSlaPage />} />
             <Route path="/sla/:id" element={<ClientSlaPage />} />
             <Route path="/library" element={<LibraryPage />} />
+            <Route path="*" element={<Navigate to="/" replace />} />
+          </>
+        ) : isServiceman ? (
+          <>
+            <Route path="/" element={<ServicemanDashboard />} />
+            <Route path="/kanban" element={<KanbanPage />} />
+            <Route path="/map" element={<MapPage />} />
+            <Route path="/checklists" element={<ChecklistsPage />} />
+            <Route path="/checklists/runs/:id" element={<ChecklistRunPage />} />
+            <Route path="/protocols" element={<ProtocolsPage />} />
+            <Route path="/protocols/:id" element={<ProtocolDetailPage />} />
+            <Route path="/certificates" element={<CertificatesPage />} />
             <Route path="*" element={<Navigate to="/" replace />} />
           </>
         ) : (
