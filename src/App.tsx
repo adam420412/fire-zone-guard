@@ -101,6 +101,7 @@ function ProtectedRoutes() {
             <Route path="/sla" element={<ClientSlaPage />} />
             <Route path="/sla/:id" element={<ClientSlaPage />} />
             <Route path="/library" element={<LibraryPage />} />
+            <Route path="/workflow" element={<WorkflowGuidePage />} />
             <Route path="*" element={<Navigate to="/" replace />} />
           </>
         ) : isServiceman ? (
