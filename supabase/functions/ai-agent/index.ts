@@ -22,6 +22,7 @@ interface PageContext {
   taskId?: string;
   companyId?: string;
   userId?: string;
+  profileId?: string;
   userRole?: string;
 }
 
@@ -68,7 +69,7 @@ Zawsze używaj **markdown** ze strukturą:
 
 1. Odpowiadasz na pytania o stan systemu — masz dostęp do całej bazy przez narzędzia:
    - **get_dashboard_summary** — szybkie KPI
-   - **get_my_tasks** — zadania bieżącego użytkownika (wymaga userId z kontekstu)
+- **get_my_tasks** — zadania bieżącego użytkownika (używa profileId; zadania są przypisane do profilu)
    - **get_overdue_items** — wszystkie przeterminowane (zlecenia + urządzenia)
    - **get_sla_tickets** — filtruj po statusie/priorytecie/budynku/days_back
    - **get_devices_due** — przeglądy urządzeń w horyzoncie N dni
@@ -426,7 +427,7 @@ async function getDashboardSummary(supabase: ReturnType<typeof createClient>) {
   const today = new Date().toISOString();
   const [tasks, slaTickets, overdueDevices] = await Promise.all([
     supabase.from("tasks").select("id, status, priority, deadline").neq("status", "Zamknięte").limit(200),
-    supabase.from("sla_tickets").select("id, status, priority, created_at").neq("status", "zamknięte").limit(50),
+    supabase.from("sla_tickets").select("id, status, priority, created_at").neq("status", "zamkniete").limit(50),
     supabase.from("devices").select("id, name, next_service_date").lt("next_service_date", today.split("T")[0]).limit(50),
   ]);
 
@@ -460,7 +461,7 @@ async function searchData(supabase: ReturnType<typeof createClient>, query: stri
     if (data?.length) results.tasks = data;
   }
   if (!entity || entity === "sla_tickets") {
-    const { data } = await supabase.from("sla_tickets").select("id, title, status, priority").ilike("title", `%${q}%`).limit(5);
+    const { data } = await supabase.from("sla_tickets").select("id, ticket_number, description, status, priority").ilike("description", `%${q}%`).limit(5);
     if (data?.length) results.sla_tickets = data;
   }
 
