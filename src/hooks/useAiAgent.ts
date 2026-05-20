@@ -256,6 +256,15 @@ function formatActionError(err: any): string {
   }
 }
 
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+function cleanUuid(v: unknown): string | null {
+  if (typeof v !== "string") return null;
+  return UUID_RE.test(v.trim()) ? v.trim() : null;
+}
+function cleanUuidList(arr: unknown): string[] {
+  if (!Array.isArray(arr)) return [];
+  return arr.map(cleanUuid).filter((x): x is string => !!x);
+}
 
 async function executeAction(action: ProposedAction) {
   const { type, data } = action;
@@ -266,17 +275,17 @@ async function executeAction(action: ProposedAction) {
       description: data.description as string,
       priority: ((data.priority as string) || "średni") as "krytyczny" | "wysoki" | "średni" | "niski",
       status: "Nowe",
-      building_id: data.building_id as string | undefined,
+      building_id: cleanUuid(data.building_id) ?? undefined,
       deadline: data.deadline as string | undefined,
-      assignee_id: data.assignee_id as string | undefined,
+      assignee_id: cleanUuid(data.assignee_id) ?? undefined,
     } as any);
     if (error) throw error;
   } else if (type === "create_sla_ticket") {
     const { error } = await supabase.from("sla_tickets").insert({
       description: (data.description as string) || (data.title as string) || "",
       priority: ((data.priority as string) || "normal") as any,
-      building_id: data.building_id as string | undefined,
-      company_id: data.company_id as string | undefined,
+      building_id: cleanUuid(data.building_id) ?? undefined,
+      company_id: cleanUuid(data.company_id) ?? undefined,
     } as any);
     if (error) throw error;
   } else if (type === "send_notification") {
@@ -287,8 +296,10 @@ async function executeAction(action: ProposedAction) {
       status: "pending",
     });
   } else if (type === "schedule_audit") {
+    const buildingId = cleanUuid(data.building_id);
+    if (!buildingId) throw new Error("Brak prawidłowego ID obiektu (UUID).");
     const { error } = await supabase.from("audits").insert({
-      building_id: data.building_id as string,
+      building_id: buildingId,
       performed_at: data.date as string,
       status: "zaplanowany",
       type: (data.audit_type as string) || "PPOŻ",
@@ -302,21 +313,21 @@ async function executeAction(action: ProposedAction) {
       description: it.description ?? null,
       priority: (it.priority || "średni") as any,
       status: "Nowe",
-      building_id: it.building_id ?? null,
+      building_id: cleanUuid(it.building_id),
       deadline: it.deadline ?? null,
-      assignee_id: it.assignee_id ?? null,
-      company_id: it.company_id ?? null,
+      assignee_id: cleanUuid(it.assignee_id),
+      company_id: cleanUuid(it.company_id),
     }));
     const { error } = await supabase.from("tasks").insert(rows as any);
     if (error) throw error;
   } else if (type === "create_device_service_tasks") {
-    const deviceIds = (data.device_ids as string[]) || [];
-    if (!deviceIds.length) throw new Error("Brak urządzeń");
+    const deviceIds = cleanUuidList(data.device_ids);
+    if (!deviceIds.length) throw new Error("Brak prawidłowych ID urządzeń (UUID).");
     const { data: devices, error: devErr } = await supabase
       .from("devices").select("id, name, building_id, location_in_building").in("id", deviceIds);
     if (devErr) throw devErr;
     const deadline = (data.deadline as string) || null;
-    const assigneeId = (data.assignee_id as string) || null;
+    const assigneeId = cleanUuid(data.assignee_id);
     const rows = (devices ?? []).map((d: any) => ({
       title: `Serwis: ${d.name}${d.location_in_building ? ` (${d.location_in_building})` : ""}`,
       description: `Automatyczne zlecenie serwisowe wygenerowane przez asystenta AI.`,
@@ -327,18 +338,19 @@ async function executeAction(action: ProposedAction) {
       deadline,
       assignee_id: assigneeId,
     }));
+    if (!rows.length) throw new Error("Nie znaleziono urządzeń o podanych ID.");
     const { error } = await supabase.from("tasks").insert(rows as any);
     if (error) throw error;
   } else if (type === "bulk_reassign_tasks") {
-    const ids = (data.task_ids as string[]) || [];
-    const assignee = data.assignee_id as string;
-    if (!ids.length || !assignee) throw new Error("Brak zadań lub osoby");
+    const ids = cleanUuidList(data.task_ids);
+    const assignee = cleanUuid(data.assignee_id);
+    if (!ids.length || !assignee) throw new Error("Brak prawidłowych ID zadań lub osoby (UUID).");
     const { error } = await supabase.from("tasks").update({ assignee_id: assignee } as any).in("id", ids);
     if (error) throw error;
   } else if (type === "reschedule_overdue_tasks") {
-    const ids = (data.task_ids as string[]) || [];
+    const ids = cleanUuidList(data.task_ids);
     const shiftDays = Number(data.shift_days ?? 7);
-    if (!ids.length) throw new Error("Brak zadań");
+    if (!ids.length) throw new Error("Brak prawidłowych ID zadań (UUID).");
     const { data: tasks, error: e1 } = await supabase.from("tasks").select("id, deadline").in("id", ids);
     if (e1) throw e1;
     const updates = (tasks ?? []).map((t: any) => {
@@ -348,14 +360,16 @@ async function executeAction(action: ProposedAction) {
     });
     await Promise.all(updates);
   } else if (type === "close_task") {
+    const taskId = cleanUuid(data.task_id);
+    if (!taskId) throw new Error("Brak prawidłowego ID zadania (UUID).");
     const { error } = await supabase.from("tasks").update({
       status: "Zamknięte",
       closed_at: new Date().toISOString(),
-    } as any).eq("id", data.task_id as string);
+    } as any).eq("id", taskId);
     if (error) throw error;
   } else if (type === "follow_up_sla") {
-    const ids = (data.ticket_ids as string[]) || [];
-    if (!ids.length) throw new Error("Brak ticketów");
+    const ids = cleanUuidList(data.ticket_ids);
+    if (!ids.length) throw new Error("Brak prawidłowych ID ticketów (UUID).");
     const { data: tickets, error: e1 } = await supabase.from("sla_tickets")
       .select("id, ticket_number, building_id, company_id, description").in("id", ids);
     if (e1) throw e1;
@@ -378,15 +392,17 @@ async function executeAction(action: ProposedAction) {
       body: it.body || (data.body as string) || "",
       channel: "in_app",
       status: "pending",
-      user_id: it.user_id ?? null,
+      user_id: cleanUuid(it.user_id),
       related_table: it.related_table ?? null,
-      related_id: it.related_id ?? null,
+      related_id: cleanUuid(it.related_id),
     }));
     const { error } = await supabase.from("notifications_outbox").insert(rows as any);
     if (error) throw error;
   } else if (type === "schedule_training") {
+    const buildingId = cleanUuid(data.building_id);
+    if (!buildingId) throw new Error("Brak prawidłowego ID obiektu (UUID).");
     const { error } = await supabase.from("building_trainings").insert({
-      building_id: data.building_id as string,
+      building_id: buildingId,
       title: (data.title as string) || "Szkolenie PPOŻ",
       type: ((data.training_type as string) || "ppoz") as any,
       scheduled_at: data.scheduled_at as string,
