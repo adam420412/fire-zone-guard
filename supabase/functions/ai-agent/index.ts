@@ -474,7 +474,7 @@ async function getBuildingStatus(supabase: ReturnType<typeof createClient>, buil
       supabase.from("buildings").select("id, name, address, safety_status").eq("id", buildingId).maybeSingle(),
       supabase.from("tasks").select("id, title, status, priority").eq("building_id", buildingId).neq("status", "Zamknięte").limit(10),
       supabase.from("audits").select("id, status, performed_at").eq("building_id", buildingId).order("performed_at", { ascending: false }).limit(3),
-      supabase.from("devices").select("id, name, device_type, next_service_date").eq("building_id", buildingId).limit(20),
+      supabase.from("devices").select("id, name, device_type_id, next_service_date").eq("building_id", buildingId).limit(20),
     ]);
     const today = new Date().toISOString().split("T")[0];
     const overdueDevices = (devices.data ?? []).filter((d) => d.next_service_date && d.next_service_date < today);
@@ -489,7 +489,7 @@ async function getOverdueItems(supabase: ReturnType<typeof createClient>, buildi
   const today = new Date().toISOString();
   const todayDate = today.split("T")[0];
   let tasksQuery = supabase.from("tasks").select("id, title, deadline, priority, status, building_id").neq("status", "Zamknięte").lt("deadline", today).limit(20);
-  let devicesQuery = supabase.from("devices").select("id, name, device_type, next_service_date, building_id").lt("next_service_date", todayDate).limit(20);
+  let devicesQuery = supabase.from("devices").select("id, name, device_type_id, next_service_date, building_id").lt("next_service_date", todayDate).limit(20);
 
   if (buildingId) {
     tasksQuery = tasksQuery.eq("building_id", buildingId);
