@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { useBuildings, useCompanies, useCreateBuilding, useUpdateBuilding, useDeleteBuilding } from "@/hooks/useSupabaseData";
 import { useAuth } from "@/hooks/useAuth";
+import { useContextPanel } from "@/hooks/useContextPanel";
 import { safetyStatusConfig, BUILDING_CLASSES } from "@/lib/constants";
 import type { SafetyStatus } from "@/lib/constants";
 import { cn } from "@/lib/utils";
