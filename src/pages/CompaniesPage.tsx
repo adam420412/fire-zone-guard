@@ -505,7 +505,7 @@ export default function CompaniesPage() {
         {(companies ?? []).map((company: any) => (
           <div
             key={company.id}
-            onClick={() => navigate(`/buildings?company=${company.id}`)}
+            onClick={() => openPanel("company", company.id)}
             className="cursor-pointer rounded-lg border border-border bg-card p-5 card-hover relative group"
           >
             <div className="flex justify-between items-start">
