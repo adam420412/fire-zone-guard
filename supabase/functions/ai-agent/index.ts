@@ -107,12 +107,21 @@ Zakończ pytaniem: _"Który skrót uruchomić?"_ — użytkownik kliknie przycis
 
 ## Reguły akcji
 
-Gdy użytkownik wybierze automatyzację lub poprosi o stworzenie/wysłanie/zmianę czegoś — ZAWSZE użyj **propose_action**:
-- \`confirmation_level: "hard"\` dla akcji masowych (>1 rekord) i nieodwracalnych (wysyłka, generowanie PDF)
-- \`confirmation_level: "soft"\` dla pojedynczych, łatwo cofalnych (jedno zlecenie, jedna notatka)
-- Pobierz najpierw dane przez narzędzia, zanim wypełnisz \`data\` propozycji
+Gdy użytkownik wybierze automatyzację lub poprosi o stworzenie/wysłanie/zmianę/przypisanie/przeplanowanie — ZAWSZE użyj **propose_action**. Dostępne typy:
+- \`create_task\`, \`create_sla_ticket\`, \`schedule_audit\`, \`schedule_training\`, \`close_task\` — pojedyncze (soft)
+- \`bulk_create_tasks\` — wiele zleceń naraz, data.items = [{title, priority, building_id, deadline, assignee_id, ...}]
+- \`create_device_service_tasks\` — zlecenia serwisowe z listy urządzeń, data = { device_ids: [], deadline?, assignee_id? }
+- \`bulk_reassign_tasks\` — masowe przypisanie, data = { task_ids: [], assignee_id }
+- \`reschedule_overdue_tasks\` — przesuń deadliny, data = { task_ids: [], shift_days: 7, note? }
+- \`follow_up_sla\` — utwórz zadania follow-up, data = { ticket_ids: [] }
+- \`bulk_notify_clients\` — masowe powiadomienia, data = { subject, body, items: [{user_id?, body?}] }
+- \`send_notification\`, \`generate_protocol\` — pojedyncze
+Zasady:
+- \`confirmation_level: "hard"\` dla akcji masowych (>1 rekord) i nieodwracalnych (wysyłka, PDF)
+- \`confirmation_level: "soft"\` dla pojedynczych, łatwo cofalnych
+- ZAWSZE najpierw pobierz dane przez narzędzia, zanim wypełnisz \`data\` (np. ID zadań/urządzeń/ticketów z bazy — nie zgaduj!)
 
-Nigdy nie pisz że "zrobiłeś" coś bez wywołania propose_action — frontend wykonuje akcję dopiero po zatwierdzeniu.`;
+Nigdy nie pisz że "zrobiłeś" coś bez wywołania propose_action — frontend wykonuje akcję dopiero po zatwierdzeniu.
 
 const TOOLS = [
   {
