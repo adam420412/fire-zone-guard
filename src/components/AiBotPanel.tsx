@@ -87,13 +87,19 @@ function MessageBubble({
     <div className={cn("flex flex-col gap-1", isUser ? "items-end" : "items-start")}>
       <div
         className={cn(
-          "max-w-[85%] rounded-2xl px-3.5 py-2.5 text-sm leading-relaxed",
+          "max-w-[88%] rounded-2xl px-3.5 py-2.5 text-sm leading-relaxed",
           isUser
             ? "bg-primary text-primary-foreground rounded-br-sm"
             : "bg-muted text-foreground rounded-bl-sm",
         )}
       >
-        {msg.content}
+        {isUser ? (
+          msg.content
+        ) : (
+          <div className="prose prose-sm dark:prose-invert max-w-none prose-p:my-1 prose-ul:my-1 prose-ol:my-1 prose-li:my-0 prose-headings:my-2 prose-headings:text-foreground prose-strong:text-foreground prose-a:text-primary">
+            <ReactMarkdown remarkPlugins={[remarkGfm]}>{msg.content}</ReactMarkdown>
+          </div>
+        )}
       </div>
 
       {/* Action proposal */}
