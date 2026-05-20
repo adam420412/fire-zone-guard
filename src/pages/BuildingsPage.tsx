@@ -241,6 +241,7 @@ function EditBuildingDialog({
 
 export default function BuildingsPage() {
   const navigate = useNavigate();
+  const { openPanel } = useContextPanel();
   const [searchParams, setSearchParams] = useSearchParams();
   const companyFilter = searchParams.get("company");
   const { data: buildings, isLoading } = useBuildings();
