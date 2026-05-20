@@ -535,7 +535,7 @@ async function getDevicesDue(supabase: ReturnType<typeof createClient>, input: a
   const days = input?.within_days ?? 14;
   const today = new Date().toISOString().split("T")[0];
   const horizon = new Date(Date.now() + days * 86400000).toISOString().split("T")[0];
-  let q = supabase.from("devices").select("id, name, device_type, next_service_date, last_service_date, building_id, location_in_building, status").lte("next_service_date", horizon).order("next_service_date", { ascending: true }).limit(50);
+  let q = supabase.from("devices").select("id, name, device_type_id, next_service_date, last_service_date, building_id, location_in_building, status").lte("next_service_date", horizon).order("next_service_date", { ascending: true }).limit(50);
   if (input?.only_overdue) q = q.lt("next_service_date", today);
   if (input?.building_id) q = q.eq("building_id", input.building_id);
   const { data, error } = await q;
@@ -560,7 +560,7 @@ async function getAudits(supabase: ReturnType<typeof createClient>, input: any) 
 async function getEmployeesStatus(supabase: ReturnType<typeof createClient>, expiringDays: number) {
   const horizon = new Date(Date.now() + expiringDays * 86400000).toISOString().split("T")[0];
   const [employees, certs, trainings] = await Promise.all([
-    supabase.from("employee_development_plans").select("id, first_name, last_name, position, employment_status").limit(50),
+    supabase.from("employee_development_plans").select("id, first_name, last_name, position, status, employment_date, is_active").limit(50),
     supabase.from("training_certificates").select("id, participant_name, training_title, valid_until").lte("valid_until", horizon).order("valid_until").limit(30),
     supabase.from("building_trainings").select("id, title, scheduled_at, status, building_id").gte("scheduled_at", new Date().toISOString()).order("scheduled_at").limit(20),
   ]);
@@ -644,7 +644,8 @@ Deno.serve(async (req) => {
       context?.path ? `strona "${context.path}"` : null,
       context?.buildingId ? `budynek ID ${context.buildingId}` : null,
       context?.companyId ? `firma ID ${context.companyId}` : null,
-      userId ? `user ID ${userId}` : null,
+      context?.profileId ? `profil ID ${context.profileId}` : null,
+      userId ? `auth user ID ${userId}` : null,
       context?.userRole ? `rola ${context.userRole}` : null,
     ].filter(Boolean).join(", ");
     const contextNote = contextParts ? `\n[Kontekst: ${contextParts}]` : "";
