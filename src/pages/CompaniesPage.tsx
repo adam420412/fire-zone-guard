@@ -465,6 +465,7 @@ function ManageCompanyDialog({ open, onOpenChange, company }: { open: boolean; o
 // ---- Main Page ----
 export default function CompaniesPage() {
   const navigate = useNavigate();
+  const { openPanel } = useContextPanel();
   const { data: companies, isLoading } = useCompaniesWithStats();
   const { isSuperAdmin, canEdit: canManage } = usePermissions();
 
