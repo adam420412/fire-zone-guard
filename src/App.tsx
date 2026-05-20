@@ -50,6 +50,7 @@ import PublicSlaIntakePage from "@/pages/PublicSlaIntakePage";
 import DemoClientPanel from "@/pages/DemoClientPanel";
 import AiActionLogPage from "@/pages/AiActionLogPage";
 import OnboardingPage from "@/pages/OnboardingPage";
+import WorkflowGuidePage from "@/pages/WorkflowGuidePage";
 import ServicemanDashboard from "@/pages/ServicemanDashboard";
 import NotFound from "./pages/NotFound";
 import { Loader2 } from "lucide-react";
@@ -100,6 +101,7 @@ function ProtectedRoutes() {
             <Route path="/sla" element={<ClientSlaPage />} />
             <Route path="/sla/:id" element={<ClientSlaPage />} />
             <Route path="/library" element={<LibraryPage />} />
+            <Route path="/workflow" element={<WorkflowGuidePage />} />
             <Route path="*" element={<Navigate to="/" replace />} />
           </>
         ) : isServiceman ? (
@@ -112,6 +114,7 @@ function ProtectedRoutes() {
             <Route path="/protocols" element={<ProtocolsPage />} />
             <Route path="/protocols/:id" element={<ProtocolDetailPage />} />
             <Route path="/certificates" element={<CertificatesPage />} />
+            <Route path="/workflow" element={<WorkflowGuidePage />} />
             <Route path="*" element={<Navigate to="/" replace />} />
           </>
         ) : (
@@ -153,6 +156,7 @@ function ProtectedRoutes() {
             <Route path="/admin" element={<AdminPage />} />
             <Route path="/admin/import" element={<BulkImportPage />} />
             <Route path="/onboarding" element={<OnboardingPage />} />
+            <Route path="/workflow" element={<WorkflowGuidePage />} />
             <Route path="/map" element={<MapPage />} />
             <Route path="*" element={<NotFound />} />
           </>

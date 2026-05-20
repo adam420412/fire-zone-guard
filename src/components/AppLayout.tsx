@@ -4,7 +4,7 @@ import {
   Shield, Settings, Flame, ChevronLeft, ChevronRight,
   User, LogOut, Menu, X, ClipboardCheck, FileText, Users, UsersRound, Search, Command, BarChart2, CalendarDays, Factory, Contact, DollarSign,
   Siren, Wrench, CalendarClock, BookOpen, BarChart3, History, Gauge, ListChecks,
-  Map, Sliders, Activity, ChevronDown, Receipt, CreditCard, Scale, HardHat,
+  Map, Sliders, Activity, ChevronDown, Receipt, CreditCard, Scale, HardHat, Compass,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { ThemeToggle } from "@/components/ThemeToggle";
@@ -38,6 +38,7 @@ const adminNavGroups: NavGroup[] = [
     label: "Pulpit",
     items: [
       { icon: LayoutDashboard, label: "Dashboard", path: "/" },
+      { icon: Compass, label: "Przewodnik", path: "/workflow" },
       { icon: KanbanSquare, label: "Kanban", path: "/kanban", badgeKey: "kanban" },
       { icon: CalendarDays, label: "Kalendarz", path: "/calendar" },
       { icon: CalendarClock, label: "Terminarz", path: "/office-tasks", badgeKey: "officeTasks" },
@@ -110,6 +111,7 @@ const clientNavGroups: NavGroup[] = [
     label: "Mój panel",
     items: [
       { icon: LayoutDashboard, label: "Panel", path: "/" },
+      { icon: Compass, label: "Przewodnik", path: "/workflow" },
       { icon: Siren, label: "Moje zgłoszenia", path: "/sla" },
       { icon: BookOpen, label: "Biblioteka", path: "/library" },
     ],
@@ -121,6 +123,7 @@ const servicemanNavGroups: NavGroup[] = [
     label: "Moje zlecenia",
     items: [
       { icon: HardHat, label: "Mój panel", path: "/" },
+      { icon: Compass, label: "Przewodnik", path: "/workflow" },
       { icon: KanbanSquare, label: "Zlecenia", path: "/kanban", badgeKey: "kanban" },
       { icon: Map, label: "Mapa", path: "/map" },
       { icon: ListChecks, label: "Checklisty", path: "/checklists" },
