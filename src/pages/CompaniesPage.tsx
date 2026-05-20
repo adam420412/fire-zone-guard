@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useCompaniesWithStats, useUpdateCompany, useBuildings, useCreateCompany } from "@/hooks/useSupabaseData";
+import { useContextPanel } from "@/hooks/useContextPanel";
 import {
   useCompanyContacts,
   useCreateCompanyContact,
