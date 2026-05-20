@@ -50,6 +50,7 @@ import PublicSlaIntakePage from "@/pages/PublicSlaIntakePage";
 import DemoClientPanel from "@/pages/DemoClientPanel";
 import AiActionLogPage from "@/pages/AiActionLogPage";
 import OnboardingPage from "@/pages/OnboardingPage";
+import WorkflowGuidePage from "@/pages/WorkflowGuidePage";
 import ServicemanDashboard from "@/pages/ServicemanDashboard";
 import NotFound from "./pages/NotFound";
 import { Loader2 } from "lucide-react";
