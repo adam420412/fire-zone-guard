@@ -133,21 +133,20 @@ async function executeAction(action: ProposedAction) {
     const { error } = await supabase.from("tasks").insert({
       title: data.title as string,
       description: data.description as string,
-      priority: (data.priority as string) || "średni",
+      priority: ((data.priority as string) || "średni") as "krytyczny" | "wysoki" | "średni" | "niski",
       status: "Nowe",
       building_id: data.building_id as string | undefined,
       deadline: data.deadline as string | undefined,
       assignee_id: data.assignee_id as string | undefined,
-    });
+    } as any);
     if (error) throw error;
   } else if (type === "create_sla_ticket") {
     const { error } = await supabase.from("sla_tickets").insert({
-      title: data.title as string,
-      description: data.description as string,
-      priority: (data.priority as string) || "normalny",
+      description: (data.description as string) || (data.title as string) || "",
+      priority: ((data.priority as string) || "normal") as any,
       building_id: data.building_id as string | undefined,
       company_id: data.company_id as string | undefined,
-    });
+    } as any);
     if (error) throw error;
   } else if (type === "send_notification") {
     await supabase.from("notifications_outbox").insert({
@@ -161,7 +160,7 @@ async function executeAction(action: ProposedAction) {
       building_id: data.building_id as string,
       performed_at: data.date as string,
       status: "zaplanowany",
-      audit_type: (data.audit_type as string) || "PPOŻ",
+      type: (data.audit_type as string) || "PPOŻ",
     });
     if (error) throw error;
   }

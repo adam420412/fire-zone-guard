@@ -88,7 +88,7 @@ export default function BulkDeviceServiceDialog({
 
       const { error: upErr } = await supabase
         .from("devices")
-        .update(updates)
+        .update(updates as any)
         .in("id", deviceIds);
       if (upErr) throw upErr;
 

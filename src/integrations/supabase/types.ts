@@ -2740,13 +2740,18 @@ export type Database = {
           created_at: string
           deadline: string | null
           description: string
+          escalated_at: string | null
+          escalation_note: string | null
           first_response_at: string | null
           id: string
           meeting_id: string | null
           opportunity_id: string | null
           priority: Database["public"]["Enums"]["task_priority"]
           repair_price: number | null
+          sla_completed_at: string | null
           sla_hours: number
+          sla_minutes_total: number | null
+          sla_started_at: string | null
           source: string | null
           source_id: string | null
           status: Database["public"]["Enums"]["task_status"]
@@ -2769,13 +2774,18 @@ export type Database = {
           created_at?: string
           deadline?: string | null
           description?: string
+          escalated_at?: string | null
+          escalation_note?: string | null
           first_response_at?: string | null
           id?: string
           meeting_id?: string | null
           opportunity_id?: string | null
           priority?: Database["public"]["Enums"]["task_priority"]
           repair_price?: number | null
+          sla_completed_at?: string | null
           sla_hours?: number
+          sla_minutes_total?: number | null
+          sla_started_at?: string | null
           source?: string | null
           source_id?: string | null
           status?: Database["public"]["Enums"]["task_status"]
@@ -2798,13 +2808,18 @@ export type Database = {
           created_at?: string
           deadline?: string | null
           description?: string
+          escalated_at?: string | null
+          escalation_note?: string | null
           first_response_at?: string | null
           id?: string
           meeting_id?: string | null
           opportunity_id?: string | null
           priority?: Database["public"]["Enums"]["task_priority"]
           repair_price?: number | null
+          sla_completed_at?: string | null
           sla_hours?: number
+          sla_minutes_total?: number | null
+          sla_started_at?: string | null
           source?: string | null
           source_id?: string | null
           status?: Database["public"]["Enums"]["task_status"]

@@ -156,16 +156,16 @@ export default function ServicemanDashboard() {
         return myTasks.filter((t) => {
           if (!t.deadline) return false;
           const d = new Date(t.deadline);
-          return isToday(d) || isPast(d) || t.status === "W realizacji";
+          return isToday(d) || isPast(d) || t.status === "W trakcie";
         });
       case "active":
-        return myTasks.filter((t) => t.status === "W realizacji");
+        return myTasks.filter((t) => t.status === "W trakcie");
       default:
         return myTasks;
     }
   }, [myTasks, filter]);
 
-  const inProgress = myTasks.filter((t) => t.status === "W realizacji");
+  const inProgress = myTasks.filter((t) => t.status === "W trakcie");
   const overdue = myTasks.filter((t) => t.isOverdue);
   const todayCount = myTasks.filter((t) => t.deadline && isToday(new Date(t.deadline))).length;
 
@@ -257,7 +257,7 @@ export default function ServicemanDashboard() {
         <TaskDetailDialog
           task={selectedTask}
           open={!!selectedTask}
-          onClose={() => setSelectedTask(null)}
+          onOpenChange={(o) => { if (!o) setSelectedTask(null); }}
         />
       )}
     </div>
