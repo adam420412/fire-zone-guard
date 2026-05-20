@@ -355,11 +355,14 @@ async function executeAction(action: ProposedAction) {
     } as any);
     if (error) throw error;
   } else if (type === "create_sla_ticket") {
+    const buildingId = cleanUuid(data.building_id);
+    const companyId = (await resolveBuildingCompany(buildingId, cleanUuid(data.company_id) ?? ctx.companyId)) ?? null;
     const { error } = await supabase.from("sla_tickets").insert({
       description: (data.description as string) || (data.title as string) || "",
-      priority: ((data.priority as string) || "normal") as any,
-      building_id: cleanUuid(data.building_id) ?? undefined,
-      company_id: cleanUuid(data.company_id) ?? ctx.companyId ?? undefined,
+      priority: mapSlaPriority(data.priority) as any,
+      building_id: buildingId,
+      company_id: companyId,
+      reporter_user_id: ctx.userId,
     } as any);
     if (error) throw error;
   } else if (type === "send_notification") {
@@ -424,7 +427,7 @@ async function executeAction(action: ProposedAction) {
     if (error) throw error;
   } else if (type === "bulk_reassign_tasks") {
     const ids = cleanUuidList(data.task_ids);
-    const assignee = cleanUuid(data.assignee_id);
+    const assignee = await resolveProfileId(data.assignee_id, ctx.profileId);
     if (!ids.length || !assignee) throw new Error("Brak prawidłowych ID zadań lub osoby (UUID).");
     const { error } = await supabase.from("tasks").update({ assignee_id: assignee } as any).in("id", ids);
     if (error) throw error;
@@ -482,12 +485,15 @@ async function executeAction(action: ProposedAction) {
   } else if (type === "schedule_training") {
     const buildingId = cleanUuid(data.building_id);
     if (!buildingId) throw new Error("Brak prawidłowego ID obiektu (UUID).");
+    const companyId = await resolveBuildingCompany(buildingId, ctx.companyId);
     const { error } = await supabase.from("building_trainings").insert({
       building_id: buildingId,
+      company_id: companyId,
+      created_by: ctx.profileId ?? null,
       title: (data.title as string) || "Szkolenie PPOŻ",
-      type: ((data.training_type as string) || "ppoz") as any,
+      type: mapTrainingType(data.training_type) as any,
       scheduled_at: data.scheduled_at as string,
-      status: "planned" as any,
+      status: "zaplanowane" as any,
     } as any);
     if (error) throw error;
   } else if (type === "generate_protocol") {
