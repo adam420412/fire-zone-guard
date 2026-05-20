@@ -5,6 +5,7 @@ import { ThemeProvider } from "next-themes";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate, useLocation } from "react-router-dom";
 import { AuthProvider, useAuth } from "@/hooks/useAuth";
+import { ContextPanelProvider } from "@/hooks/useContextPanel";
 import AppLayout from "@/components/AppLayout";
 import Dashboard from "@/pages/Dashboard";
 import KanbanPage from "@/pages/KanbanPage";
@@ -167,7 +168,9 @@ const App = () => (
         <Sonner />
         <BrowserRouter>
           <AuthProvider>
-            <ProtectedRoutes />
+          <ContextPanelProvider>
+              <ProtectedRoutes />
+            </ContextPanelProvider>
           </AuthProvider>
         </BrowserRouter>
       </TooltipProvider>

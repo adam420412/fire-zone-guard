@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useCompaniesWithStats, useUpdateCompany, useBuildings, useCreateCompany } from "@/hooks/useSupabaseData";
+import { useContextPanel } from "@/hooks/useContextPanel";
 import {
   useCompanyContacts,
   useCreateCompanyContact,
@@ -464,6 +465,7 @@ function ManageCompanyDialog({ open, onOpenChange, company }: { open: boolean; o
 // ---- Main Page ----
 export default function CompaniesPage() {
   const navigate = useNavigate();
+  const { openPanel } = useContextPanel();
   const { data: companies, isLoading } = useCompaniesWithStats();
   const { isSuperAdmin, canEdit: canManage } = usePermissions();
 
@@ -503,7 +505,7 @@ export default function CompaniesPage() {
         {(companies ?? []).map((company: any) => (
           <div
             key={company.id}
-            onClick={() => navigate(`/buildings?company=${company.id}`)}
+            onClick={() => openPanel("company", company.id)}
             className="cursor-pointer rounded-lg border border-border bg-card p-5 card-hover relative group"
           >
             <div className="flex justify-between items-start">

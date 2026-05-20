@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { useBuildings, useCompanies, useCreateBuilding, useUpdateBuilding, useDeleteBuilding } from "@/hooks/useSupabaseData";
 import { useAuth } from "@/hooks/useAuth";
+import { useContextPanel } from "@/hooks/useContextPanel";
 import { safetyStatusConfig, BUILDING_CLASSES } from "@/lib/constants";
 import type { SafetyStatus } from "@/lib/constants";
 import { cn } from "@/lib/utils";
@@ -240,6 +241,7 @@ function EditBuildingDialog({
 
 export default function BuildingsPage() {
   const navigate = useNavigate();
+  const { openPanel } = useContextPanel();
   const [searchParams, setSearchParams] = useSearchParams();
   const companyFilter = searchParams.get("company");
   const { data: buildings, isLoading } = useBuildings();
@@ -339,7 +341,7 @@ export default function BuildingsPage() {
           const ibpValid = building.ibp_valid_until ? new Date(building.ibp_valid_until) >= new Date() : false;
 
           return (
-            <div key={building.id} onClick={() => navigate(`/buildings/${building.id}`)} className="cursor-pointer rounded-lg border border-border bg-card p-5 card-hover relative group">
+            <div key={building.id} onClick={() => openPanel("building", building.id)} className="cursor-pointer rounded-lg border border-border bg-card p-5 card-hover relative group">
               <div className="flex items-start justify-between">
                 <div className="flex items-center gap-3">
                   <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-secondary">
