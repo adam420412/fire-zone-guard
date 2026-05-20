@@ -301,12 +301,17 @@ async function executeAction(action: ProposedAction) {
   const ctx = await getUserContext();
 
   if (type === "create_task") {
+    const buildingId = cleanUuid(data.building_id);
+    if (!buildingId) throw new Error("Brak prawidłowego ID obiektu (UUID) — wybierz budynek dla zadania.");
+    const companyId = (await resolveBuildingCompany(buildingId, ctx.companyId)) ?? null;
+    if (!companyId) throw new Error("Nie udało się ustalić firmy dla zadania.");
     const { error } = await supabase.from("tasks").insert({
       title: data.title as string,
-      description: data.description as string,
+      description: (data.description as string) ?? "",
       priority: mapPriority(data.priority),
       status: "Nowe",
-      building_id: cleanUuid(data.building_id) ?? undefined,
+      company_id: companyId,
+      building_id: buildingId,
       deadline: data.deadline as string | undefined,
       assignee_id: cleanUuid(data.assignee_id) ?? undefined,
     } as any);
@@ -316,7 +321,7 @@ async function executeAction(action: ProposedAction) {
       description: (data.description as string) || (data.title as string) || "",
       priority: ((data.priority as string) || "normal") as any,
       building_id: cleanUuid(data.building_id) ?? undefined,
-      company_id: cleanUuid(data.company_id) ?? undefined,
+      company_id: cleanUuid(data.company_id) ?? ctx.companyId ?? undefined,
     } as any);
     if (error) throw error;
   } else if (type === "send_notification") {
