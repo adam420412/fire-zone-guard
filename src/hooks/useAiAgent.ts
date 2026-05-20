@@ -266,6 +266,17 @@ function cleanUuidList(arr: unknown): string[] {
   return arr.map(cleanUuid).filter((x): x is string => !!x);
 }
 
+const PRIORITY_MAP: Record<string, "niski" | "średni" | "wysoki" | "krytyczny"> = {
+  low: "niski", niski: "niski",
+  medium: "średni", normal: "średni", "średni": "średni", sredni: "średni",
+  high: "wysoki", wysoki: "wysoki",
+  urgent: "krytyczny", critical: "krytyczny", krytyczny: "krytyczny",
+};
+function mapPriority(v: unknown): "niski" | "średni" | "wysoki" | "krytyczny" {
+  const k = String(v ?? "").toLowerCase().trim();
+  return PRIORITY_MAP[k] ?? "średni";
+}
+
 async function executeAction(action: ProposedAction) {
   const { type, data } = action;
 
@@ -273,7 +284,7 @@ async function executeAction(action: ProposedAction) {
     const { error } = await supabase.from("tasks").insert({
       title: data.title as string,
       description: data.description as string,
-      priority: ((data.priority as string) || "średni") as "krytyczny" | "wysoki" | "średni" | "niski",
+      priority: mapPriority(data.priority),
       status: "Nowe",
       building_id: cleanUuid(data.building_id) ?? undefined,
       deadline: data.deadline as string | undefined,
@@ -311,7 +322,7 @@ async function executeAction(action: ProposedAction) {
     const rows = items.map((it) => ({
       title: it.title,
       description: it.description ?? null,
-      priority: (it.priority || "średni") as any,
+      priority: mapPriority(it.priority),
       status: "Nowe",
       building_id: cleanUuid(it.building_id),
       deadline: it.deadline ?? null,
