@@ -175,3 +175,24 @@ export const SUGGESTIONS_BY_PAGE: Record<string, string[]> = {
   "/employees": ["Kto ma wygasające certyfikaty?", "Zaplanuj szkolenie", "Pokaż dyspozycyjność zespołu"],
   "/finance": ["Które faktury są przeterminowane?", "Podsumowanie finansowe miesiąca", "Faktury do wystawienia"],
 };
+
+// Codzienne automatyzacje — szybkie skróty zawsze widoczne w panelu (dla każdego użytkownika)
+export interface QuickAutomation {
+  id: string;
+  icon: string;
+  label: string;
+  prompt: string;
+}
+
+export const QUICK_AUTOMATIONS: QuickAutomation[] = [
+  { id: "morning",     icon: "☀️", label: "Brief dnia",          prompt: "Daj mi krótki brief poranny: ile mam dziś zleceń, co krytyczne, co przeterminowane i jakie SLA wymagają reakcji." },
+  { id: "my-tasks",    icon: "📋", label: "Moje zadania",        prompt: "Pokaż moje aktywne zadania uporządkowane wg priorytetu i terminu." },
+  { id: "overdue",     icon: "⏰", label: "Przeterminowane",     prompt: "Wymień wszystkie przeterminowane zlecenia i przeglądy urządzeń z propozycją co zrobić." },
+  { id: "critical",    icon: "🔴", label: "Krytyczne",           prompt: "Pokaż zlecenia krytyczne i zaproponuj triage." },
+  { id: "new-task",    icon: "➕", label: "Nowe zlecenie",       prompt: "Pomóż mi utworzyć nowe zlecenie — zapytaj o tytuł, priorytet i budynek, potem zaproponuj akcję." },
+  { id: "report-sla",  icon: "🚨", label: "Zgłoś usterkę",       prompt: "Pomóż mi zgłosić usterkę SLA — zapytaj o opis, lokalizację i priorytet, potem zaproponuj akcję." },
+  { id: "weekly",      icon: "📊", label: "Raport tygodnia",     prompt: "Podsumuj tydzień: zamknięte zlecenia, otwarte SLA, KPI i co wymaga uwagi w przyszłym tygodniu." },
+  { id: "devices",     icon: "🔧", label: "Przeglądy",           prompt: "Które urządzenia mają przeterminowany lub zbliżający się przegląd? Zaproponuj plan serwisu." },
+  { id: "buildings",   icon: "🏢", label: "Stan obiektów",       prompt: "Pokaż status bezpieczeństwa wszystkich budynków i wskaż te wymagające interwencji." },
+];
+
