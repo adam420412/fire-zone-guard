@@ -62,12 +62,16 @@ export function useAiAgent() {
         .slice(-6)
         .map((m) => ({ role: m.role, content: m.content }));
 
+      const { data: sessionData } = await supabase.auth.getSession();
+      const userId = sessionData.session?.user?.id;
+
       const { data, error } = await supabase.functions.invoke("ai-agent", {
         body: {
           message: text,
           context: {
             path: location.pathname,
             buildingId: extractBuildingId(location.pathname),
+            userId,
           },
           history,
         },
