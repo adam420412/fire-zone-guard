@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from "react";
-import { useLocation } from "react-router-dom";
-import { Bot, X, Send, Trash2, ChevronDown, Loader2, CheckCircle2, XCircle, Zap, Sparkles } from "lucide-react";
+import { useLocation, Link } from "react-router-dom";
+import { Bot, X, Send, Trash2, ChevronDown, Loader2, CheckCircle2, XCircle, Zap, Sparkles, ScrollText } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { Button } from "@/components/ui/button";
@@ -216,6 +216,11 @@ export default function AiBotPanel() {
             </div>
           </div>
           <div className="flex items-center gap-1">
+            <Link to="/ai-log" title="Dziennik akcji AI">
+              <Button variant="ghost" size="icon" className="h-7 w-7">
+                <ScrollText className="h-3.5 w-3.5" />
+              </Button>
+            </Link>
             <Button variant="ghost" size="icon" className="h-7 w-7" onClick={clearHistory} title="Wyczyść historię">
               <Trash2 className="h-3.5 w-3.5" />
             </Button>

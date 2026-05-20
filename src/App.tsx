@@ -48,6 +48,7 @@ import SlaKpiPage from "@/pages/SlaKpiPage";
 import SystemAuditPage from "@/pages/SystemAuditPage";
 import PublicSlaIntakePage from "@/pages/PublicSlaIntakePage";
 import DemoClientPanel from "@/pages/DemoClientPanel";
+import AiActionLogPage from "@/pages/AiActionLogPage";
 import OnboardingPage from "@/pages/OnboardingPage";
 import ServicemanDashboard from "@/pages/ServicemanDashboard";
 import NotFound from "./pages/NotFound";
@@ -148,6 +149,7 @@ function ProtectedRoutes() {
             <Route path="/finance/settlements" element={<FinanceSettlementsPage />} />
             <Route path="/system-audit" element={<SystemAuditPage />} />
             <Route path="/settings" element={<SettingsPage />} />
+            <Route path="/ai-log" element={<AiActionLogPage />} />
             <Route path="/admin" element={<AdminPage />} />
             <Route path="/admin/import" element={<BulkImportPage />} />
             <Route path="/onboarding" element={<OnboardingPage />} />

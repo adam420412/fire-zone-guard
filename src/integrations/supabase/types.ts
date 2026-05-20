@@ -14,6 +14,75 @@ export type Database = {
   }
   public: {
     Tables: {
+      ai_action_log: {
+        Row: {
+          action_description: string | null
+          action_label: string
+          action_type: string
+          company_id: string | null
+          confirmation_level: string
+          context: Json | null
+          created_at: string
+          decided_at: string | null
+          decided_by: string | null
+          decision_note: string | null
+          executed_at: string | null
+          execution_error: string | null
+          id: string
+          message_id: string | null
+          payload: Json
+          proposed_at: string
+          source_page: string | null
+          status: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          action_description?: string | null
+          action_label: string
+          action_type: string
+          company_id?: string | null
+          confirmation_level?: string
+          context?: Json | null
+          created_at?: string
+          decided_at?: string | null
+          decided_by?: string | null
+          decision_note?: string | null
+          executed_at?: string | null
+          execution_error?: string | null
+          id?: string
+          message_id?: string | null
+          payload?: Json
+          proposed_at?: string
+          source_page?: string | null
+          status?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          action_description?: string | null
+          action_label?: string
+          action_type?: string
+          company_id?: string | null
+          confirmation_level?: string
+          context?: Json | null
+          created_at?: string
+          decided_at?: string | null
+          decided_by?: string | null
+          decision_note?: string | null
+          executed_at?: string | null
+          execution_error?: string | null
+          id?: string
+          message_id?: string | null
+          payload?: Json
+          proposed_at?: string
+          source_page?: string | null
+          status?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       audit_checklists: {
         Row: {
           audit_id: string
