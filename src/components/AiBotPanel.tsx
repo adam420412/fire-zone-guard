@@ -1,12 +1,12 @@
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useMemo } from "react";
 import { useLocation, Link } from "react-router-dom";
-import { Bot, X, Send, Trash2, ChevronDown, Loader2, CheckCircle2, XCircle, Zap, Sparkles, ScrollText } from "lucide-react";
+import { Bot, X, Send, Trash2, ChevronDown, Loader2, CheckCircle2, XCircle, Zap, Sparkles, ScrollText, Maximize2, Minimize2, Play } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
-import { useAiAgent, SUGGESTIONS_BY_PAGE, QUICK_AUTOMATIONS, type ChatMessage, type ProposedAction } from "@/hooks/useAiAgent";
+import { useAiAgent, SUGGESTIONS_BY_PAGE, QUICK_AUTOMATIONS, type ChatMessage, type ProposedAction, type QuickAutomation } from "@/hooks/useAiAgent";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription,
 } from "@/components/ui/dialog";
@@ -75,13 +75,23 @@ function MessageBubble({
   msg,
   onApprove,
   onReject,
+  onRunAutomation,
 }: {
   msg: ChatMessage;
   onApprove: (id: string, action: ProposedAction) => void;
   onReject: (id: string) => void;
+  onRunAutomation: (a: QuickAutomation) => void;
 }) {
   const [showModal, setShowModal] = useState(false);
   const isUser = msg.role === "user";
+
+  // Wyłap z odpowiedzi asystenta wszystkie automatyzacje, o których wspomniał
+  // (po nazwie z QUICK_AUTOMATIONS) — żeby od razu pokazać przyciski "uruchom".
+  const matchedAutomations = useMemo(() => {
+    if (isUser || !msg.content) return [];
+    const text = msg.content.toLowerCase();
+    return QUICK_AUTOMATIONS.filter((a) => text.includes(a.label.toLowerCase()));
+  }, [isUser, msg.content]);
 
   return (
     <div className={cn("flex flex-col gap-1", isUser ? "items-end" : "items-start")}>
@@ -101,6 +111,24 @@ function MessageBubble({
           </div>
         )}
       </div>
+
+      {/* Inline action chips — od razu klikalne propozycje wynikające z odpowiedzi */}
+      {!isUser && matchedAutomations.length > 0 && (
+        <div className="max-w-[88%] flex flex-wrap gap-1.5 mt-1">
+          {matchedAutomations.map((a) => (
+            <button
+              key={a.id}
+              onClick={() => onRunAutomation(a)}
+              title={a.prompt}
+              className="inline-flex items-center gap-1 rounded-full border border-primary/40 bg-primary/10 px-2.5 py-1 text-xs font-medium text-primary hover:bg-primary/20 transition-colors"
+            >
+              <Play className="h-3 w-3" />
+              <span>{a.icon}</span>
+              <span>Uruchom: {a.label}</span>
+            </button>
+          ))}
+        </div>
+      )}
 
       {/* Action proposal */}
       {msg.action && msg.actionState === "pending" && (
@@ -154,6 +182,7 @@ function MessageBubble({
 
 export default function AiBotPanel() {
   const [open, setOpen] = useState(false);
+  const [fullscreen, setFullscreen] = useState(false);
   const [input, setInput] = useState("");
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -196,12 +225,17 @@ export default function AiBotPanel() {
         )}
       </button>
 
-      {/* Chat Panel (left side) */}
+      {/* Chat Panel (left side or fullscreen) */}
       <div
         className={cn(
-          "fixed bottom-24 left-6 z-50 flex flex-col overflow-hidden rounded-2xl border bg-background shadow-2xl transition-all duration-300",
-          "w-[360px] sm:w-[400px]",
-          open ? "h-[560px] opacity-100 translate-y-0" : "h-0 opacity-0 translate-y-4 pointer-events-none",
+          "fixed z-50 flex flex-col overflow-hidden border bg-background shadow-2xl transition-all duration-300",
+          fullscreen
+            ? "inset-4 sm:inset-8 rounded-xl"
+            : "bottom-24 left-6 w-[360px] sm:w-[420px] rounded-2xl",
+          open
+            ? "opacity-100 translate-y-0"
+            : "opacity-0 translate-y-4 pointer-events-none",
+          !fullscreen && (open ? "h-[600px]" : "h-0"),
         )}
       >
         {/* Header */}
@@ -224,6 +258,15 @@ export default function AiBotPanel() {
             <Button variant="ghost" size="icon" className="h-7 w-7" onClick={clearHistory} title="Wyczyść historię">
               <Trash2 className="h-3.5 w-3.5" />
             </Button>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-7 w-7"
+              onClick={() => setFullscreen((v) => !v)}
+              title={fullscreen ? "Tryb okna" : "Tryb pełnoekranowy"}
+            >
+              {fullscreen ? <Minimize2 className="h-3.5 w-3.5" /> : <Maximize2 className="h-3.5 w-3.5" />}
+            </Button>
             <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setOpen(false)}>
               <ChevronDown className="h-4 w-4" />
             </Button>
@@ -231,13 +274,14 @@ export default function AiBotPanel() {
         </div>
 
         {/* Messages */}
-        <div className="flex-1 overflow-y-auto p-4 space-y-3">
+        <div className={cn("flex-1 overflow-y-auto space-y-3", fullscreen ? "p-6 max-w-4xl w-full mx-auto" : "p-4")}>
           {messages.map((msg) => (
             <MessageBubble
               key={msg.id}
               msg={msg}
               onApprove={approveAction}
               onReject={rejectAction}
+              onRunAutomation={(a) => sendMessage(a.prompt)}
             />
           ))}
 
