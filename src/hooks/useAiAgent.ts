@@ -284,7 +284,7 @@ async function executeAction(action: ProposedAction) {
     const { error } = await supabase.from("tasks").insert({
       title: data.title as string,
       description: data.description as string,
-      priority: ((data.priority as string) || "średni") as "krytyczny" | "wysoki" | "średni" | "niski",
+      priority: mapPriority(data.priority),
       status: "Nowe",
       building_id: cleanUuid(data.building_id) ?? undefined,
       deadline: data.deadline as string | undefined,
