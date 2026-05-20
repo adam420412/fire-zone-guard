@@ -341,7 +341,7 @@ export default function BuildingsPage() {
           const ibpValid = building.ibp_valid_until ? new Date(building.ibp_valid_until) >= new Date() : false;
 
           return (
-            <div key={building.id} onClick={() => navigate(`/buildings/${building.id}`)} className="cursor-pointer rounded-lg border border-border bg-card p-5 card-hover relative group">
+            <div key={building.id} onClick={() => openPanel("building", building.id)} className="cursor-pointer rounded-lg border border-border bg-card p-5 card-hover relative group">
               <div className="flex items-start justify-between">
                 <div className="flex items-center gap-3">
                   <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-secondary">
