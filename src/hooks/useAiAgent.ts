@@ -11,8 +11,23 @@ export interface ChatMessage {
   actionState?: "pending" | "approved" | "rejected";
 }
 
+export type ActionType =
+  | "create_task"
+  | "create_sla_ticket"
+  | "send_notification"
+  | "generate_protocol"
+  | "schedule_audit"
+  | "bulk_create_tasks"
+  | "bulk_reassign_tasks"
+  | "reschedule_overdue_tasks"
+  | "close_task"
+  | "follow_up_sla"
+  | "bulk_notify_clients"
+  | "create_device_service_tasks"
+  | "schedule_training";
+
 export interface ProposedAction {
-  type: "create_task" | "create_sla_ticket" | "send_notification" | "generate_protocol" | "schedule_audit";
+  type: ActionType;
   label: string;
   description: string;
   confirmationLevel: "soft" | "hard";
