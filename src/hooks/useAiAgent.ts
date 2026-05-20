@@ -138,7 +138,7 @@ async function executeAction(action: ProposedAction) {
       building_id: data.building_id as string | undefined,
       deadline: data.deadline as string | undefined,
       assignee_id: data.assignee_id as string | undefined,
-    });
+    } as any);
     if (error) throw error;
   } else if (type === "create_sla_ticket") {
     const { error } = await supabase.from("sla_tickets").insert({
