@@ -75,13 +75,23 @@ function MessageBubble({
   msg,
   onApprove,
   onReject,
+  onRunAutomation,
 }: {
   msg: ChatMessage;
   onApprove: (id: string, action: ProposedAction) => void;
   onReject: (id: string) => void;
+  onRunAutomation: (a: QuickAutomation) => void;
 }) {
   const [showModal, setShowModal] = useState(false);
   const isUser = msg.role === "user";
+
+  // Wyłap z odpowiedzi asystenta wszystkie automatyzacje, o których wspomniał
+  // (po nazwie z QUICK_AUTOMATIONS) — żeby od razu pokazać przyciski "uruchom".
+  const matchedAutomations = useMemo(() => {
+    if (isUser || !msg.content) return [];
+    const text = msg.content.toLowerCase();
+    return QUICK_AUTOMATIONS.filter((a) => text.includes(a.label.toLowerCase()));
+  }, [isUser, msg.content]);
 
   return (
     <div className={cn("flex flex-col gap-1", isUser ? "items-end" : "items-start")}>
