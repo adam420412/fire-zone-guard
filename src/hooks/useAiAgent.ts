@@ -130,18 +130,28 @@ export function useAiAgent() {
       const { data: sessionData } = await supabase.auth.getSession();
       const userId = sessionData.session?.user?.id;
 
-      // Pobierz company_id użytkownika (do audytu)
+      // Pobierz kontekst użytkownika: profile_id/company_id/rola są potrzebne AI,
+      // bo zadania i powiadomienia wskazują na profiles.id, nie auth.users.id.
       let companyId: string | null = null;
+      let profileId: string | null = null;
+      let userRole: string | null = null;
       if (userId) {
-        const { data: prof } = await supabase
-          .from("profiles").select("company_id").eq("user_id", userId).maybeSingle();
+        const [{ data: prof }, { data: roleRow }] = await Promise.all([
+          supabase.from("profiles").select("id, company_id").eq("user_id", userId).maybeSingle(),
+          supabase.from("user_roles").select("role").eq("user_id", userId).order("role").limit(1).maybeSingle(),
+        ]);
+        profileId = (prof as any)?.id ?? null;
         companyId = (prof as any)?.company_id ?? null;
+        userRole = (roleRow as any)?.role ?? null;
       }
 
       const context = {
         path: location.pathname,
         buildingId: extractBuildingId(location.pathname),
         userId,
+        profileId,
+        companyId,
+        userRole,
       };
 
       const { data, error } = await supabase.functions.invoke("ai-agent", {
@@ -277,6 +287,27 @@ function mapPriority(v: unknown): "niski" | "średni" | "wysoki" | "krytyczny" {
   return PRIORITY_MAP[k] ?? "średni";
 }
 
+const SLA_PRIORITY_MAP: Record<string, "low" | "normal" | "high" | "critical"> = {
+  niski: "low", low: "low",
+  średni: "normal", sredni: "normal", medium: "normal", normal: "normal",
+  wysoki: "high", high: "high",
+  krytyczny: "critical", critical: "critical", urgent: "critical",
+};
+function mapSlaPriority(v: unknown): "low" | "normal" | "high" | "critical" {
+  return SLA_PRIORITY_MAP[String(v ?? "").toLowerCase().trim()] ?? "normal";
+}
+
+const TRAINING_TYPE_MAP: Record<string, "ogolne_ppoz" | "obslugowo_uzytkowe" | "probna_ewakuacja" | "medyczne" | "inne"> = {
+  ppoz: "ogolne_ppoz", fire: "ogolne_ppoz", ogolne_ppoz: "ogolne_ppoz",
+  obslugowo_uzytkowe: "obslugowo_uzytkowe", equipment: "obslugowo_uzytkowe",
+  probna_ewakuacja: "probna_ewakuacja", ewakuacja: "probna_ewakuacja", evacuation: "probna_ewakuacja",
+  medyczne: "medyczne", medical: "medyczne",
+  inne: "inne", other: "inne",
+};
+function mapTrainingType(v: unknown) {
+  return TRAINING_TYPE_MAP[String(v ?? "").toLowerCase().trim()] ?? "ogolne_ppoz";
+}
+
 async function getUserContext() {
   const { data: sess } = await supabase.auth.getSession();
   const userId = sess.session?.user?.id;
@@ -294,6 +325,13 @@ async function resolveBuildingCompany(buildingId: string | null, fallbackCompany
   if (!buildingId) return fallbackCompanyId ?? null;
   const { data } = await supabase.from("buildings").select("company_id").eq("id", buildingId).maybeSingle();
   return ((data as any)?.company_id as string | undefined) ?? fallbackCompanyId ?? null;
+}
+
+async function resolveProfileId(id: unknown, fallbackProfileId?: string) {
+  const uuid = cleanUuid(id);
+  if (!uuid) return fallbackProfileId ?? null;
+  const { data } = await supabase.from("profiles").select("id").or(`id.eq.${uuid},user_id.eq.${uuid}`).limit(1).maybeSingle();
+  return ((data as any)?.id as string | undefined) ?? uuid;
 }
 
 async function executeAction(action: ProposedAction) {
@@ -317,11 +355,14 @@ async function executeAction(action: ProposedAction) {
     } as any);
     if (error) throw error;
   } else if (type === "create_sla_ticket") {
+    const buildingId = cleanUuid(data.building_id);
+    const companyId = (await resolveBuildingCompany(buildingId, cleanUuid(data.company_id) ?? ctx.companyId)) ?? null;
     const { error } = await supabase.from("sla_tickets").insert({
       description: (data.description as string) || (data.title as string) || "",
-      priority: ((data.priority as string) || "normal") as any,
-      building_id: cleanUuid(data.building_id) ?? undefined,
-      company_id: cleanUuid(data.company_id) ?? ctx.companyId ?? undefined,
+      priority: mapSlaPriority(data.priority) as any,
+      building_id: buildingId,
+      company_id: companyId,
+      reporter_user_id: ctx.userId,
     } as any);
     if (error) throw error;
   } else if (type === "send_notification") {
@@ -386,7 +427,7 @@ async function executeAction(action: ProposedAction) {
     if (error) throw error;
   } else if (type === "bulk_reassign_tasks") {
     const ids = cleanUuidList(data.task_ids);
-    const assignee = cleanUuid(data.assignee_id);
+    const assignee = await resolveProfileId(data.assignee_id, ctx.profileId);
     if (!ids.length || !assignee) throw new Error("Brak prawidłowych ID zadań lub osoby (UUID).");
     const { error } = await supabase.from("tasks").update({ assignee_id: assignee } as any).in("id", ids);
     if (error) throw error;
@@ -444,12 +485,15 @@ async function executeAction(action: ProposedAction) {
   } else if (type === "schedule_training") {
     const buildingId = cleanUuid(data.building_id);
     if (!buildingId) throw new Error("Brak prawidłowego ID obiektu (UUID).");
+    const companyId = await resolveBuildingCompany(buildingId, ctx.companyId);
     const { error } = await supabase.from("building_trainings").insert({
       building_id: buildingId,
+      company_id: companyId,
+      created_by: ctx.profileId ?? null,
       title: (data.title as string) || "Szkolenie PPOŻ",
-      type: ((data.training_type as string) || "ppoz") as any,
+      type: mapTrainingType(data.training_type) as any,
       scheduled_at: data.scheduled_at as string,
-      status: "planned" as any,
+      status: "zaplanowane" as any,
     } as any);
     if (error) throw error;
   } else if (type === "generate_protocol") {

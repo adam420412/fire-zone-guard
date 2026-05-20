@@ -22,6 +22,7 @@ interface PageContext {
   taskId?: string;
   companyId?: string;
   userId?: string;
+  profileId?: string;
   userRole?: string;
 }
 
@@ -68,7 +69,7 @@ Zawsze używaj **markdown** ze strukturą:
 
 1. Odpowiadasz na pytania o stan systemu — masz dostęp do całej bazy przez narzędzia:
    - **get_dashboard_summary** — szybkie KPI
-   - **get_my_tasks** — zadania bieżącego użytkownika (wymaga userId z kontekstu)
+- **get_my_tasks** — zadania bieżącego użytkownika (używa profileId; zadania są przypisane do profilu)
    - **get_overdue_items** — wszystkie przeterminowane (zlecenia + urządzenia)
    - **get_sla_tickets** — filtruj po statusie/priorytecie/budynku/days_back
    - **get_devices_due** — przeglądy urządzeń w horyzoncie N dni
@@ -352,7 +353,7 @@ async function callClaude(
           } else if (name === "get_overdue_items") {
             result = await getOverdueItems(supabase, input.building_id);
           } else if (name === "get_my_tasks") {
-            result = await getMyTasks(supabase, ctx.userId, input.only_open ?? true);
+            result = await getMyTasks(supabase, ctx.profileId, ctx.userId, input.only_open ?? true);
           } else if (name === "get_sla_tickets") {
             result = await getSlaTickets(supabase, input);
           } else if (name === "get_devices_due") {
@@ -426,7 +427,7 @@ async function getDashboardSummary(supabase: ReturnType<typeof createClient>) {
   const today = new Date().toISOString();
   const [tasks, slaTickets, overdueDevices] = await Promise.all([
     supabase.from("tasks").select("id, status, priority, deadline").neq("status", "Zamknięte").limit(200),
-    supabase.from("sla_tickets").select("id, status, priority, created_at").neq("status", "zamknięte").limit(50),
+    supabase.from("sla_tickets").select("id, status, priority, created_at").neq("status", "zamkniete").limit(50),
     supabase.from("devices").select("id, name, next_service_date").lt("next_service_date", today.split("T")[0]).limit(50),
   ]);
 
@@ -460,7 +461,7 @@ async function searchData(supabase: ReturnType<typeof createClient>, query: stri
     if (data?.length) results.tasks = data;
   }
   if (!entity || entity === "sla_tickets") {
-    const { data } = await supabase.from("sla_tickets").select("id, title, status, priority").ilike("title", `%${q}%`).limit(5);
+    const { data } = await supabase.from("sla_tickets").select("id, ticket_number, description, status, priority").ilike("description", `%${q}%`).limit(5);
     if (data?.length) results.sla_tickets = data;
   }
 
@@ -473,7 +474,7 @@ async function getBuildingStatus(supabase: ReturnType<typeof createClient>, buil
       supabase.from("buildings").select("id, name, address, safety_status").eq("id", buildingId).maybeSingle(),
       supabase.from("tasks").select("id, title, status, priority").eq("building_id", buildingId).neq("status", "Zamknięte").limit(10),
       supabase.from("audits").select("id, status, performed_at").eq("building_id", buildingId).order("performed_at", { ascending: false }).limit(3),
-      supabase.from("devices").select("id, name, device_type, next_service_date").eq("building_id", buildingId).limit(20),
+      supabase.from("devices").select("id, name, device_type_id, next_service_date").eq("building_id", buildingId).limit(20),
     ]);
     const today = new Date().toISOString().split("T")[0];
     const overdueDevices = (devices.data ?? []).filter((d) => d.next_service_date && d.next_service_date < today);
@@ -488,7 +489,7 @@ async function getOverdueItems(supabase: ReturnType<typeof createClient>, buildi
   const today = new Date().toISOString();
   const todayDate = today.split("T")[0];
   let tasksQuery = supabase.from("tasks").select("id, title, deadline, priority, status, building_id").neq("status", "Zamknięte").lt("deadline", today).limit(20);
-  let devicesQuery = supabase.from("devices").select("id, name, device_type, next_service_date, building_id").lt("next_service_date", todayDate).limit(20);
+  let devicesQuery = supabase.from("devices").select("id, name, device_type_id, next_service_date, building_id").lt("next_service_date", todayDate).limit(20);
 
   if (buildingId) {
     tasksQuery = tasksQuery.eq("building_id", buildingId);
@@ -502,13 +503,18 @@ async function getOverdueItems(supabase: ReturnType<typeof createClient>, buildi
   };
 }
 
-async function getMyTasks(supabase: ReturnType<typeof createClient>, userId: string | undefined, onlyOpen: boolean) {
-  if (!userId) return { message: "Brak userId w kontekście — nie mogę odfiltrować zadań tego użytkownika.", hint: "Użyj get_overdue_items lub search_data." };
-  let q = supabase.from("tasks").select("id, task_code, title, status, priority, deadline, building_id").eq("assignee_id", userId).order("deadline", { ascending: true, nullsFirst: false }).limit(30);
+async function getMyTasks(supabase: ReturnType<typeof createClient>, profileId: string | undefined, userId: string | undefined, onlyOpen: boolean) {
+  let assigneeId = profileId;
+  if (!assigneeId && userId) {
+    const { data: profile } = await supabase.from("profiles").select("id").eq("user_id", userId).maybeSingle();
+    assigneeId = profile?.id;
+  }
+  if (!assigneeId) return { message: "Brak profilu użytkownika — nie mogę odfiltrować przypisanych zadań.", hint: "Użyj get_overdue_items lub search_data." };
+  let q = supabase.from("tasks").select("id, task_code, title, status, priority, deadline, building_id").eq("assignee_id", assigneeId).order("deadline", { ascending: true, nullsFirst: false }).limit(30);
   if (onlyOpen) q = q.neq("status", "Zamknięte");
   const { data, error } = await q;
   if (error) return { error: error.message };
-  return { tasks: data ?? [], count: (data ?? []).length };
+  return { tasks: data ?? [], count: (data ?? []).length, assignee_profile_id: assigneeId };
 }
 
 async function getSlaTickets(supabase: ReturnType<typeof createClient>, input: any) {
@@ -529,7 +535,7 @@ async function getDevicesDue(supabase: ReturnType<typeof createClient>, input: a
   const days = input?.within_days ?? 14;
   const today = new Date().toISOString().split("T")[0];
   const horizon = new Date(Date.now() + days * 86400000).toISOString().split("T")[0];
-  let q = supabase.from("devices").select("id, name, device_type, next_service_date, last_service_date, building_id, location_in_building, status").lte("next_service_date", horizon).order("next_service_date", { ascending: true }).limit(50);
+  let q = supabase.from("devices").select("id, name, device_type_id, next_service_date, last_service_date, building_id, location_in_building, status").lte("next_service_date", horizon).order("next_service_date", { ascending: true }).limit(50);
   if (input?.only_overdue) q = q.lt("next_service_date", today);
   if (input?.building_id) q = q.eq("building_id", input.building_id);
   const { data, error } = await q;
@@ -554,7 +560,7 @@ async function getAudits(supabase: ReturnType<typeof createClient>, input: any) 
 async function getEmployeesStatus(supabase: ReturnType<typeof createClient>, expiringDays: number) {
   const horizon = new Date(Date.now() + expiringDays * 86400000).toISOString().split("T")[0];
   const [employees, certs, trainings] = await Promise.all([
-    supabase.from("employee_development_plans").select("id, first_name, last_name, position, employment_status").limit(50),
+    supabase.from("employee_development_plans").select("id, first_name, last_name, position, status, employment_date, is_active").limit(50),
     supabase.from("training_certificates").select("id, participant_name, training_title, valid_until").lte("valid_until", horizon).order("valid_until").limit(30),
     supabase.from("building_trainings").select("id, title, scheduled_at, status, building_id").gte("scheduled_at", new Date().toISOString()).order("scheduled_at").limit(20),
   ]);
@@ -638,7 +644,8 @@ Deno.serve(async (req) => {
       context?.path ? `strona "${context.path}"` : null,
       context?.buildingId ? `budynek ID ${context.buildingId}` : null,
       context?.companyId ? `firma ID ${context.companyId}` : null,
-      userId ? `user ID ${userId}` : null,
+      context?.profileId ? `profil ID ${context.profileId}` : null,
+      userId ? `auth user ID ${userId}` : null,
       context?.userRole ? `rola ${context.userRole}` : null,
     ].filter(Boolean).join(", ");
     const contextNote = contextParts ? `\n[Kontekst: ${contextParts}]` : "";
