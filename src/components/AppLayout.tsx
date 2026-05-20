@@ -111,6 +111,7 @@ const clientNavGroups: NavGroup[] = [
     label: "Mój panel",
     items: [
       { icon: LayoutDashboard, label: "Panel", path: "/" },
+      { icon: Compass, label: "Przewodnik", path: "/workflow" },
       { icon: Siren, label: "Moje zgłoszenia", path: "/sla" },
       { icon: BookOpen, label: "Biblioteka", path: "/library" },
     ],
