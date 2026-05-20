@@ -154,6 +154,7 @@ function ProtectedRoutes() {
             <Route path="/admin" element={<AdminPage />} />
             <Route path="/admin/import" element={<BulkImportPage />} />
             <Route path="/onboarding" element={<OnboardingPage />} />
+            <Route path="/workflow" element={<WorkflowGuidePage />} />
             <Route path="/map" element={<MapPage />} />
             <Route path="*" element={<NotFound />} />
           </>
