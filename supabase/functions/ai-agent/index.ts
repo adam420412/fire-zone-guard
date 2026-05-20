@@ -269,7 +269,8 @@ const TOOLS = [
 async function callClaude(
   supabase: ReturnType<typeof createClient>,
   messages: Array<{ role: string; content: string | unknown[] }>,
-  maxIter = 5,
+  ctx: PageContext,
+  maxIter = 6,
 ): Promise<{ reply: string; action?: ProposedAction }> {
   const apiKey = Deno.env.get("ANTHROPIC_API_KEY");
   if (!apiKey) throw new Error("ANTHROPIC_API_KEY is not configured");
