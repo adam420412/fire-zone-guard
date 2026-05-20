@@ -17,6 +17,8 @@ import QuickOpportunityFAB from "@/components/QuickOpportunityFAB";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useNavBadges } from "@/hooks/useNavBadges";
 import AiBotPanel from "@/components/AiBotPanel";
+import ContextPanel from "@/components/ContextPanel";
+import { useContextPanel } from "@/hooks/useContextPanel";
 
 type NavItem = {
   icon: LucideIcon;
