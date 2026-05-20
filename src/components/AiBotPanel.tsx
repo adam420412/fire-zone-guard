@@ -225,12 +225,17 @@ export default function AiBotPanel() {
         )}
       </button>
 
-      {/* Chat Panel (left side) */}
+      {/* Chat Panel (left side or fullscreen) */}
       <div
         className={cn(
-          "fixed bottom-24 left-6 z-50 flex flex-col overflow-hidden rounded-2xl border bg-background shadow-2xl transition-all duration-300",
-          "w-[360px] sm:w-[400px]",
-          open ? "h-[560px] opacity-100 translate-y-0" : "h-0 opacity-0 translate-y-4 pointer-events-none",
+          "fixed z-50 flex flex-col overflow-hidden border bg-background shadow-2xl transition-all duration-300",
+          fullscreen
+            ? "inset-4 sm:inset-8 rounded-xl"
+            : "bottom-24 left-6 w-[360px] sm:w-[420px] rounded-2xl",
+          open
+            ? "opacity-100 translate-y-0"
+            : "opacity-0 translate-y-4 pointer-events-none",
+          !fullscreen && (open ? "h-[600px]" : "h-0"),
         )}
       >
         {/* Header */}
