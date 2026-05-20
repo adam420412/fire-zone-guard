@@ -409,7 +409,10 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
         </header>
 
         {/* Content */}
-        <main className="flex-1 overflow-y-auto scrollbar-thin p-4 sm:p-6">
+        <main className={cn(
+          "flex-1 overflow-y-auto scrollbar-thin p-4 sm:p-6 transition-[padding] duration-300",
+          contextOpen && "lg:pr-[376px]"
+        )}>
           {children}
         </main>
 
@@ -419,6 +422,10 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
         {/* AI Bot Panel — visible to all internal roles (not client) */}
         {role !== "client" && <AiBotPanel />}
       </div>
+
+      {/* Context Panel — right-side drawer triggered by useContextPanel */}
+      <ContextPanel />
+
     </div>
   );
 }
