@@ -182,6 +182,109 @@ async function executeAction(action: ProposedAction) {
       type: (data.audit_type as string) || "PPOŻ",
     });
     if (error) throw error;
+  } else if (type === "bulk_create_tasks") {
+    const items = (data.items as any[]) || [];
+    if (!items.length) throw new Error("Brak elementów do utworzenia");
+    const rows = items.map((it) => ({
+      title: it.title,
+      description: it.description ?? null,
+      priority: (it.priority || "średni") as any,
+      status: "Nowe",
+      building_id: it.building_id ?? null,
+      deadline: it.deadline ?? null,
+      assignee_id: it.assignee_id ?? null,
+      company_id: it.company_id ?? null,
+    }));
+    const { error } = await supabase.from("tasks").insert(rows as any);
+    if (error) throw error;
+  } else if (type === "create_device_service_tasks") {
+    const deviceIds = (data.device_ids as string[]) || [];
+    if (!deviceIds.length) throw new Error("Brak urządzeń");
+    const { data: devices, error: devErr } = await supabase
+      .from("devices").select("id, name, building_id, location_in_building").in("id", deviceIds);
+    if (devErr) throw devErr;
+    const deadline = (data.deadline as string) || null;
+    const assigneeId = (data.assignee_id as string) || null;
+    const rows = (devices ?? []).map((d: any) => ({
+      title: `Serwis: ${d.name}${d.location_in_building ? ` (${d.location_in_building})` : ""}`,
+      description: `Automatyczne zlecenie serwisowe wygenerowane przez asystenta AI.`,
+      priority: "średni" as any,
+      status: "Nowe",
+      type: "przegląd" as any,
+      building_id: d.building_id,
+      deadline,
+      assignee_id: assigneeId,
+    }));
+    const { error } = await supabase.from("tasks").insert(rows as any);
+    if (error) throw error;
+  } else if (type === "bulk_reassign_tasks") {
+    const ids = (data.task_ids as string[]) || [];
+    const assignee = data.assignee_id as string;
+    if (!ids.length || !assignee) throw new Error("Brak zadań lub osoby");
+    const { error } = await supabase.from("tasks").update({ assignee_id: assignee } as any).in("id", ids);
+    if (error) throw error;
+  } else if (type === "reschedule_overdue_tasks") {
+    const ids = (data.task_ids as string[]) || [];
+    const shiftDays = Number(data.shift_days ?? 7);
+    if (!ids.length) throw new Error("Brak zadań");
+    const { data: tasks, error: e1 } = await supabase.from("tasks").select("id, deadline").in("id", ids);
+    if (e1) throw e1;
+    const updates = (tasks ?? []).map((t: any) => {
+      const base = t.deadline ? new Date(t.deadline) : new Date();
+      const shifted = new Date(base.getTime() + shiftDays * 86400000);
+      return supabase.from("tasks").update({ deadline: shifted.toISOString() } as any).eq("id", t.id);
+    });
+    await Promise.all(updates);
+  } else if (type === "close_task") {
+    const { error } = await supabase.from("tasks").update({
+      status: "Zamknięte",
+      closed_at: new Date().toISOString(),
+    } as any).eq("id", data.task_id as string);
+    if (error) throw error;
+  } else if (type === "follow_up_sla") {
+    const ids = (data.ticket_ids as string[]) || [];
+    if (!ids.length) throw new Error("Brak ticketów");
+    const { data: tickets, error: e1 } = await supabase.from("sla_tickets")
+      .select("id, ticket_number, building_id, company_id, description").in("id", ids);
+    if (e1) throw e1;
+    const rows = (tickets ?? []).map((t: any) => ({
+      title: `Follow-up: ${t.ticket_number ?? "SLA"}`,
+      description: `Kontakt z klientem po zamknięciu SLA. Oryginalne zgłoszenie: ${t.description ?? "—"}`,
+      priority: "niski" as any,
+      status: "Nowe",
+      building_id: t.building_id,
+      company_id: t.company_id,
+      deadline: new Date(Date.now() + 3 * 86400000).toISOString(),
+    }));
+    const { error } = await supabase.from("tasks").insert(rows as any);
+    if (error) throw error;
+  } else if (type === "bulk_notify_clients") {
+    const items = (data.items as any[]) || [];
+    if (!items.length) throw new Error("Brak odbiorców");
+    const rows = items.map((it) => ({
+      subject: (data.subject as string) || "Powiadomienie Fire Zone",
+      body: it.body || (data.body as string) || "",
+      channel: "in_app",
+      status: "pending",
+      user_id: it.user_id ?? null,
+      related_table: it.related_table ?? null,
+      related_id: it.related_id ?? null,
+    }));
+    const { error } = await supabase.from("notifications_outbox").insert(rows as any);
+    if (error) throw error;
+  } else if (type === "schedule_training") {
+    const { error } = await supabase.from("building_trainings").insert({
+      building_id: data.building_id as string,
+      title: (data.title as string) || "Szkolenie PPOŻ",
+      type: ((data.training_type as string) || "ppoz") as any,
+      scheduled_at: data.scheduled_at as string,
+      status: "planned" as any,
+    } as any);
+    if (error) throw error;
+  } else if (type === "generate_protocol") {
+    // Trigger existing report generator
+    const { error } = await supabase.functions.invoke("generate-report", { body: data });
+    if (error) throw error;
   }
 }
 
