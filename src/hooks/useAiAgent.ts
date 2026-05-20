@@ -204,8 +204,9 @@ export function useAiAgent() {
         timestamp: new Date(),
       };
       setMessages((prev) => [...prev, confirmMsg]);
-    } catch (err) {
-      const errStr = err instanceof Error ? err.message : String(err);
+    } catch (err: any) {
+      const errStr = formatActionError(err);
+      console.error("[AI executeAction] failed:", err);
       if (logId) await logExecution(logId, false, errStr);
       const errMsg: ChatMessage = {
         id: crypto.randomUUID(),
@@ -239,6 +240,22 @@ function extractBuildingId(path: string): string | undefined {
   const match = path.match(/\/buildings\/([^/]+)/);
   return match?.[1];
 }
+
+function formatActionError(err: any): string {
+  if (!err) return "Nieznany błąd";
+  if (typeof err === "string") return err;
+  if (err instanceof Error) return err.message;
+  // PostgrestError / Supabase functions invoke error
+  const parts = [err.message, err.details, err.hint, err.code && `(${err.code})`]
+    .filter((p) => typeof p === "string" && p.trim().length);
+  if (parts.length) return parts.join(" — ");
+  try {
+    return JSON.stringify(err);
+  } catch {
+    return String(err);
+  }
+}
+
 
 async function executeAction(action: ProposedAction) {
   const { type, data } = action;
