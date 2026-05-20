@@ -220,7 +220,7 @@ function CompanyContent({ companyId, onClose }: { companyId: string; onClose: ()
     t.building_id && buildingIds.has(t.building_id) && OPEN_SLA_STATUSES.has(String(t.status).toLowerCase())
   );
   const companyTasks = (tasks ?? []).filter((t: any) => t.company_id === companyId);
-  const lastActivity = companyTasks[0]?.updated_at || companyTasks[0]?.created_at;
+  const lastActivity = (companyTasks[0] as any)?.updated_at || companyTasks[0]?.created_at;
 
   if (!company) {
     return <div className="p-6 text-sm text-muted-foreground">Ładowanie firmy…</div>;
