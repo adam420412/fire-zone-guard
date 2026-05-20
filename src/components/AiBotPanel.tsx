@@ -171,11 +171,11 @@ export default function AiBotPanel() {
 
   return (
     <>
-      {/* Floating Button */}
+      {/* Floating Button (left side) */}
       <button
         onClick={() => setOpen((v) => !v)}
         className={cn(
-          "fixed bottom-6 right-6 z-50 flex h-14 w-14 items-center justify-center rounded-full shadow-lg transition-all duration-300",
+          "fixed bottom-6 left-6 z-50 flex h-14 w-14 items-center justify-center rounded-full shadow-lg transition-all duration-300",
           "bg-primary text-primary-foreground hover:scale-110 active:scale-95",
           open && "rotate-12 scale-110",
         )}
@@ -188,10 +188,10 @@ export default function AiBotPanel() {
         )}
       </button>
 
-      {/* Chat Panel */}
+      {/* Chat Panel (left side) */}
       <div
         className={cn(
-          "fixed bottom-24 right-6 z-50 flex flex-col overflow-hidden rounded-2xl border bg-background shadow-2xl transition-all duration-300",
+          "fixed bottom-24 left-6 z-50 flex flex-col overflow-hidden rounded-2xl border bg-background shadow-2xl transition-all duration-300",
           "w-[360px] sm:w-[400px]",
           open ? "h-[560px] opacity-100 translate-y-0" : "h-0 opacity-0 translate-y-4 pointer-events-none",
         )}
