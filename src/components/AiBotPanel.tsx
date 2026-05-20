@@ -1,10 +1,12 @@
 import { useState, useRef, useEffect } from "react";
 import { useLocation } from "react-router-dom";
-import { Bot, X, Send, Trash2, ChevronDown, Loader2, CheckCircle2, XCircle, Zap } from "lucide-react";
+import { Bot, X, Send, Trash2, ChevronDown, Loader2, CheckCircle2, XCircle, Zap, Sparkles } from "lucide-react";
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
-import { useAiAgent, SUGGESTIONS_BY_PAGE, type ChatMessage, type ProposedAction } from "@/hooks/useAiAgent";
+import { useAiAgent, SUGGESTIONS_BY_PAGE, QUICK_AUTOMATIONS, type ChatMessage, type ProposedAction } from "@/hooks/useAiAgent";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription,
 } from "@/components/ui/dialog";
@@ -85,13 +87,19 @@ function MessageBubble({
     <div className={cn("flex flex-col gap-1", isUser ? "items-end" : "items-start")}>
       <div
         className={cn(
-          "max-w-[85%] rounded-2xl px-3.5 py-2.5 text-sm leading-relaxed",
+          "max-w-[88%] rounded-2xl px-3.5 py-2.5 text-sm leading-relaxed",
           isUser
             ? "bg-primary text-primary-foreground rounded-br-sm"
             : "bg-muted text-foreground rounded-bl-sm",
         )}
       >
-        {msg.content}
+        {isUser ? (
+          msg.content
+        ) : (
+          <div className="prose prose-sm dark:prose-invert max-w-none prose-p:my-1 prose-ul:my-1 prose-ol:my-1 prose-li:my-0 prose-headings:my-2 prose-headings:text-foreground prose-strong:text-foreground prose-a:text-primary">
+            <ReactMarkdown remarkPlugins={[remarkGfm]}>{msg.content}</ReactMarkdown>
+          </div>
+        )}
       </div>
 
       {/* Action proposal */}
@@ -238,21 +246,43 @@ export default function AiBotPanel() {
           <div ref={messagesEndRef} />
         </div>
 
-        {/* Suggestions */}
-        {messages.length <= 1 && (
-          <div className="border-t px-3 py-2 flex flex-wrap gap-1.5">
-            {suggestions.map((s) => (
+        {/* Quick automations — zawsze widoczne */}
+        <div className="border-t bg-muted/30">
+          <div className="flex items-center gap-1.5 px-3 pt-2 pb-1">
+            <Sparkles className="h-3 w-3 text-primary" />
+            <span className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+              Szybkie automatyzacje
+            </span>
+          </div>
+          <div className="px-3 pb-2 flex gap-1.5 overflow-x-auto">
+            {QUICK_AUTOMATIONS.map((a) => (
               <button
-                key={s}
-                onClick={() => sendMessage(s)}
+                key={a.id}
+                onClick={() => sendMessage(a.prompt)}
                 disabled={isLoading}
-                className="rounded-full border bg-background px-2.5 py-1 text-xs text-muted-foreground hover:bg-muted hover:text-foreground transition-colors disabled:opacity-50"
+                title={a.prompt}
+                className="shrink-0 inline-flex items-center gap-1 rounded-full border bg-background px-2.5 py-1 text-xs hover:bg-primary/10 hover:border-primary/40 hover:text-foreground transition-colors disabled:opacity-50"
               >
-                {s}
+                <span>{a.icon}</span>
+                <span className="font-medium">{a.label}</span>
               </button>
             ))}
           </div>
-        )}
+          {messages.length <= 1 && (
+            <div className="border-t px-3 py-2 flex flex-wrap gap-1.5">
+              {suggestions.map((s) => (
+                <button
+                  key={s}
+                  onClick={() => sendMessage(s)}
+                  disabled={isLoading}
+                  className="rounded-full border bg-background px-2.5 py-1 text-xs text-muted-foreground hover:bg-muted hover:text-foreground transition-colors disabled:opacity-50"
+                >
+                  {s}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
 
         {/* Input */}
         <div className="border-t p-3 flex gap-2">
