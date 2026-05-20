@@ -1,10 +1,12 @@
 import { useState, useRef, useEffect } from "react";
 import { useLocation } from "react-router-dom";
-import { Bot, X, Send, Trash2, ChevronDown, Loader2, CheckCircle2, XCircle, Zap } from "lucide-react";
+import { Bot, X, Send, Trash2, ChevronDown, Loader2, CheckCircle2, XCircle, Zap, Sparkles } from "lucide-react";
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
-import { useAiAgent, SUGGESTIONS_BY_PAGE, type ChatMessage, type ProposedAction } from "@/hooks/useAiAgent";
+import { useAiAgent, SUGGESTIONS_BY_PAGE, QUICK_AUTOMATIONS, type ChatMessage, type ProposedAction } from "@/hooks/useAiAgent";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription,
 } from "@/components/ui/dialog";
