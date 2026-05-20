@@ -216,6 +216,11 @@ export default function AiBotPanel() {
             </div>
           </div>
           <div className="flex items-center gap-1">
+            <Link to="/ai-log" title="Dziennik akcji AI">
+              <Button variant="ghost" size="icon" className="h-7 w-7">
+                <ScrollText className="h-3.5 w-3.5" />
+              </Button>
+            </Link>
             <Button variant="ghost" size="icon" className="h-7 w-7" onClick={clearHistory} title="Wyczyść historię">
               <Trash2 className="h-3.5 w-3.5" />
             </Button>
