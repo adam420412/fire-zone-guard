@@ -21,6 +21,8 @@ interface PageContext {
   buildingId?: string;
   taskId?: string;
   companyId?: string;
+  userId?: string;
+  userRole?: string;
 }
 
 interface ChatMessage {
@@ -28,8 +30,23 @@ interface ChatMessage {
   content: string;
 }
 
+type ActionType =
+  | "create_task"
+  | "create_sla_ticket"
+  | "send_notification"
+  | "generate_protocol"
+  | "schedule_audit"
+  | "bulk_create_tasks"
+  | "bulk_reassign_tasks"
+  | "reschedule_overdue_tasks"
+  | "close_task"
+  | "follow_up_sla"
+  | "bulk_notify_clients"
+  | "create_device_service_tasks"
+  | "schedule_training";
+
 interface ProposedAction {
-  type: "create_task" | "create_sla_ticket" | "send_notification" | "generate_protocol" | "schedule_audit";
+  type: ActionType;
   label: string;
   description: string;
   confirmationLevel: "soft" | "hard";
@@ -49,10 +66,20 @@ Zawsze używaj **markdown** ze strukturą:
 
 ## Co robisz
 
-1. Odpowiadasz na pytania o stan systemu (dashboard, zlecenia, SLA, urządzenia, budynki, pracownicy)
-2. Szukasz danych przez narzędzia (search_data, get_building_status, get_overdue_items)
-3. Proponujesz akcje przez **propose_action** — nigdy nie wykonujesz akcji bez potwierdzenia użytkownika
-4. Sugerujesz dopasowane **automatyzacje codzienne** na końcu każdej odpowiedzi
+1. Odpowiadasz na pytania o stan systemu — masz dostęp do całej bazy przez narzędzia:
+   - **get_dashboard_summary** — szybkie KPI
+   - **get_my_tasks** — zadania bieżącego użytkownika (wymaga userId z kontekstu)
+   - **get_overdue_items** — wszystkie przeterminowane (zlecenia + urządzenia)
+   - **get_sla_tickets** — filtruj po statusie/priorytecie/budynku/days_back
+   - **get_devices_due** — przeglądy urządzeń w horyzoncie N dni
+   - **get_audits** — lista audytów z filtrami
+   - **get_employees_status** — pracownicy + wygasające certyfikaty + szkolenia
+   - **get_recent_activity** — co się działo w ostatnich N godzinach
+   - **get_building_status** / **get_company_summary** — pełny obraz obiektu/firmy
+   - **search_data** — fuzzy search po nazwach
+2. ZAWSZE wywołuj odpowiednie narzędzie zanim odpowiesz — nigdy nie zgaduj liczb.
+3. Po analizie proponujesz akcję przez **propose_action** — nigdy nie wykonujesz akcji bez potwierdzenia.
+4. Sugerujesz dopasowane **automatyzacje codzienne** na końcu każdej odpowiedzi.
 
 ## Automatyzacje codzienne (dla KAŻDEGO użytkownika)
 
@@ -80,12 +107,22 @@ Zakończ pytaniem: _"Który skrót uruchomić?"_ — użytkownik kliknie przycis
 
 ## Reguły akcji
 
-Gdy użytkownik wybierze automatyzację lub poprosi o stworzenie/wysłanie/zmianę czegoś — ZAWSZE użyj **propose_action**:
-- \`confirmation_level: "hard"\` dla akcji masowych (>1 rekord) i nieodwracalnych (wysyłka, generowanie PDF)
-- \`confirmation_level: "soft"\` dla pojedynczych, łatwo cofalnych (jedno zlecenie, jedna notatka)
-- Pobierz najpierw dane przez narzędzia, zanim wypełnisz \`data\` propozycji
+Gdy użytkownik wybierze automatyzację lub poprosi o stworzenie/wysłanie/zmianę/przypisanie/przeplanowanie — ZAWSZE użyj **propose_action**. Dostępne typy:
+- \`create_task\`, \`create_sla_ticket\`, \`schedule_audit\`, \`schedule_training\`, \`close_task\` — pojedyncze (soft)
+- \`bulk_create_tasks\` — wiele zleceń naraz, data.items = [{title, priority, building_id, deadline, assignee_id, ...}]
+- \`create_device_service_tasks\` — zlecenia serwisowe z listy urządzeń, data = { device_ids: [], deadline?, assignee_id? }
+- \`bulk_reassign_tasks\` — masowe przypisanie, data = { task_ids: [], assignee_id }
+- \`reschedule_overdue_tasks\` — przesuń deadliny, data = { task_ids: [], shift_days: 7, note? }
+- \`follow_up_sla\` — utwórz zadania follow-up, data = { ticket_ids: [] }
+- \`bulk_notify_clients\` — masowe powiadomienia, data = { subject, body, items: [{user_id?, body?}] }
+- \`send_notification\`, \`generate_protocol\` — pojedyncze
+Zasady:
+- \`confirmation_level: "hard"\` dla akcji masowych (>1 rekord) i nieodwracalnych (wysyłka, PDF)
+- \`confirmation_level: "soft"\` dla pojedynczych, łatwo cofalnych
+- ZAWSZE najpierw pobierz dane przez narzędzia, zanim wypełnisz \`data\` (np. ID zadań/urządzeń/ticketów z bazy — nie zgaduj!)
 
 Nigdy nie pisz że "zrobiłeś" coś bez wywołania propose_action — frontend wykonuje akcję dopiero po zatwierdzeniu.`;
+
 
 const TOOLS = [
   {
@@ -130,24 +167,119 @@ const TOOLS = [
     },
   },
   {
+    name: "get_my_tasks",
+    description: "Pobierz zadania przypisane do bieżącego zalogowanego użytkownika (sortowane po deadline i priorytecie).",
+    input_schema: {
+      type: "object",
+      properties: {
+        only_open: { type: "boolean", description: "Tylko otwarte (domyślnie true)" },
+      },
+    },
+  },
+  {
+    name: "get_sla_tickets",
+    description: "Pobierz zgłoszenia SLA — opcjonalnie filtruj po statusie/priorytecie/budynku.",
+    input_schema: {
+      type: "object",
+      properties: {
+        status: { type: "string", description: "np. zgloszenie, telefon, wyjazd, na_miejscu, naprawiono, zamkniete" },
+        priority: { type: "string", description: "critical | high | normal | low" },
+        building_id: { type: "string" },
+        days_back: { type: "number", description: "Tylko z ostatnich N dni" },
+      },
+    },
+  },
+  {
+    name: "get_devices_due",
+    description: "Urządzenia z przeterminowanym lub zbliżającym się przeglądem (do N dni).",
+    input_schema: {
+      type: "object",
+      properties: {
+        within_days: { type: "number", description: "Horyzont w dniach (np. 30); domyślnie 14" },
+        building_id: { type: "string" },
+        only_overdue: { type: "boolean" },
+      },
+    },
+  },
+  {
+    name: "get_audits",
+    description: "Pobierz audyty — opcjonalnie filtruj po statusie i budynku.",
+    input_schema: {
+      type: "object",
+      properties: {
+        status: { type: "string", description: "zaplanowany | w_trakcie | zakonczony" },
+        building_id: { type: "string" },
+      },
+    },
+  },
+  {
+    name: "get_employees_status",
+    description: "Lista pracowników z aktywnymi przypisaniami, wygasającymi certyfikatami i nadchodzącymi szkoleniami.",
+    input_schema: {
+      type: "object",
+      properties: {
+        expiring_within_days: { type: "number", description: "Pokaż certyfikaty wygasające w N dni (domyślnie 60)" },
+      },
+    },
+  },
+  {
+    name: "get_recent_activity",
+    description: "Najnowsze zdarzenia w systemie — utworzone/zmienione zlecenia, SLA, audyty, urządzenia (do podglądu kontekstu).",
+    input_schema: {
+      type: "object",
+      properties: {
+        hours_back: { type: "number", description: "Z ostatnich N godzin (domyślnie 24)" },
+        limit: { type: "number" },
+      },
+    },
+  },
+  {
+    name: "get_company_summary",
+    description: "Podsumowanie firmy — liczba budynków, otwartych zleceń, SLA, faktur.",
+    input_schema: {
+      type: "object",
+      properties: {
+        company_id: { type: "string" },
+      },
+      required: ["company_id"],
+    },
+  },
+  {
     name: "propose_action",
-    description: "Zaproponuj akcję wymagającą potwierdzenia użytkownika. ZAWSZE używaj tego narzędzia gdy chcesz coś stworzyć, wysłać lub zmienić.",
+    description: "Zaproponuj akcję wymagającą potwierdzenia użytkownika. ZAWSZE używaj tego narzędzia gdy chcesz coś stworzyć, wysłać, przypisać, zmienić lub uruchomić automatyzację.",
     input_schema: {
       type: "object",
       properties: {
         type: {
           type: "string",
-          enum: ["create_task", "create_sla_ticket", "send_notification", "generate_protocol", "schedule_audit"],
+          enum: [
+            "create_task",
+            "create_sla_ticket",
+            "send_notification",
+            "generate_protocol",
+            "schedule_audit",
+            "bulk_create_tasks",
+            "bulk_reassign_tasks",
+            "reschedule_overdue_tasks",
+            "close_task",
+            "follow_up_sla",
+            "bulk_notify_clients",
+            "create_device_service_tasks",
+            "schedule_training",
+          ],
           description: "Typ akcji",
         },
-        label: { type: "string", description: "Krótki opis akcji dla użytkownika (np. 'Utwórz 3 zlecenia serwisowe')" },
+        label: { type: "string", description: "Krótki opis akcji dla użytkownika (np. 'Utwórz 5 zleceń serwisowych')" },
         description: { type: "string", description: "Szczegółowy opis co dokładnie zostanie zrobione" },
         confirmation_level: {
           type: "string",
           enum: ["soft", "hard"],
-          description: "soft = toast z cofnięciem, hard = modal z potwierdzeniem",
+          description: "soft = pojedyncza, łatwo cofalna; hard = masowa lub nieodwracalna (wymaga modala)",
         },
-        data: { type: "object", description: "Dane potrzebne do wykonania akcji" },
+        data: {
+          type: "object",
+          description: "Dane akcji. Dla bulk_* przekaż 'items' jako tablicę. Dla reschedule_overdue_tasks: { task_ids: string[], shift_days: number, note?: string }. Dla create_device_service_tasks: { device_ids: string[], deadline?: string, assignee_id?: string }. Dla follow_up_sla: { ticket_ids: string[] }.",
+        },
       },
       required: ["type", "label", "description", "confirmation_level", "data"],
     },
@@ -157,7 +289,8 @@ const TOOLS = [
 async function callClaude(
   supabase: ReturnType<typeof createClient>,
   messages: Array<{ role: string; content: string | unknown[] }>,
-  maxIter = 5,
+  ctx: PageContext,
+  maxIter = 6,
 ): Promise<{ reply: string; action?: ProposedAction }> {
   const apiKey = Deno.env.get("ANTHROPIC_API_KEY");
   if (!apiKey) throw new Error("ANTHROPIC_API_KEY is not configured");
@@ -218,6 +351,20 @@ async function callClaude(
             result = await getBuildingStatus(supabase, input.building_id);
           } else if (name === "get_overdue_items") {
             result = await getOverdueItems(supabase, input.building_id);
+          } else if (name === "get_my_tasks") {
+            result = await getMyTasks(supabase, ctx.userId, input.only_open ?? true);
+          } else if (name === "get_sla_tickets") {
+            result = await getSlaTickets(supabase, input);
+          } else if (name === "get_devices_due") {
+            result = await getDevicesDue(supabase, input);
+          } else if (name === "get_audits") {
+            result = await getAudits(supabase, input);
+          } else if (name === "get_employees_status") {
+            result = await getEmployeesStatus(supabase, input.expiring_within_days ?? 60);
+          } else if (name === "get_recent_activity") {
+            result = await getRecentActivity(supabase, input.hours_back ?? 24, input.limit ?? 20);
+          } else if (name === "get_company_summary") {
+            result = await getCompanySummary(supabase, input.company_id);
           } else if (name === "propose_action") {
             proposedAction = {
               type: input.type,
@@ -355,6 +502,103 @@ async function getOverdueItems(supabase: ReturnType<typeof createClient>, buildi
   };
 }
 
+async function getMyTasks(supabase: ReturnType<typeof createClient>, userId: string | undefined, onlyOpen: boolean) {
+  if (!userId) return { message: "Brak userId w kontekście — nie mogę odfiltrować zadań tego użytkownika.", hint: "Użyj get_overdue_items lub search_data." };
+  let q = supabase.from("tasks").select("id, task_code, title, status, priority, deadline, building_id").eq("assignee_id", userId).order("deadline", { ascending: true, nullsFirst: false }).limit(30);
+  if (onlyOpen) q = q.neq("status", "Zamknięte");
+  const { data, error } = await q;
+  if (error) return { error: error.message };
+  return { tasks: data ?? [], count: (data ?? []).length };
+}
+
+async function getSlaTickets(supabase: ReturnType<typeof createClient>, input: any) {
+  let q = supabase.from("sla_tickets").select("id, ticket_number, description, status, priority, type, created_at, building_id, assigned_to, sla_response_due, sla_resolution_due").order("created_at", { ascending: false }).limit(30);
+  if (input?.status) q = q.eq("status", input.status);
+  if (input?.priority) q = q.eq("priority", input.priority);
+  if (input?.building_id) q = q.eq("building_id", input.building_id);
+  if (input?.days_back) {
+    const since = new Date(Date.now() - input.days_back * 86400000).toISOString();
+    q = q.gte("created_at", since);
+  }
+  const { data, error } = await q;
+  if (error) return { error: error.message };
+  return { sla_tickets: data ?? [], count: (data ?? []).length };
+}
+
+async function getDevicesDue(supabase: ReturnType<typeof createClient>, input: any) {
+  const days = input?.within_days ?? 14;
+  const today = new Date().toISOString().split("T")[0];
+  const horizon = new Date(Date.now() + days * 86400000).toISOString().split("T")[0];
+  let q = supabase.from("devices").select("id, name, device_type, next_service_date, last_service_date, building_id, location_in_building, status").lte("next_service_date", horizon).order("next_service_date", { ascending: true }).limit(50);
+  if (input?.only_overdue) q = q.lt("next_service_date", today);
+  if (input?.building_id) q = q.eq("building_id", input.building_id);
+  const { data, error } = await q;
+  if (error) return { error: error.message };
+  const items = data ?? [];
+  return {
+    devices: items,
+    count: items.length,
+    overdue_count: items.filter((d: any) => d.next_service_date && d.next_service_date < today).length,
+  };
+}
+
+async function getAudits(supabase: ReturnType<typeof createClient>, input: any) {
+  let q = supabase.from("audits").select("id, type, status, performed_at, building_id, created_at").order("performed_at", { ascending: false, nullsFirst: false }).limit(20);
+  if (input?.status) q = q.eq("status", input.status);
+  if (input?.building_id) q = q.eq("building_id", input.building_id);
+  const { data, error } = await q;
+  if (error) return { error: error.message };
+  return { audits: data ?? [], count: (data ?? []).length };
+}
+
+async function getEmployeesStatus(supabase: ReturnType<typeof createClient>, expiringDays: number) {
+  const horizon = new Date(Date.now() + expiringDays * 86400000).toISOString().split("T")[0];
+  const [employees, certs, trainings] = await Promise.all([
+    supabase.from("employee_development_plans").select("id, first_name, last_name, position, employment_status").limit(50),
+    supabase.from("training_certificates").select("id, participant_name, training_title, valid_until").lte("valid_until", horizon).order("valid_until").limit(30),
+    supabase.from("building_trainings").select("id, title, scheduled_at, status, building_id").gte("scheduled_at", new Date().toISOString()).order("scheduled_at").limit(20),
+  ]);
+  return {
+    employees: employees.data ?? [],
+    expiring_certificates: certs.data ?? [],
+    upcoming_trainings: trainings.data ?? [],
+  };
+}
+
+async function getRecentActivity(supabase: ReturnType<typeof createClient>, hoursBack: number, limit: number) {
+  const since = new Date(Date.now() - hoursBack * 3600000).toISOString();
+  const [tasks, sla, audits, devices] = await Promise.all([
+    supabase.from("tasks").select("id, task_code, title, status, priority, created_at, updated_at").gte("updated_at", since).order("updated_at", { ascending: false }).limit(limit),
+    supabase.from("sla_tickets").select("id, ticket_number, status, priority, created_at").gte("created_at", since).order("created_at", { ascending: false }).limit(limit),
+    supabase.from("audits").select("id, status, performed_at, created_at").gte("created_at", since).order("created_at", { ascending: false }).limit(10),
+    supabase.from("devices").select("id, name, status, last_service_date").gte("last_service_date", since.split("T")[0]).order("last_service_date", { ascending: false }).limit(10),
+  ]);
+  return {
+    since,
+    recent_tasks: tasks.data ?? [],
+    recent_sla: sla.data ?? [],
+    recent_audits: audits.data ?? [],
+    recently_serviced_devices: devices.data ?? [],
+  };
+}
+
+async function getCompanySummary(supabase: ReturnType<typeof createClient>, companyId: string) {
+  const [company, buildings, tasks, sla] = await Promise.all([
+    supabase.from("companies").select("id, name, nip, contact_email, contact_phone").eq("id", companyId).maybeSingle(),
+    supabase.from("buildings").select("id, name, safety_status").eq("company_id", companyId).limit(50),
+    supabase.from("tasks").select("id, status, priority").eq("company_id", companyId).neq("status", "Zamknięte").limit(200),
+    supabase.from("sla_tickets").select("id, status, priority").eq("company_id", companyId).neq("status", "zamkniete").limit(100),
+  ]);
+  const t = tasks.data ?? [];
+  return {
+    company: company.data,
+    buildings: buildings.data ?? [],
+    open_tasks: t.length,
+    critical_tasks: t.filter((x: any) => x.priority === "krytyczny").length,
+    open_sla: (sla.data ?? []).length,
+  };
+}
+
 // ── Main handler ──────────────────────────────────────────────────────────────
 
 Deno.serve(async (req) => {
@@ -376,16 +620,35 @@ Deno.serve(async (req) => {
 
     const supabase = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
 
-    const contextNote = context?.path
-      ? `\n[Kontekst: użytkownik jest na stronie "${context.path}"${context.buildingId ? `, budynek ID: ${context.buildingId}` : ""}]`
-      : "";
+    // Resolve userId from JWT if not provided in context
+    let userId = context?.userId;
+    if (!userId) {
+      const authHeader = req.headers.get("Authorization");
+      if (authHeader?.startsWith("Bearer ")) {
+        try {
+          const token = authHeader.replace("Bearer ", "");
+          const { data } = await supabase.auth.getUser(token);
+          userId = data.user?.id;
+        } catch { /* ignore */ }
+      }
+    }
+    const ctx: PageContext = { ...context, userId };
+
+    const contextParts = [
+      context?.path ? `strona "${context.path}"` : null,
+      context?.buildingId ? `budynek ID ${context.buildingId}` : null,
+      context?.companyId ? `firma ID ${context.companyId}` : null,
+      userId ? `user ID ${userId}` : null,
+      context?.userRole ? `rola ${context.userRole}` : null,
+    ].filter(Boolean).join(", ");
+    const contextNote = contextParts ? `\n[Kontekst: ${contextParts}]` : "";
 
     const messages: Array<{ role: string; content: string }> = [
       ...history.slice(-6).map((h) => ({ role: h.role, content: h.content })),
       { role: "user", content: message + contextNote },
     ];
 
-    const result = await callClaude(supabase, messages);
+    const result = await callClaude(supabase, messages, ctx);
 
     return new Response(JSON.stringify(result), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
