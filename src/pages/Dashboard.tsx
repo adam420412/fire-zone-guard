@@ -74,6 +74,7 @@ export default function Dashboard() {
 
   return (
     <div className="space-y-6">
+      {!isEmpty && <NextStepWidget />}
       {isEmpty && (
         <div className="rounded-2xl border border-primary/40 bg-gradient-to-br from-primary/15 via-card to-card p-6 shadow-lg">
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
