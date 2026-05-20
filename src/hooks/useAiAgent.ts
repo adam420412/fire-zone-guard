@@ -256,6 +256,15 @@ function formatActionError(err: any): string {
   }
 }
 
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+function cleanUuid(v: unknown): string | null {
+  if (typeof v !== "string") return null;
+  return UUID_RE.test(v.trim()) ? v.trim() : null;
+}
+function cleanUuidList(arr: unknown): string[] {
+  if (!Array.isArray(arr)) return [];
+  return arr.map(cleanUuid).filter((x): x is string => !!x);
+}
 
 async function executeAction(action: ProposedAction) {
   const { type, data } = action;
