@@ -204,8 +204,9 @@ export function useAiAgent() {
         timestamp: new Date(),
       };
       setMessages((prev) => [...prev, confirmMsg]);
-    } catch (err) {
-      const errStr = err instanceof Error ? err.message : String(err);
+    } catch (err: any) {
+      const errStr = formatActionError(err);
+      console.error("[AI executeAction] failed:", err);
       if (logId) await logExecution(logId, false, errStr);
       const errMsg: ChatMessage = {
         id: crypto.randomUUID(),
