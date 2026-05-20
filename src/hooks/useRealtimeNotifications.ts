@@ -50,7 +50,7 @@ export function useRealtimeNotifications() {
 
   useEffect(() => {
     const channel = supabase
-      .channel("tasks-realtime")
+      .channel(`tasks-realtime-${crypto.randomUUID()}`)
       .on(
         "postgres_changes",
         { event: "INSERT", schema: "public", table: "tasks" },
