@@ -114,6 +114,7 @@ function ProtectedRoutes() {
             <Route path="/protocols" element={<ProtocolsPage />} />
             <Route path="/protocols/:id" element={<ProtocolDetailPage />} />
             <Route path="/certificates" element={<CertificatesPage />} />
+            <Route path="/workflow" element={<WorkflowGuidePage />} />
             <Route path="*" element={<Navigate to="/" replace />} />
           </>
         ) : (
