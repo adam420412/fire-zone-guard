@@ -246,21 +246,43 @@ export default function AiBotPanel() {
           <div ref={messagesEndRef} />
         </div>
 
-        {/* Suggestions */}
-        {messages.length <= 1 && (
-          <div className="border-t px-3 py-2 flex flex-wrap gap-1.5">
-            {suggestions.map((s) => (
+        {/* Quick automations — zawsze widoczne */}
+        <div className="border-t bg-muted/30">
+          <div className="flex items-center gap-1.5 px-3 pt-2 pb-1">
+            <Sparkles className="h-3 w-3 text-primary" />
+            <span className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+              Szybkie automatyzacje
+            </span>
+          </div>
+          <div className="px-3 pb-2 flex gap-1.5 overflow-x-auto">
+            {QUICK_AUTOMATIONS.map((a) => (
               <button
-                key={s}
-                onClick={() => sendMessage(s)}
+                key={a.id}
+                onClick={() => sendMessage(a.prompt)}
                 disabled={isLoading}
-                className="rounded-full border bg-background px-2.5 py-1 text-xs text-muted-foreground hover:bg-muted hover:text-foreground transition-colors disabled:opacity-50"
+                title={a.prompt}
+                className="shrink-0 inline-flex items-center gap-1 rounded-full border bg-background px-2.5 py-1 text-xs hover:bg-primary/10 hover:border-primary/40 hover:text-foreground transition-colors disabled:opacity-50"
               >
-                {s}
+                <span>{a.icon}</span>
+                <span className="font-medium">{a.label}</span>
               </button>
             ))}
           </div>
-        )}
+          {messages.length <= 1 && (
+            <div className="border-t px-3 py-2 flex flex-wrap gap-1.5">
+              {suggestions.map((s) => (
+                <button
+                  key={s}
+                  onClick={() => sendMessage(s)}
+                  disabled={isLoading}
+                  className="rounded-full border bg-background px-2.5 py-1 text-xs text-muted-foreground hover:bg-muted hover:text-foreground transition-colors disabled:opacity-50"
+                >
+                  {s}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
 
         {/* Input */}
         <div className="border-t p-3 flex gap-2">
