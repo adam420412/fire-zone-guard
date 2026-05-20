@@ -482,6 +482,103 @@ async function getOverdueItems(supabase: ReturnType<typeof createClient>, buildi
   };
 }
 
+async function getMyTasks(supabase: ReturnType<typeof createClient>, userId: string | undefined, onlyOpen: boolean) {
+  if (!userId) return { message: "Brak userId w kontekście — nie mogę odfiltrować zadań tego użytkownika.", hint: "Użyj get_overdue_items lub search_data." };
+  let q = supabase.from("tasks").select("id, task_code, title, status, priority, deadline, building_id").eq("assignee_id", userId).order("deadline", { ascending: true, nullsFirst: false }).limit(30);
+  if (onlyOpen) q = q.neq("status", "Zamknięte");
+  const { data, error } = await q;
+  if (error) return { error: error.message };
+  return { tasks: data ?? [], count: (data ?? []).length };
+}
+
+async function getSlaTickets(supabase: ReturnType<typeof createClient>, input: any) {
+  let q = supabase.from("sla_tickets").select("id, ticket_number, description, status, priority, type, created_at, building_id, assigned_to, sla_response_due, sla_resolution_due").order("created_at", { ascending: false }).limit(30);
+  if (input?.status) q = q.eq("status", input.status);
+  if (input?.priority) q = q.eq("priority", input.priority);
+  if (input?.building_id) q = q.eq("building_id", input.building_id);
+  if (input?.days_back) {
+    const since = new Date(Date.now() - input.days_back * 86400000).toISOString();
+    q = q.gte("created_at", since);
+  }
+  const { data, error } = await q;
+  if (error) return { error: error.message };
+  return { sla_tickets: data ?? [], count: (data ?? []).length };
+}
+
+async function getDevicesDue(supabase: ReturnType<typeof createClient>, input: any) {
+  const days = input?.within_days ?? 14;
+  const today = new Date().toISOString().split("T")[0];
+  const horizon = new Date(Date.now() + days * 86400000).toISOString().split("T")[0];
+  let q = supabase.from("devices").select("id, name, device_type, next_service_date, last_service_date, building_id, location_in_building, status").lte("next_service_date", horizon).order("next_service_date", { ascending: true }).limit(50);
+  if (input?.only_overdue) q = q.lt("next_service_date", today);
+  if (input?.building_id) q = q.eq("building_id", input.building_id);
+  const { data, error } = await q;
+  if (error) return { error: error.message };
+  const items = data ?? [];
+  return {
+    devices: items,
+    count: items.length,
+    overdue_count: items.filter((d: any) => d.next_service_date && d.next_service_date < today).length,
+  };
+}
+
+async function getAudits(supabase: ReturnType<typeof createClient>, input: any) {
+  let q = supabase.from("audits").select("id, type, status, performed_at, building_id, created_at").order("performed_at", { ascending: false, nullsFirst: false }).limit(20);
+  if (input?.status) q = q.eq("status", input.status);
+  if (input?.building_id) q = q.eq("building_id", input.building_id);
+  const { data, error } = await q;
+  if (error) return { error: error.message };
+  return { audits: data ?? [], count: (data ?? []).length };
+}
+
+async function getEmployeesStatus(supabase: ReturnType<typeof createClient>, expiringDays: number) {
+  const horizon = new Date(Date.now() + expiringDays * 86400000).toISOString().split("T")[0];
+  const [employees, certs, trainings] = await Promise.all([
+    supabase.from("employee_development_plans").select("id, first_name, last_name, position, employment_status").limit(50),
+    supabase.from("training_certificates").select("id, participant_name, training_title, valid_until").lte("valid_until", horizon).order("valid_until").limit(30),
+    supabase.from("building_trainings").select("id, title, scheduled_at, status, building_id").gte("scheduled_at", new Date().toISOString()).order("scheduled_at").limit(20),
+  ]);
+  return {
+    employees: employees.data ?? [],
+    expiring_certificates: certs.data ?? [],
+    upcoming_trainings: trainings.data ?? [],
+  };
+}
+
+async function getRecentActivity(supabase: ReturnType<typeof createClient>, hoursBack: number, limit: number) {
+  const since = new Date(Date.now() - hoursBack * 3600000).toISOString();
+  const [tasks, sla, audits, devices] = await Promise.all([
+    supabase.from("tasks").select("id, task_code, title, status, priority, created_at, updated_at").gte("updated_at", since).order("updated_at", { ascending: false }).limit(limit),
+    supabase.from("sla_tickets").select("id, ticket_number, status, priority, created_at").gte("created_at", since).order("created_at", { ascending: false }).limit(limit),
+    supabase.from("audits").select("id, status, performed_at, created_at").gte("created_at", since).order("created_at", { ascending: false }).limit(10),
+    supabase.from("devices").select("id, name, status, last_service_date").gte("last_service_date", since.split("T")[0]).order("last_service_date", { ascending: false }).limit(10),
+  ]);
+  return {
+    since,
+    recent_tasks: tasks.data ?? [],
+    recent_sla: sla.data ?? [],
+    recent_audits: audits.data ?? [],
+    recently_serviced_devices: devices.data ?? [],
+  };
+}
+
+async function getCompanySummary(supabase: ReturnType<typeof createClient>, companyId: string) {
+  const [company, buildings, tasks, sla] = await Promise.all([
+    supabase.from("companies").select("id, name, nip, contact_email, contact_phone").eq("id", companyId).maybeSingle(),
+    supabase.from("buildings").select("id, name, safety_status").eq("company_id", companyId).limit(50),
+    supabase.from("tasks").select("id, status, priority").eq("company_id", companyId).neq("status", "Zamknięte").limit(200),
+    supabase.from("sla_tickets").select("id, status, priority").eq("company_id", companyId).neq("status", "zamkniete").limit(100),
+  ]);
+  const t = tasks.data ?? [];
+  return {
+    company: company.data,
+    buildings: buildings.data ?? [],
+    open_tasks: t.length,
+    critical_tasks: t.filter((x: any) => x.priority === "krytyczny").length,
+    open_sla: (sla.data ?? []).length,
+  };
+}
+
 // ── Main handler ──────────────────────────────────────────────────────────────
 
 Deno.serve(async (req) => {
@@ -503,16 +600,35 @@ Deno.serve(async (req) => {
 
     const supabase = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
 
-    const contextNote = context?.path
-      ? `\n[Kontekst: użytkownik jest na stronie "${context.path}"${context.buildingId ? `, budynek ID: ${context.buildingId}` : ""}]`
-      : "";
+    // Resolve userId from JWT if not provided in context
+    let userId = context?.userId;
+    if (!userId) {
+      const authHeader = req.headers.get("Authorization");
+      if (authHeader?.startsWith("Bearer ")) {
+        try {
+          const token = authHeader.replace("Bearer ", "");
+          const { data } = await supabase.auth.getUser(token);
+          userId = data.user?.id;
+        } catch { /* ignore */ }
+      }
+    }
+    const ctx: PageContext = { ...context, userId };
+
+    const contextParts = [
+      context?.path ? `strona "${context.path}"` : null,
+      context?.buildingId ? `budynek ID ${context.buildingId}` : null,
+      context?.companyId ? `firma ID ${context.companyId}` : null,
+      userId ? `user ID ${userId}` : null,
+      context?.userRole ? `rola ${context.userRole}` : null,
+    ].filter(Boolean).join(", ");
+    const contextNote = contextParts ? `\n[Kontekst: ${contextParts}]` : "";
 
     const messages: Array<{ role: string; content: string }> = [
       ...history.slice(-6).map((h) => ({ role: h.role, content: h.content })),
       { role: "user", content: message + contextNote },
     ];
 
-    const result = await callClaude(supabase, messages);
+    const result = await callClaude(supabase, messages, ctx);
 
     return new Response(JSON.stringify(result), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
