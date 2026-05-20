@@ -331,6 +331,20 @@ async function callClaude(
             result = await getBuildingStatus(supabase, input.building_id);
           } else if (name === "get_overdue_items") {
             result = await getOverdueItems(supabase, input.building_id);
+          } else if (name === "get_my_tasks") {
+            result = await getMyTasks(supabase, ctx.userId, input.only_open ?? true);
+          } else if (name === "get_sla_tickets") {
+            result = await getSlaTickets(supabase, input);
+          } else if (name === "get_devices_due") {
+            result = await getDevicesDue(supabase, input);
+          } else if (name === "get_audits") {
+            result = await getAudits(supabase, input);
+          } else if (name === "get_employees_status") {
+            result = await getEmployeesStatus(supabase, input.expiring_within_days ?? 60);
+          } else if (name === "get_recent_activity") {
+            result = await getRecentActivity(supabase, input.hours_back ?? 24, input.limit ?? 20);
+          } else if (name === "get_company_summary") {
+            result = await getCompanySummary(supabase, input.company_id);
           } else if (name === "propose_action") {
             proposedAction = {
               type: input.type,
