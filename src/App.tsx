@@ -168,7 +168,9 @@ const App = () => (
         <Sonner />
         <BrowserRouter>
           <AuthProvider>
-            <ProtectedRoutes />
+          <ContextPanelProvider>
+              <ProtectedRoutes />
+            </ContextPanelProvider>
           </AuthProvider>
         </BrowserRouter>
       </TooltipProvider>
