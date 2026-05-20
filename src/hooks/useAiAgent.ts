@@ -322,7 +322,7 @@ async function executeAction(action: ProposedAction) {
     const rows = items.map((it) => ({
       title: it.title,
       description: it.description ?? null,
-      priority: (it.priority || "średni") as any,
+      priority: mapPriority(it.priority),
       status: "Nowe",
       building_id: cleanUuid(it.building_id),
       deadline: it.deadline ?? null,
