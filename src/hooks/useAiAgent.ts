@@ -9,6 +9,8 @@ export interface ChatMessage {
   timestamp: Date;
   action?: ProposedAction;
   actionState?: "pending" | "approved" | "rejected";
+  /** ID wpisu w ai_action_log (jeśli akcja została zalogowana). */
+  logId?: string;
 }
 
 export type ActionType =
@@ -34,13 +36,76 @@ export interface ProposedAction {
   data: Record<string, unknown>;
 }
 
+// ─── Audit logging helpers ───────────────────────────────────────────────────
+
+async function logProposal(params: {
+  action: ProposedAction;
+  userId: string;
+  companyId: string | null;
+  context: Record<string, unknown>;
+  messageId: string;
+  sourcePage: string;
+}): Promise<string | null> {
+  const { data, error } = await supabase
+    .from("ai_action_log")
+    .insert({
+      user_id: params.userId,
+      company_id: params.companyId,
+      action_type: params.action.type,
+      action_label: params.action.label,
+      action_description: params.action.description,
+      confirmation_level: params.action.confirmationLevel,
+      payload: params.action.data as any,
+      context: params.context as any,
+      status: "pending",
+      message_id: params.messageId,
+      source_page: params.sourcePage,
+    } as any)
+    .select("id")
+    .single();
+  if (error) {
+    console.warn("[ai_action_log] failed to log proposal:", error.message);
+    return null;
+  }
+  return data?.id ?? null;
+}
+
+async function logDecision(logId: string, decision: "approved" | "rejected", note?: string) {
+  const { data: sessionData } = await supabase.auth.getSession();
+  const decidedBy = sessionData.session?.user?.id ?? null;
+  const { error } = await supabase
+    .from("ai_action_log")
+    .update({
+      status: decision,
+      decided_at: new Date().toISOString(),
+      decided_by: decidedBy,
+      decision_note: note ?? null,
+    } as any)
+    .eq("id", logId);
+  if (error) console.warn("[ai_action_log] failed to log decision:", error.message);
+}
+
+async function logExecution(logId: string, ok: boolean, error?: string) {
+  const { error: updErr } = await supabase
+    .from("ai_action_log")
+    .update({
+      status: ok ? "executed" : "failed",
+      executed_at: new Date().toISOString(),
+      execution_error: ok ? null : (error ?? "unknown error"),
+    } as any)
+    .eq("id", logId);
+  if (updErr) console.warn("[ai_action_log] failed to log execution:", updErr.message);
+}
+
+// ─── Hook ────────────────────────────────────────────────────────────────────
+
 export function useAiAgent() {
   const location = useLocation();
   const [messages, setMessages] = useState<ChatMessage[]>([
     {
       id: "welcome",
       role: "assistant",
-      content: "Cześć! Jestem asystentem Fire Zone. Mogę sprawdzić stan systemu, znaleźć dane lub zaproponować akcje do zatwierdzenia. Jak mogę pomóc?",
+      content: "Cześć! Jestem asystentem Fire Zone. Mogę sprawdzić stan systemu, znaleźć dane lub zaproponować akcje do zatwierdzenia. Każda akcja jest logowana w dzienniku aktywności AI.",
       timestamp: new Date(),
     },
   ]);
@@ -65,27 +130,48 @@ export function useAiAgent() {
       const { data: sessionData } = await supabase.auth.getSession();
       const userId = sessionData.session?.user?.id;
 
+      // Pobierz company_id użytkownika (do audytu)
+      let companyId: string | null = null;
+      if (userId) {
+        const { data: prof } = await supabase
+          .from("profiles").select("company_id").eq("user_id", userId).maybeSingle();
+        companyId = (prof as any)?.company_id ?? null;
+      }
+
+      const context = {
+        path: location.pathname,
+        buildingId: extractBuildingId(location.pathname),
+        userId,
+      };
+
       const { data, error } = await supabase.functions.invoke("ai-agent", {
-        body: {
-          message: text,
-          context: {
-            path: location.pathname,
-            buildingId: extractBuildingId(location.pathname),
-            userId,
-          },
-          history,
-        },
+        body: { message: text, context, history },
       });
 
       if (error) throw error;
 
+      const assistantId = crypto.randomUUID();
+      let logId: string | null = null;
+
+      if (data.action && userId) {
+        logId = await logProposal({
+          action: data.action,
+          userId,
+          companyId,
+          context,
+          messageId: assistantId,
+          sourcePage: location.pathname,
+        });
+      }
+
       const assistantMsg: ChatMessage = {
-        id: crypto.randomUUID(),
+        id: assistantId,
         role: "assistant",
         content: data.reply || "Przepraszam, nie mogę teraz odpowiedzieć.",
         timestamp: new Date(),
         action: data.action,
         actionState: data.action ? "pending" : undefined,
+        logId: logId ?? undefined,
       };
       setMessages((prev) => [...prev, assistantMsg]);
     } catch (err) {
@@ -102,31 +188,40 @@ export function useAiAgent() {
   }, [messages, location.pathname]);
 
   const approveAction = useCallback(async (messageId: string, action: ProposedAction) => {
+    const msg = messages.find((m) => m.id === messageId);
+    const logId = msg?.logId;
+
     setMessages((prev) => prev.map((m) => m.id === messageId ? { ...m, actionState: "approved" } : m));
+    if (logId) await logDecision(logId, "approved");
 
     try {
       await executeAction(action);
+      if (logId) await logExecution(logId, true);
       const confirmMsg: ChatMessage = {
         id: crypto.randomUUID(),
         role: "assistant",
-        content: `✅ Gotowe! ${action.label} zostało wykonane pomyślnie.`,
+        content: `✅ Gotowe! ${action.label} zostało wykonane. Wpis zapisany w dzienniku AI.`,
         timestamp: new Date(),
       };
       setMessages((prev) => [...prev, confirmMsg]);
     } catch (err) {
+      const errStr = err instanceof Error ? err.message : String(err);
+      if (logId) await logExecution(logId, false, errStr);
       const errMsg: ChatMessage = {
         id: crypto.randomUUID(),
         role: "assistant",
-        content: `❌ Nie udało się wykonać akcji: ${String(err)}`,
+        content: `❌ Nie udało się wykonać akcji: ${errStr}`,
         timestamp: new Date(),
       };
       setMessages((prev) => [...prev, errMsg]);
     }
-  }, []);
+  }, [messages]);
 
-  const rejectAction = useCallback((messageId: string) => {
+  const rejectAction = useCallback(async (messageId: string, note?: string) => {
+    const msg = messages.find((m) => m.id === messageId);
     setMessages((prev) => prev.map((m) => m.id === messageId ? { ...m, actionState: "rejected" } : m));
-  }, []);
+    if (msg?.logId) await logDecision(msg.logId, "rejected", note);
+  }, [messages]);
 
   const clearHistory = useCallback(() => {
     setMessages([{
@@ -282,7 +377,6 @@ async function executeAction(action: ProposedAction) {
     } as any);
     if (error) throw error;
   } else if (type === "generate_protocol") {
-    // Trigger existing report generator
     const { error } = await supabase.functions.invoke("generate-report", { body: data });
     if (error) throw error;
   }
@@ -298,7 +392,6 @@ export const SUGGESTIONS_BY_PAGE: Record<string, string[]> = {
   "/finance": ["Które faktury są przeterminowane?", "Podsumowanie finansowe miesiąca", "Faktury do wystawienia"],
 };
 
-// Codzienne automatyzacje — szybkie skróty zawsze widoczne w panelu (dla każdego użytkownika)
 export interface QuickAutomation {
   id: string;
   icon: string;
@@ -317,4 +410,3 @@ export const QUICK_AUTOMATIONS: QuickAutomation[] = [
   { id: "devices",     icon: "🔧", label: "Przeglądy",           prompt: "Które urządzenia mają przeterminowany lub zbliżający się przegląd? Zaproponuj plan serwisu." },
   { id: "buildings",   icon: "🏢", label: "Stan obiektów",       prompt: "Pokaż status bezpieczeństwa wszystkich budynków i wskaż te wymagające interwencji." },
 ];
-
