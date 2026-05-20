@@ -123,6 +123,7 @@ const servicemanNavGroups: NavGroup[] = [
     label: "Moje zlecenia",
     items: [
       { icon: HardHat, label: "Mój panel", path: "/" },
+      { icon: Compass, label: "Przewodnik", path: "/workflow" },
       { icon: KanbanSquare, label: "Zlecenia", path: "/kanban", badgeKey: "kanban" },
       { icon: Map, label: "Mapa", path: "/map" },
       { icon: ListChecks, label: "Checklisty", path: "/checklists" },
