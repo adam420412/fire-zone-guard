@@ -181,6 +181,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   
   const { unreadCount, markAllRead } = useRealtimeNotifications();
   const { data: badges } = useNavBadges();
+  const { isOpen: contextOpen } = useContextPanel();
 
   // Close mobile menu on route change
   useEffect(() => {
