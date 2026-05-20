@@ -130,18 +130,28 @@ export function useAiAgent() {
       const { data: sessionData } = await supabase.auth.getSession();
       const userId = sessionData.session?.user?.id;
 
-      // Pobierz company_id użytkownika (do audytu)
+      // Pobierz kontekst użytkownika: profile_id/company_id/rola są potrzebne AI,
+      // bo zadania i powiadomienia wskazują na profiles.id, nie auth.users.id.
       let companyId: string | null = null;
+      let profileId: string | null = null;
+      let userRole: string | null = null;
       if (userId) {
-        const { data: prof } = await supabase
-          .from("profiles").select("company_id").eq("user_id", userId).maybeSingle();
+        const [{ data: prof }, { data: roleRow }] = await Promise.all([
+          supabase.from("profiles").select("id, company_id").eq("user_id", userId).maybeSingle(),
+          supabase.from("user_roles").select("role").eq("user_id", userId).order("role").limit(1).maybeSingle(),
+        ]);
+        profileId = (prof as any)?.id ?? null;
         companyId = (prof as any)?.company_id ?? null;
+        userRole = (roleRow as any)?.role ?? null;
       }
 
       const context = {
         path: location.pathname,
         buildingId: extractBuildingId(location.pathname),
         userId,
+        profileId,
+        companyId,
+        userRole,
       };
 
       const { data, error } = await supabase.functions.invoke("ai-agent", {
