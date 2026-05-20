@@ -471,7 +471,7 @@ async function searchData(supabase: ReturnType<typeof createClient>, query: stri
 async function getBuildingStatus(supabase: ReturnType<typeof createClient>, buildingId?: string) {
   if (buildingId) {
     const [building, tasks, audits, devices] = await Promise.all([
-      supabase.from("buildings").select("id, name, address, safety_status").eq("id", buildingId).maybeSingle(),
+      supabase.from("buildings").select("id, name, address, company_id").eq("id", buildingId).maybeSingle(),
       supabase.from("tasks").select("id, title, status, priority").eq("building_id", buildingId).neq("status", "Zamknięte").limit(10),
       supabase.from("audits").select("id, status, performed_at").eq("building_id", buildingId).order("performed_at", { ascending: false }).limit(3),
       supabase.from("devices").select("id, name, device_type_id, next_service_date").eq("building_id", buildingId).limit(20),
@@ -481,7 +481,7 @@ async function getBuildingStatus(supabase: ReturnType<typeof createClient>, buil
     return { building: building.data, open_tasks: tasks.data, recent_audits: audits.data, overdue_devices: overdueDevices };
   }
 
-  const { data } = await supabase.from("buildings").select("id, name, safety_status").order("name").limit(20);
+  const { data } = await supabase.from("buildings").select("id, name, address, company_id").order("name").limit(20);
   return { buildings: data };
 }
 
