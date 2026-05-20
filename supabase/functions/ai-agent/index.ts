@@ -147,24 +147,119 @@ const TOOLS = [
     },
   },
   {
+    name: "get_my_tasks",
+    description: "Pobierz zadania przypisane do bieżącego zalogowanego użytkownika (sortowane po deadline i priorytecie).",
+    input_schema: {
+      type: "object",
+      properties: {
+        only_open: { type: "boolean", description: "Tylko otwarte (domyślnie true)" },
+      },
+    },
+  },
+  {
+    name: "get_sla_tickets",
+    description: "Pobierz zgłoszenia SLA — opcjonalnie filtruj po statusie/priorytecie/budynku.",
+    input_schema: {
+      type: "object",
+      properties: {
+        status: { type: "string", description: "np. zgloszenie, telefon, wyjazd, na_miejscu, naprawiono, zamkniete" },
+        priority: { type: "string", description: "critical | high | normal | low" },
+        building_id: { type: "string" },
+        days_back: { type: "number", description: "Tylko z ostatnich N dni" },
+      },
+    },
+  },
+  {
+    name: "get_devices_due",
+    description: "Urządzenia z przeterminowanym lub zbliżającym się przeglądem (do N dni).",
+    input_schema: {
+      type: "object",
+      properties: {
+        within_days: { type: "number", description: "Horyzont w dniach (np. 30); domyślnie 14" },
+        building_id: { type: "string" },
+        only_overdue: { type: "boolean" },
+      },
+    },
+  },
+  {
+    name: "get_audits",
+    description: "Pobierz audyty — opcjonalnie filtruj po statusie i budynku.",
+    input_schema: {
+      type: "object",
+      properties: {
+        status: { type: "string", description: "zaplanowany | w_trakcie | zakonczony" },
+        building_id: { type: "string" },
+      },
+    },
+  },
+  {
+    name: "get_employees_status",
+    description: "Lista pracowników z aktywnymi przypisaniami, wygasającymi certyfikatami i nadchodzącymi szkoleniami.",
+    input_schema: {
+      type: "object",
+      properties: {
+        expiring_within_days: { type: "number", description: "Pokaż certyfikaty wygasające w N dni (domyślnie 60)" },
+      },
+    },
+  },
+  {
+    name: "get_recent_activity",
+    description: "Najnowsze zdarzenia w systemie — utworzone/zmienione zlecenia, SLA, audyty, urządzenia (do podglądu kontekstu).",
+    input_schema: {
+      type: "object",
+      properties: {
+        hours_back: { type: "number", description: "Z ostatnich N godzin (domyślnie 24)" },
+        limit: { type: "number" },
+      },
+    },
+  },
+  {
+    name: "get_company_summary",
+    description: "Podsumowanie firmy — liczba budynków, otwartych zleceń, SLA, faktur.",
+    input_schema: {
+      type: "object",
+      properties: {
+        company_id: { type: "string" },
+      },
+      required: ["company_id"],
+    },
+  },
+  {
     name: "propose_action",
-    description: "Zaproponuj akcję wymagającą potwierdzenia użytkownika. ZAWSZE używaj tego narzędzia gdy chcesz coś stworzyć, wysłać lub zmienić.",
+    description: "Zaproponuj akcję wymagającą potwierdzenia użytkownika. ZAWSZE używaj tego narzędzia gdy chcesz coś stworzyć, wysłać, przypisać, zmienić lub uruchomić automatyzację.",
     input_schema: {
       type: "object",
       properties: {
         type: {
           type: "string",
-          enum: ["create_task", "create_sla_ticket", "send_notification", "generate_protocol", "schedule_audit"],
+          enum: [
+            "create_task",
+            "create_sla_ticket",
+            "send_notification",
+            "generate_protocol",
+            "schedule_audit",
+            "bulk_create_tasks",
+            "bulk_reassign_tasks",
+            "reschedule_overdue_tasks",
+            "close_task",
+            "follow_up_sla",
+            "bulk_notify_clients",
+            "create_device_service_tasks",
+            "schedule_training",
+          ],
           description: "Typ akcji",
         },
-        label: { type: "string", description: "Krótki opis akcji dla użytkownika (np. 'Utwórz 3 zlecenia serwisowe')" },
+        label: { type: "string", description: "Krótki opis akcji dla użytkownika (np. 'Utwórz 5 zleceń serwisowych')" },
         description: { type: "string", description: "Szczegółowy opis co dokładnie zostanie zrobione" },
         confirmation_level: {
           type: "string",
           enum: ["soft", "hard"],
-          description: "soft = toast z cofnięciem, hard = modal z potwierdzeniem",
+          description: "soft = pojedyncza, łatwo cofalna; hard = masowa lub nieodwracalna (wymaga modala)",
         },
-        data: { type: "object", description: "Dane potrzebne do wykonania akcji" },
+        data: {
+          type: "object",
+          description: "Dane akcji. Dla bulk_* przekaż 'items' jako tablicę. Dla reschedule_overdue_tasks: { task_ids: string[], shift_days: number, note?: string }. Dla create_device_service_tasks: { device_ids: string[], deadline?: string, assignee_id?: string }. Dla follow_up_sla: { ticket_ids: string[] }.",
+        },
       },
       required: ["type", "label", "description", "confirmation_level", "data"],
     },
