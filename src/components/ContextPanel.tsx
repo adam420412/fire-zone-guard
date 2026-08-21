@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import {
   X, Building2, Briefcase, MapPin, ClipboardList, ShieldCheck, AlertTriangle,
@@ -13,6 +13,7 @@ import { useBuildings, useCompaniesWithStats, useTasks, useAudits } from "@/hook
 import { useBuildingDevices } from "@/hooks/useBuildingData";
 import { useSlaTickets } from "@/hooks/useSlaTickets";
 import { safetyStatusConfig, type SafetyStatus } from "@/lib/constants";
+import CreateTaskDialog from "@/components/CreateTaskDialog";
 
 const OPEN_TASK_STATUSES = new Set(["Nowe", "W trakcie", "W realizacji", "Oczekuje"]);
 const OPEN_SLA_STATUSES = new Set(["nowe", "przyjete", "w_realizacji", "przyjęte"]);
@@ -60,6 +61,7 @@ function BuildingContent({ buildingId, onClose }: { buildingId: string; onClose:
   const { data: tasks } = useTasks();
   const { data: audits } = useAudits();
   const { data: devices } = useBuildingDevices(buildingId);
+  const [createTaskOpen, setCreateTaskOpen] = useState(false);
 
   const building: any = buildings?.find((b: any) => b.id === buildingId);
   const buildingTasks = useMemo(
@@ -110,7 +112,7 @@ function BuildingContent({ buildingId, onClose }: { buildingId: string; onClose:
           <Section
             title={`Otwarte zlecenia (${openTasks.length})`}
             action={openTasks.length > 0 && (
-              <Link to="/kanban" className="text-[11px] text-primary hover:underline">Zobacz →</Link>
+              <Link to={`/kanban?building=${buildingId}`} className="text-[11px] text-primary hover:underline">Zobacz →</Link>
             )}
           >
             {openTasks.length === 0 ? (
@@ -120,7 +122,7 @@ function BuildingContent({ buildingId, onClose }: { buildingId: string; onClose:
                 {openTasks.slice(0, 3).map((t: any) => (
                   <Link
                     key={t.id}
-                    to="/kanban"
+                    to={`/kanban?building=${buildingId}`}
                     className="block rounded-md border border-border bg-card p-2 hover:bg-secondary/50 transition-colors"
                   >
                     <div className="flex items-center gap-2 min-w-0">
@@ -192,8 +194,19 @@ function BuildingContent({ buildingId, onClose }: { buildingId: string; onClose:
       </ScrollArea>
 
       {/* Akcje */}
-      <div className="border-t border-border p-3 grid grid-cols-3 gap-2">
-        <Button size="sm" variant="outline" className="text-xs" onClick={() => { navigate(`/kanban?building=${buildingId}`); onClose(); }}>
+      <div className="border-t border-border p-3 space-y-2">
+        {/* Wejscie do karty obiektu - stad prowadzi droga do ewidencji urzadzen PPOZ. */}
+        <Button
+          size="sm"
+          className="w-full text-xs fire-gradient"
+          onClick={() => { navigate(`/buildings/${buildingId}`); onClose(); }}
+        >
+          <ExternalLink className="h-3.5 w-3.5 mr-1.5" /> Otwórz kartę obiektu
+        </Button>
+      <div className="grid grid-cols-3 gap-2">
+        {/* Otwiera formularz nowego zlecenia z wybranym obiektem.
+            Wczesniej ten przycisk - mimo ikony plusa - tylko przerzucal na Kanban. */}
+        <Button size="sm" variant="outline" className="text-xs" onClick={() => setCreateTaskOpen(true)}>
           <Plus className="h-3.5 w-3.5 mr-1" /> Zlecenie
         </Button>
         <Button size="sm" variant="outline" className="text-xs" onClick={() => { navigate(`/audits?building=${buildingId}`); onClose(); }}>
@@ -203,6 +216,13 @@ function BuildingContent({ buildingId, onClose }: { buildingId: string; onClose:
           <MapIcon className="h-3.5 w-3.5 mr-1" /> Mapa
         </Button>
       </div>
+      </div>
+
+      <CreateTaskDialog
+        open={createTaskOpen}
+        onOpenChange={setCreateTaskOpen}
+        defaultValues={{ buildingId }}
+      />
     </>
   );
 }
