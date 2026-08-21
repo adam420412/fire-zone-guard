@@ -253,7 +253,8 @@ export function useCreateChecklistTemplate() {
         const { data: prof } = await supabase
           .from("profiles")
           .select("company_id")
-          .eq("id", userId)
+          // profiles.id != auth.uid() - powiazanie idzie przez profiles.user_id
+          .eq("user_id", userId)
           .maybeSingle();
         companyId = (prof as any)?.company_id ?? null;
       }

@@ -12,6 +12,7 @@ import {
 } from "@/hooks/useSlaTickets";
 import { useAnalyzeSlaPhoto } from "@/hooks/useAnalyzeSlaPhoto";
 import { cn } from "@/lib/utils";
+import { asUuidOrNull } from "@/lib/uuid";
 
 interface BuildingOption {
   id: string;
@@ -40,6 +41,9 @@ export default function PublicSlaIntakePage() {
   const [buildingsLoading, setBuildingsLoading] = useState(true);
 
   const [buildingId, setBuildingId] = useState<string>("");
+  // Gdy anonim nie widzi listy obiektow (RLS), formularz pokazuje wolny input.
+  // Wpisany tekst NIE moze trafic do building_id - to kolumna UUID z FK.
+  const [buildingText, setBuildingText] = useState<string>("");
   const [type, setType] = useState<SlaTicketType>("usterka");
   const [priority, setPriority] = useState<SlaTicketPriority>("normal");
   const [deviceType, setDeviceType] = useState<string>("");
@@ -123,12 +127,17 @@ export default function PublicSlaIntakePage() {
       }
       setUploading(false);
 
+      const manualBuilding = buildingText.trim();
+      const fullDescription = manualBuilding
+        ? `Obiekt (wpisany recznie): ${manualBuilding}\n\n${description.trim()}`
+        : description.trim();
+
       const created = await createTicket.mutateAsync({
-        building_id: buildingId || null,
+        building_id: asUuidOrNull(buildingId),
         type,
         priority,
         device_type: deviceType || null,
-        description: description.trim(),
+        description: fullDescription,
         reporter_name: reporterName.trim(),
         reporter_email: reporterEmail.trim(),
         reporter_phone: reporterPhone.trim() || undefined,
@@ -285,7 +294,8 @@ export default function PublicSlaIntakePage() {
               <input
                 type="text"
                 placeholder="Nazwa lub adres obiektu"
-                onChange={(e) => setBuildingId(e.target.value)}
+                value={buildingText}
+                onChange={(e) => setBuildingText(e.target.value)}
                 className="w-full rounded-md border border-border bg-card px-3 py-2 text-sm text-card-foreground focus:border-primary focus:outline-none"
               />
             )}

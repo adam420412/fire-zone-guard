@@ -36,6 +36,64 @@ Deno.serve(async (req) => {
     const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const admin = createClient(supabaseUrl, serviceKey);
 
+    // ------------------------------------------------------------------
+    // BRAMKA 1: kill-switch.
+    // Funkcja resetuje hasla kont super-admina i zwraca je w odpowiedzi.
+    // Domyslnie jest WYLACZONA. Zeby jej uzyc, ustaw w Supabase
+    // (Edge Functions -> Secrets) ALLOW_ADMIN_PROVISIONING=true, odpal,
+    // i NATYCHMIAST skasuj sekret.
+    // ------------------------------------------------------------------
+    if (Deno.env.get("ALLOW_ADMIN_PROVISIONING") !== "true") {
+      return new Response(
+        JSON.stringify({ error: "Funkcja wylaczona (ALLOW_ADMIN_PROVISIONING != true)." }),
+        { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+      );
+    }
+
+    // ------------------------------------------------------------------
+    // BRAMKA 2: wolajacy musi byc zalogowanym super_adminem.
+    // verify_jwt Supabase przepuszcza SAM klucz anon (to tez jest JWT),
+    // a klucz anon jest publiczny. Bez tej weryfikacji funkcje mogl
+    // wywolac ktokolwiek i przejac wszystkie konta administracyjne.
+    // ------------------------------------------------------------------
+    const authHeader = req.headers.get("Authorization") ?? "";
+    const token = authHeader.replace(/^Bearer\s+/i, "").trim();
+    if (!token) {
+      return new Response(
+        JSON.stringify({ error: "Brak naglowka Authorization." }),
+        { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+      );
+    }
+
+    const { data: callerData, error: callerErr } = await admin.auth.getUser(token);
+    const caller = callerData?.user;
+    if (callerErr || !caller) {
+      return new Response(
+        JSON.stringify({ error: "Nieprawidlowy token uzytkownika." }),
+        { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+      );
+    }
+
+    const { data: callerRoles, error: callerRoleErr } = await admin
+      .from("user_roles")
+      .select("role")
+      .eq("user_id", caller.id);
+
+    if (callerRoleErr) {
+      return new Response(
+        JSON.stringify({ error: `Nie udalo sie zweryfikowac roli: ${callerRoleErr.message}` }),
+        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+      );
+    }
+
+    const isSuperAdmin = (callerRoles ?? []).some((r: { role: string }) => r.role === "super_admin");
+    if (!isSuperAdmin) {
+      return new Response(
+        JSON.stringify({ error: "Wymagana rola super_admin." }),
+        { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+      );
+    }
+
     const results: Array<{
       email: string;
       password: string;

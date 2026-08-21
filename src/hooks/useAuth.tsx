@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useState, ReactNode } from "react";
+import { createContext, useContext, useEffect, useRef, useState, ReactNode } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import type { User } from "@supabase/supabase-js";
 
@@ -14,53 +14,70 @@ interface AuthContext {
 
 const AuthCtx = createContext<AuthContext | null>(null);
 
+/**
+ * user_roles ma UNIQUE(user_id, role) - a NIE UNIQUE(user_id).
+ * Jeden uzytkownik moze wiec miec kilka rol naraz. Wybieramy najsilniejsza.
+ * Nizszy indeks = wyzsze uprawnienia.
+ */
+export const ROLE_PRIORITY = ["super_admin", "admin", "employee", "client"] as const;
+
+export function pickPrimaryRole(rows: Array<{ role: string | null }> | null | undefined): string | null {
+  if (!rows || rows.length === 0) return null;
+  const roles = rows.map((r) => r?.role).filter(Boolean) as string[];
+  if (roles.length === 0) return null;
+  for (const candidate of ROLE_PRIORITY) {
+    if (roles.includes(candidate)) return candidate;
+  }
+  // Rola spoza znanej listy (np. dodana pozniej w enumie) - bierzemy pierwsza.
+  return roles[0];
+}
+
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const [role, setRole] = useState<string | null>(null);
   const [profileId, setProfileId] = useState<string | null>(null);
+  const mountedRef = useRef(true);
 
   const fetchRole = async (userId: string) => {
     try {
-      // 1. Fetch Role
-      const { data: roleData, error: roleError } = await supabase
+      // 1. Role. Bez .maybeSingle() - przy dwoch rolach rzucaloby PGRST116
+      //    i uzytkownik zostawal z role === null (czyli bez dostepu do niczego).
+      const { data: roleRows, error: roleError } = await supabase
         .from("user_roles")
         .select("role")
-        .eq("user_id", userId)
-        .maybeSingle();
-      
-      if (roleError) console.error("Error fetching role:", roleError);
-      setRole(roleData?.role ?? null);
+        .eq("user_id", userId);
 
-      // 2. Fetch Profile ID
-      // Typical Supabase schema uses 'id' as the primary key of profiles table (linked to auth.users.id)
+      if (roleError) console.error("Error fetching role:", roleError);
+      if (!mountedRef.current) return;
+      setRole(pickPrimaryRole(roleRows as Array<{ role: string | null }> | null));
+
+      // 2. Profil. profiles.id to wlasny UUID (gen_random_uuid()), a powiazanie
+      //    z auth.users idzie przez profiles.user_id - patrz migracja
+      //    20260218090315, tabela profiles. Filtrowanie po "id" zwracalo
+      //    zawsze pusty wynik BEZ bledu, wiec profileId byl na stale null.
       const { data: profile, error: profError } = await supabase
         .from("profiles")
         .select("id")
-        .eq("id", userId)
+        .eq("user_id", userId)
         .maybeSingle();
-        
-      if (profError) {
-        // Fallback: try user_id if id is not the link
-        const { data: profile2 } = await supabase
-          .from("profiles")
-          .select("id")
-          .eq("user_id", userId)
-          .maybeSingle();
-        setProfileId(profile2?.id ?? null);
-      } else {
-        setProfileId(profile?.id ?? null);
-      }
+
+      if (profError) console.error("Error fetching profile:", profError);
+      if (!mountedRef.current) return;
+      setProfileId(profile?.id ?? null);
     } catch (e) {
       console.error("fetchRole unexpected error:", e);
     }
   };
 
   useEffect(() => {
+    mountedRef.current = true;
+
     const initAuth = async () => {
       try {
         const { data: { session } } = await supabase.auth.getSession();
         const u = session?.user ?? null;
+        if (!mountedRef.current) return;
         setUser(u);
         if (u) {
           await fetchRole(u.id);
@@ -68,25 +85,37 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       } catch (e) {
         console.error("Auth init error:", e);
       } finally {
-        setLoading(false);
+        if (mountedRef.current) setLoading(false);
       }
     };
 
     initAuth();
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
+    // UWAGA: callback MUSI byc synchroniczny.
+    // supabase-js trzyma wewnetrzny auth lock przez caly czas trwania
+    // callbacka. Kazde wywolanie supabase.from(...) / getSession() w srodku
+    // czeka na ten sam lock -> deadlock i wieczny spinner. Dlatego stan
+    // ustawiamy od razu, a zapytania do bazy odpalamy dopiero POZA
+    // callbackiem (setTimeout 0).
+    // Dokumentacja Supabase: "Do not use async functions as the callback".
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       const u = session?.user ?? null;
       setUser(u);
+      setLoading(false);
       if (u) {
-        await fetchRole(u.id);
+        setTimeout(() => {
+          if (mountedRef.current) void fetchRole(u.id);
+        }, 0);
       } else {
         setRole(null);
         setProfileId(null);
       }
-      setLoading(false);
     });
 
-    return () => subscription.unsubscribe();
+    return () => {
+      mountedRef.current = false;
+      subscription.unsubscribe();
+    };
   }, []);
 
   const signIn = async (email: string, password: string) => {

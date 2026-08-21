@@ -67,7 +67,8 @@ function useMyProfile() {
       const { data, error } = await supabase
         .from("profiles")
         .select("*")
-        .eq("id", user.id)
+        // profiles.id != auth.uid() - powiazanie idzie przez profiles.user_id
+        .eq("user_id", user.id)
         .maybeSingle();
       if (error) throw error;
       return data;
@@ -216,11 +217,15 @@ function ProfileTab() {
   const saveProfile = useMutation({
     mutationFn: async () => {
       if (!user) throw new Error("Brak sesji");
-      const { error } = await supabase
+      const { data, error } = await supabase
         .from("profiles")
         .update({ name, phone } as any)
-        .eq("id", user.id);
+        // Filtrowanie po "id" trafialo w 0 wierszy: UPDATE konczyl sie
+        // sukcesem, nie zapisywal nic, a UI pokazywal "Profil zaktualizowany".
+        .eq("user_id", user.id)
+        .select("id");
       if (error) throw error;
+      if (!data || data.length === 0) throw new Error("Nie znaleziono profilu dla tego konta - zmiany nie zostaly zapisane.");
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["my_profile"] });

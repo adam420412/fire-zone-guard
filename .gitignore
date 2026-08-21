@@ -23,3 +23,8 @@ dist-ssr
 *.sln
 *.sw?
 sharepoint_docs/
+
+# Sekrety / konfiguracja srodowiska
+.env
+.env.*
+!.env.example
