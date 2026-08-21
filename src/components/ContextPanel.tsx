@@ -401,7 +401,9 @@ export default function ContextPanel() {
     <aside
       ref={panelRef}
       className={cn(
-        "fixed right-0 top-0 z-40 flex h-screen w-[360px] flex-col border-l border-border bg-card shadow-2xl transition-transform duration-300 ease-in-out",
+        // pb-14: dolny pasek akcji chowal sie pod plakietka "Edit with Lovable",
+        // ktora jest przyklejona do prawego dolnego rogu okna.
+        "fixed right-0 top-0 z-40 flex h-screen w-[360px] flex-col border-l border-border bg-card shadow-2xl pb-14 transition-transform duration-300 ease-in-out",
         isOpen ? "translate-x-0" : "translate-x-full"
       )}
       aria-hidden={!isOpen}

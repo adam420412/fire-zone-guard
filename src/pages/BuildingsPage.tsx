@@ -17,6 +17,7 @@ import { CardGridSkeleton, PageHeaderSkeleton } from "@/components/PageSkeleton"
 function CreateBuildingDialog({ open, onOpenChange }: { open: boolean, onOpenChange: (o: boolean) => void }) {
   const { data: companies } = useCompanies();
   const { mutate: createBuilding, isPending } = useCreateBuilding();
+  const navigate = useNavigate();
   
   const [name, setName] = useState("");
   const [address, setAddress] = useState("");
@@ -35,9 +36,12 @@ function CreateBuildingDialog({ open, onOpenChange }: { open: boolean, onOpenCha
       company_id: companyId,
       ibp_valid_until: ibpDate || null,
     }, {
-      onSuccess: () => {
+      onSuccess: (created: any) => {
         toast.success("Obiekt został dodany!");
         onOpenChange(false);
+        // Od razu przechodzimy na karte nowego obiektu - stamtad dodaje sie
+        // urzadzenia ppoz. i zlecenia (szkolenia, aktualizacja IBP itd.).
+        if (created?.id) navigate(`/buildings/${created.id}`);
         setName("");
         setAddress("");
         setCompanyId("");

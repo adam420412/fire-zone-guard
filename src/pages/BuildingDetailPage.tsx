@@ -592,6 +592,9 @@ export default function BuildingDetailPage() {
   const [showEditBuilding, setShowEditBuilding] = useState(false);
   const [qrDevice, setQrDevice] = useState<any>(null);
   const [repairDevice, setRepairDevice] = useState<any>(null);
+  // Zlecenie zakladane recznie z karty obiektu: szkolenie, aktualizacja IBP,
+  // przeglad - cokolwiek, co nie jest usterka i nie ma szablonu cyklicznego.
+  const [newTaskOpen, setNewTaskOpen] = useState(false);
   const [editDeviceTarget, setEditDeviceTarget] = useState<any>(null);
   const [editDeviceOpen, setEditDeviceOpen] = useState(false);
   
@@ -727,6 +730,12 @@ export default function BuildingDetailPage() {
             
 
             <div className="flex items-center gap-2">
+              {canEditBuilding && (
+                <Button onClick={() => setNewTaskOpen(true)} className="fire-gradient gap-2">
+                  <Plus className="h-4 w-4" />
+                  Nowe zlecenie
+                </Button>
+              )}
               <ReportFaultButton buildingId={building.id} variant="prominent" />
               {isSuperAdmin && (
                 <button onClick={() => setShowEditBuilding(true)} className="rounded-full bg-secondary p-2.5 hover:bg-primary/20 hover:text-primary transition-colors" title="Pełna edycja obiektu">
@@ -1426,6 +1435,16 @@ export default function BuildingDetailPage() {
           )}
         </DialogContent>
       </Dialog>
+
+      {/* Nowe zlecenie z karty obiektu - obiekt i firma juz wybrane */}
+      <CreateTaskDialog
+        open={newTaskOpen}
+        onOpenChange={setNewTaskOpen}
+        defaultValues={{
+          buildingId: id!,
+          companyId: building.company_id,
+        }}
+      />
 
       {/* Repair task dialog - pre-filled from device */}
       {repairDevice && (

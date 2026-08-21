@@ -22,10 +22,11 @@ function migrationFiles() {
 }
 
 describe("migracja hardeningowa", () => {
-  it("istnieje i jest ostatnia w kolejnosci", () => {
-    const files = migrationFiles();
-    expect(files).toContain(HARDENING);
-    expect(files[files.length - 1]).toBe(HARDENING);
+  it("istnieje w katalogu migracji", () => {
+    // Celowo NIE wymagamy, zeby byla ostatnia - po niej doszly kolejne
+    // migracje i to normalne. Tego, czy dziura nie wrocila, pilnuje
+    // osobny test ponizej, ktory przeglada wszystkie pozniejsze pliki.
+    expect(migrationFiles()).toContain(HARDENING);
   });
 
   it("zamyka anonimowy odczyt tabeli buildings", () => {
