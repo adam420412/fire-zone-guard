@@ -37,9 +37,18 @@ const TABS = [
 ];
 
 export default function AdminPage() {
-  const { role } = useAuth();
+  const { role, loading: authLoading } = useAuth();
   const [tab, setTab] = useState("templates");
 
+  // Dopoki trwa ustalanie tozsamosci, NIE przekierowujemy - inaczej wejscie
+  // z paska adresu wyrzuca super_admina na pulpit, zanim rola sie doczyta.
+  if (authLoading) {
+    return (
+      <div className="flex h-64 items-center justify-center">
+        <Loader2 className="h-6 w-6 animate-spin text-primary" />
+      </div>
+    );
+  }
   if (role !== "super_admin") return <Navigate to="/" replace />;
 
   return (

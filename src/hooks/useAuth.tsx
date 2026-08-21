@@ -35,6 +35,9 @@ export function pickPrimaryRole(rows: Array<{ role: string | null }> | null | un
 /** Bezpiecznik: po tylu ms przestajemy czekac na role i puszczamy UI dalej. */
 export const ROLE_TIMEOUT_MS = 8000;
 
+/** Ile razy ponowic zapytanie o role, gdy baza zwroci blad. */
+export const ROLE_MAX_ATTEMPTS = 3;
+
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [role, setRole] = useState<string | null>(null);
@@ -55,7 +58,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   // uid, dla ktorego rola jest pobrana albo wlasnie leci zapytanie
   const roleForUidRef = useRef<string | null>(null);
 
-  const fetchRole = async (userId: string) => {
+  const fetchRole = async (userId: string, attempt = 0) => {
     try {
       // 1. Role. Bez .maybeSingle() - przy dwoch rolach rzucaloby PGRST116
       //    i uzytkownik zostawal z role === null (czyli bez dostepu do niczego).
@@ -64,7 +67,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         .select("role")
         .eq("user_id", userId);
 
-      if (roleError) console.error("Error fetching role:", roleError);
+      if (roleError) {
+        console.error("Error fetching role:", roleError);
+        // BLAD != "uzytkownik nie ma roli". Na zimnym starcie to zapytanie
+        // potrafi trafic w moment odswiezania tokena i wrocic z 401. Gdyby
+        // potraktowac to jako brak roli, strony chronione rola (np. /admin)
+        // przekierowywalyby na pulpit, mimo ze uzytkownik ma uprawnienia.
+        if (attempt + 1 < ROLE_MAX_ATTEMPTS) {
+          setTimeout(() => {
+            if (mountedRef.current && roleForUidRef.current === userId) {
+              void fetchRole(userId, attempt + 1);
+            }
+          }, 300 * (attempt + 1));
+          return; // celowo NIE oznaczamy roli jako gotowej
+        }
+      }
       if (!mountedRef.current) return;
       setRole(pickPrimaryRole(roleRows as Array<{ role: string | null }> | null));
 

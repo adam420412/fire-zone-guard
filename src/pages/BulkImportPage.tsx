@@ -61,7 +61,7 @@ interface ImportReport {
 }
 
 export default function BulkImportPage() {
-  const { role } = useAuth();
+  const { role, loading: authLoading } = useAuth();
   // All hooks BEFORE any conditional return (rules-of-hooks).
   const [entity, setEntity] = useState<EntityType>("buildings");
   const [rows, setRows] = useState<Record<string, any>[]>([]);
@@ -217,6 +217,15 @@ export default function BulkImportPage() {
   const canImport = rows.length > 0 && requiredOk && !importing;
 
   // Guard AFTER all hooks (rules-of-hooks safe)
+  // Dopoki trwa ustalanie tozsamosci, NIE przekierowujemy - inaczej wejscie
+  // z paska adresu wyrzuca super_admina na pulpit, zanim rola sie doczyta.
+  if (authLoading) {
+    return (
+      <div className="flex h-64 items-center justify-center">
+        <Loader2 className="h-6 w-6 animate-spin text-primary" />
+      </div>
+    );
+  }
   if (role !== "super_admin") return <Navigate to="/" replace />;
 
   return (
