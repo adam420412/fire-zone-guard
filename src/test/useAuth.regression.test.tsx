@@ -55,15 +55,19 @@ function setup(db = makeDb(), session: unknown = SESSION) {
 }
 
 let seen: { role: string | null; profileId: string | null; loading: boolean };
+/** Historia wszystkich renderow - do wykrywania chwilowych zlych stanow. */
+let renders: Array<{ role: string | null; loading: boolean; hasUser: boolean }>;
 
 function Probe() {
-  const { role, profileId, loading } = useAuth();
+  const { role, profileId, loading, user } = useAuth();
   seen = { role, profileId, loading };
+  renders.push({ role, loading, hasUser: !!user });
   return null;
 }
 
 function renderAuth() {
   seen = { role: null, profileId: null, loading: true };
+  renders = [];
   return render(
     <AuthProvider>
       <Probe />
@@ -183,6 +187,45 @@ describe("useAuth - profil i rola", () => {
       expect(seen.profileId).toBeNull();
       expect(seen.loading).toBe(false);
     });
+  });
+
+  it("nie konczy ladowania, dopoki rola nie jest znana", async () => {
+    // To jest bug zgloszony jako "znikaja obiekty / przyciski dodawania".
+    // Jesli loading zgasnie przed ustaleniem roli, strony renderuja sie
+    // z role === null i chowaja wszystko zabramkowane rola.
+    renderAuth();
+    await emituj("SIGNED_IN", SESSION, "emit SIGNED_IN");
+    await waitFor(() => expect(seen.role).toBe("admin"));
+
+    const zleRendery = renders.filter(
+      (r) => r.loading === false && r.hasUser === true && r.role === null,
+    );
+    expect(zleRendery).toEqual([]);
+  });
+
+  it("po zalogowaniu pierwszy render z loading=false ma juz role", async () => {
+    renderAuth();
+    await emituj("SIGNED_IN", SESSION, "emit SIGNED_IN");
+    await waitFor(() => expect(seen.loading).toBe(false));
+
+    const pierwszyGotowy = renders.find((r) => r.loading === false && r.hasUser);
+    expect(pierwszyGotowy).toBeDefined();
+    expect(pierwszyGotowy!.role).not.toBeNull();
+  });
+
+  it("odswiezenie tokena nie wraca do stanu ladowania", async () => {
+    // TOKEN_REFRESHED leci co godzine. Gdyby resetowal loading,
+    // uzytkownik dostawalby spinner w srodku pracy.
+    renderAuth();
+    await emituj("SIGNED_IN", SESSION, "emit SIGNED_IN");
+    await waitFor(() => expect(seen.loading).toBe(false));
+
+    const przed = mock.calls.length;
+    await emituj("TOKEN_REFRESHED", SESSION, "emit TOKEN_REFRESHED");
+    expect(seen.loading).toBe(false);
+    expect(seen.role).toBe("admin");
+    // i nie odpala ponownie zapytan o role
+    expect(mock.calls.length).toBe(przed);
   });
 
   it("odsubskrybowuje sie przy odmontowaniu", async () => {

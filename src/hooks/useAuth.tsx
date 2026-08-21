@@ -32,12 +32,28 @@ export function pickPrimaryRole(rows: Array<{ role: string | null }> | null | un
   return roles[0];
 }
 
+/** Bezpiecznik: po tylu ms przestajemy czekac na role i puszczamy UI dalej. */
+export const ROLE_TIMEOUT_MS = 8000;
+
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
-  const [loading, setLoading] = useState(true);
   const [role, setRole] = useState<string | null>(null);
   const [profileId, setProfileId] = useState<string | null>(null);
+
+  // loading = "nie wiem jeszcze, kim jest uzytkownik".
+  // MUSI obejmowac takze pobranie roli. Wczesniej loading gaslo zaraz po
+  // ustaleniu sesji, a rola dojezdzala chwile pozniej - przez co interfejs
+  // zdazyl sie wyrenderowac z role === null i chowal wszystko, co jest
+  // zabramkowane rola (przyciski "Dodaj obiekt", "Dodaj klienta", sekcja
+  // SUPER ADMIN). Przy wolniejszym laczu to okno rozciagalo sie na tyle,
+  // ze wygladalo jak trwale zniknieciecie funkcji.
+  const [sessionReady, setSessionReady] = useState(false);
+  const [roleReady, setRoleReady] = useState(false);
+  const loading = !sessionReady || !roleReady;
+
   const mountedRef = useRef(true);
+  // uid, dla ktorego rola jest pobrana albo wlasnie leci zapytanie
+  const roleForUidRef = useRef<string | null>(null);
 
   const fetchRole = async (userId: string) => {
     try {
@@ -67,7 +83,34 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setProfileId(profile?.id ?? null);
     } catch (e) {
       console.error("fetchRole unexpected error:", e);
+    } finally {
+      // Nawet przy bledzie musimy odblokowac UI - inaczej aplikacja
+      // zostaje na spinnerze na zawsze.
+      if (mountedRef.current && roleForUidRef.current === userId) {
+        setRoleReady(true);
+      }
     }
+  };
+
+  /**
+   * Pobiera role dokladnie raz na uzytkownika. Bez tego strazu
+   * TOKEN_REFRESHED (co godzine) migalby spinnerem i odpalal zbedne
+   * zapytania.
+   */
+  const ensureRole = (userId: string) => {
+    if (roleForUidRef.current === userId) return;
+    roleForUidRef.current = userId;
+    setRoleReady(false);
+    // Poza callbackiem auth - zeby nie trzymac auth locka (deadlock).
+    setTimeout(() => {
+      if (mountedRef.current) void fetchRole(userId);
+    }, 0);
+    // Bezpiecznik na wypadek, gdyby zapytanie nigdy nie wrocilo.
+    setTimeout(() => {
+      if (mountedRef.current && roleForUidRef.current === userId) {
+        setRoleReady(true);
+      }
+    }, ROLE_TIMEOUT_MS);
   };
 
   useEffect(() => {
@@ -80,12 +123,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         if (!mountedRef.current) return;
         setUser(u);
         if (u) {
-          await fetchRole(u.id);
+          ensureRole(u.id);
+        } else {
+          setRoleReady(true);
         }
       } catch (e) {
         console.error("Auth init error:", e);
+        if (mountedRef.current) setRoleReady(true);
       } finally {
-        if (mountedRef.current) setLoading(false);
+        if (mountedRef.current) setSessionReady(true);
       }
     };
 
@@ -101,14 +147,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       const u = session?.user ?? null;
       setUser(u);
-      setLoading(false);
+      setSessionReady(true);
       if (u) {
-        setTimeout(() => {
-          if (mountedRef.current) void fetchRole(u.id);
-        }, 0);
+        ensureRole(u.id);
       } else {
+        roleForUidRef.current = null;
         setRole(null);
         setProfileId(null);
+        setRoleReady(true);
       }
     });
 
