@@ -154,6 +154,60 @@ export function useTaskTemplates(buildingId?: string) {
   });
 }
 
+/**
+ * Wlasny szablon cyklicznej uslugi dla konkretnego obiektu.
+ *
+ * Tabela task_templates od poczatku miala kolumny building_id i
+ * recurrence_days oraz polityki zapisu dla admina - brakowalo wylacznie
+ * interfejsu. Przez to nie dalo sie dopisac wlasnej pozycji w rodzaju
+ * "Aktualizacja IBP" czy "Szkolenie pracownikow" do ewidencji obiektu.
+ */
+export function useCreateTaskTemplate() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (input: {
+      building_id: string;
+      name: string;
+      description?: string;
+      type: string;
+      priority: string;
+      recurrence_days: number;
+    }) => {
+      const { data, error } = await supabase
+        .from("task_templates")
+        .insert({
+          building_id: input.building_id,
+          name: input.name.trim(),
+          description: input.description?.trim() || "",
+          type: input.type as any,
+          priority: input.priority as any,
+          recurrence_days: input.recurrence_days,
+          is_global: false,
+        } as any)
+        .select()
+        .single();
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: (_, vars) => {
+      qc.invalidateQueries({ queryKey: ["task_templates", vars.building_id] });
+    },
+  });
+}
+
+export function useDeleteTaskTemplate() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ id }: { id: string; building_id: string }) => {
+      const { error } = await supabase.from("task_templates").delete().eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: (_, vars) => {
+      qc.invalidateQueries({ queryKey: ["task_templates", vars.building_id] });
+    },
+  });
+}
+
 // ---- BUILDING TASKS ----
 export function useBuildingTasks(buildingId: string) {
   return useQuery({

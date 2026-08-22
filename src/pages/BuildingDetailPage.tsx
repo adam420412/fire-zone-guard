@@ -12,6 +12,8 @@ import {
   useUpdateDevice,
   useDeleteDevice,
   useCreateTaskFromTemplate,
+  useCreateTaskTemplate,
+  useDeleteTaskTemplate,
   useBuildingContacts,
   useCreateBuildingContact,
   useUpdateBuildingContact,
@@ -586,6 +588,12 @@ export default function BuildingDetailPage() {
   const addDevice = useAddDevice();
   const updateDevice = useUpdateDevice();
   const createFromTemplate = useCreateTaskFromTemplate();
+  const createTemplate = useCreateTaskTemplate();
+  const deleteTemplate = useDeleteTaskTemplate();
+  const [newTemplateOpen, setNewTemplateOpen] = useState(false);
+  const [tplForm, setTplForm] = useState({
+    name: "", type: "przegląd", priority: "średni", recurrence_days: 365,
+  });
 
   const [selectedTask, setSelectedTask] = useState<any>(null);
   const [showAddDevice, setShowAddDevice] = useState(false);
@@ -905,10 +913,22 @@ export default function BuildingDetailPage() {
                 <Package className="h-5 w-5 text-primary" />
                 <h3 className="text-sm font-bold uppercase tracking-tight">Szablony Cykliczne</h3>
               </div>
+              {canEditBuilding && (
+                <Button size="sm" variant="outline" className="gap-1.5 text-xs" onClick={() => setNewTemplateOpen(true)}>
+                  <Plus className="h-3.5 w-3.5" /> Nowa pozycja cykliczna
+                </Button>
+              )}
             </div>
             <div className="p-4">
               {(templates ?? []).length === 0 ? (
-                 <p className="py-6 text-center text-sm font-medium text-muted-foreground opacity-60">Brak zdefiniowanych szablonów cyklicznych prac (Maintenance)</p>
+                 <div className="py-6 text-center">
+                   <p className="text-sm font-medium text-muted-foreground opacity-60">
+                     Brak pozycji cyklicznych dla tego obiektu.
+                   </p>
+                   <p className="mt-1 text-xs text-muted-foreground opacity-60">
+                     Dodaj to, co realizujecie co roku — przegląd gaśnic, szkolenie, aktualizacja IBP.
+                   </p>
+                 </div>
               ) : (
                 <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
                   {(templates ?? []).map((tpl: any) => (
@@ -919,15 +939,34 @@ export default function BuildingDetailPage() {
                           {taskTypeLabels[tpl.type as TaskType] ?? tpl.type} • Powtarza się co {tpl.recurrence_days} dni
                         </p>
                       </div>
-                      {isSuperAdmin && (
-                        <button
-                          onClick={() => handleCreateFromTemplate(tpl)}
-                          disabled={createFromTemplate.isPending}
-                          className="mt-4 flex items-center justify-center gap-2 rounded-md bg-secondary px-3 py-2 text-xs font-bold hover:bg-primary hover:text-primary-foreground transition-colors disabled:opacity-50"
-                        >
-                          <Plus className="h-3.5 w-3.5" /> Utwórz natychmiast
-                        </button>
-                      )}
+                      <div className="mt-4 flex items-center gap-2">
+                        {isSuperAdmin && (
+                          <button
+                            onClick={() => handleCreateFromTemplate(tpl)}
+                            disabled={createFromTemplate.isPending}
+                            className="flex flex-1 items-center justify-center gap-2 rounded-md bg-secondary px-3 py-2 text-xs font-bold hover:bg-primary hover:text-primary-foreground transition-colors disabled:opacity-50"
+                          >
+                            <Plus className="h-3.5 w-3.5" /> Utwórz natychmiast
+                          </button>
+                        )}
+                        {canEditBuilding && !tpl.is_global && (
+                          <button
+                            onClick={async () => {
+                              if (!window.confirm(`Usunąć pozycję „${tpl.name}"?`)) return;
+                              try {
+                                await deleteTemplate.mutateAsync({ id: tpl.id, building_id: id! });
+                                toast({ title: "Pozycja usunięta" });
+                              } catch (e: any) {
+                                toast({ title: "Błąd", description: e.message, variant: "destructive" });
+                              }
+                            }}
+                            className="rounded-md bg-secondary px-2.5 py-2 text-xs hover:bg-critical/20 hover:text-critical transition-colors"
+                            title="Usuń pozycję cykliczną"
+                          >
+                            <Trash2 className="h-3.5 w-3.5" />
+                          </button>
+                        )}
+                      </div>
                     </div>
                   ))}
                 </div>
@@ -1433,6 +1472,83 @@ export default function BuildingDetailPage() {
               </p>
             </div>
           )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Nowa pozycja cykliczna dla tego obiektu (np. aktualizacja IBP) */}
+      <Dialog open={newTemplateOpen} onOpenChange={setNewTemplateOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Nowa pozycja cykliczna</DialogTitle>
+            <DialogDescription>
+              Usługa powtarzana dla tego obiektu — przegląd, szkolenie, aktualizacja IBP.
+              Potem tworzysz z niej zlecenie jednym kliknięciem.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <Label>Nazwa</Label>
+              <Input
+                value={tplForm.name}
+                onChange={(e) => setTplForm({ ...tplForm, name: e.target.value })}
+                placeholder="np. Aktualizacja IBP"
+              />
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <Label>Rodzaj</Label>
+                <Select value={tplForm.type} onValueChange={(v) => setTplForm({ ...tplForm, type: v })}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    {Object.entries(taskTypeLabels).map(([v, label]) => (
+                      <SelectItem key={v} value={v}>{label as string}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <Label>Priorytet</Label>
+                <Select value={tplForm.priority} onValueChange={(v) => setTplForm({ ...tplForm, priority: v })}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    {["niski", "średni", "wysoki", "krytyczny"].map((v) => (
+                      <SelectItem key={v} value={v}>{v}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+            <div>
+              <Label>Powtarzaj co (dni)</Label>
+              <Input
+                type="number"
+                min={1}
+                value={tplForm.recurrence_days}
+                onChange={(e) => setTplForm({ ...tplForm, recurrence_days: Number(e.target.value) })}
+              />
+              <p className="mt-1 text-xs text-muted-foreground">365 = raz w roku</p>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="ghost" onClick={() => setNewTemplateOpen(false)}>Anuluj</Button>
+            <Button
+              className="fire-gradient"
+              disabled={!tplForm.name.trim() || tplForm.recurrence_days < 1 || createTemplate.isPending}
+              onClick={async () => {
+                try {
+                  await createTemplate.mutateAsync({ building_id: id!, ...tplForm });
+                  toast({ title: "Pozycja dodana do ewidencji obiektu" });
+                  setNewTemplateOpen(false);
+                  setTplForm({ name: "", type: "przegląd", priority: "średni", recurrence_days: 365 });
+                } catch (e: any) {
+                  toast({ title: "Błąd", description: e.message, variant: "destructive" });
+                }
+              }}
+            >
+              {createTemplate.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+              Dodaj
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
 

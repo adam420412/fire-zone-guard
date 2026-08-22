@@ -55,7 +55,7 @@ export default function PublicSlaIntakePage() {
   const [photos, setPhotos] = useState<File[]>([]);
   const [photoPreviews, setPhotoPreviews] = useState<string[]>([]);
   const [uploading, setUploading] = useState(false);
-  const [submitted, setSubmitted] = useState<{ number: string | null; id: string } | null>(null);
+  const [submitted, setSubmitted] = useState<{ number: string | null; id: string | null } | null>(null);
 
   const createTicket = useCreateSlaTicket();
   const analyzePhoto = useAnalyzeSlaPhoto();
@@ -183,15 +183,26 @@ export default function PublicSlaIntakePage() {
           <p className="mt-2 text-sm text-muted-foreground">
             Otrzymaliśmy Twoje zgłoszenie. Dyżurny serwisant odezwie się do <strong>4&nbsp;godzin</strong>.
           </p>
-          <div className="mt-6 rounded-lg bg-secondary/40 p-4">
-            <p className="text-xs uppercase tracking-wider text-muted-foreground">Numer zgłoszenia</p>
-            <p className="mt-1 text-2xl font-mono font-bold text-primary">
-              {submitted.number ?? submitted.id.slice(0, 8)}
-            </p>
-            <p className="mt-2 text-xs text-muted-foreground">
-              Zachowaj numer — przyda się do śledzenia statusu.
-            </p>
-          </div>
+          {/* Anonimowy zglaszajacy nie dostaje zwrotki z bazy (brak polityki
+              odczytu dla roli anon), wiec numer moze nie byc znany. */}
+          {(submitted.number || submitted.id) ? (
+            <div className="mt-6 rounded-lg bg-secondary/40 p-4">
+              <p className="text-xs uppercase tracking-wider text-muted-foreground">Numer zgłoszenia</p>
+              <p className="mt-1 text-2xl font-mono font-bold text-primary">
+                {submitted.number ?? submitted.id!.slice(0, 8)}
+              </p>
+              <p className="mt-2 text-xs text-muted-foreground">
+                Zachowaj numer — przyda się do śledzenia statusu.
+              </p>
+            </div>
+          ) : (
+            <div className="mt-6 rounded-lg bg-secondary/40 p-4">
+              <p className="text-sm text-muted-foreground">
+                Zgłoszenie zostało zarejestrowane. Numer otrzymasz w potwierdzeniu
+                na podany adres e-mail.
+              </p>
+            </div>
+          )}
           <button
             onClick={() => setSubmitted(null)}
             className="mt-6 inline-flex items-center gap-2 rounded-md border border-border px-4 py-2 text-sm font-medium hover:border-primary hover:text-primary transition-colors"

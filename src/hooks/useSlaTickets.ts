@@ -223,6 +223,17 @@ export function useCreateSlaTicket() {
         photo_urls: input.photo_urls ?? [],
       };
 
+      // Anonimowe zgloszenie z /zgloszenie: NIE prosimy o zwrot wstawionego
+      // wiersza. Postgres przy INSERT ... RETURNING sprawdza polityki SELECT,
+      // a rola `anon` nie ma na sla_tickets zadnej polityki odczytu - zapytanie
+      // ze zwrotka konczyloby sie bledem i wycofaniem calego zgloszenia.
+      // Zalogowany uzytkownik dostaje pelny wiersz jak dotad.
+      if (!user) {
+        const { error: insErr } = await (supabase.from as any)("sla_tickets").insert(payload);
+        if (insErr) throw insErr;
+        return { id: null, ticket_number: null } as unknown as SlaTicket;
+      }
+
       const { data, error } = await (supabase.from as any)("sla_tickets")
         .insert(payload)
         .select()
